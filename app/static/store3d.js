@@ -446,7 +446,7 @@ export function mountStore(el, data, opts = {}) {
     setHighlight,
     setView(name) { view = VIEWS[name] || view; placeCamera(view); },
     ready: () => loadAssets(),
-    shot(w, h) { renderer.setSize(w, h, false); camera.updateProjectionMatrix(); controls.update(); renderer.render(scene, camera); const u = renderer.domElement.toDataURL('image/jpeg', .86); resize(); return u; },
+    shot(w, h) { const pr = renderer.getPixelRatio(); renderer.setPixelRatio(1); renderer.setSize(w, h, false); camera.updateProjectionMatrix(); controls.update(); renderer.render(scene, camera); const u = renderer.domElement.toDataURL('image/jpeg', .86); renderer.setPixelRatio(pr); resize(); return u; },
     select(id) {
       sel = sel === id ? null : id;
       const it = items.find(i => i.p.id === id);

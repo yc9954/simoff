@@ -262,21 +262,24 @@ VIEWS.plans = async (root) => {
 function runCards(r) {
   const order = ['calibrated', 'jev_calibrated', 'persona', 'no_promo', 'avg_lift'];
   const engines = [...r.engines].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
-  return engines.map(e => {
+  const base = e => ['no_promo', 'avg_lift'].includes(e.id);
+  const section = e => {
     const [sq, acc] = ENG[e.id] || ['#000', '#000'];
     const cards = PLANS.map(c => {
       const p = e.plans.find(x => x.id === c), a = r.actual_per_1000[c], k = p.ratio_to_actual, sel = e.id === 'calibrated' && c === 'A_front_endcap';
       const ok = k != null && k <= 3;
-      return `<article class="card acc ${sel ? 'wash-w' : 'wash'}" style="overflow:hidden;--card-accent:${acc};${sel ? 'border-color:#171717;box-shadow:0 0 0 1px #171717' : ''}"><img data-shot="${c}" alt="${esc(e.label)} · ${LBL[c]} 3D 장면" style="display:block;width:100%;height:118px;object-fit:cover;border-bottom:1px solid var(--border);background:#eceeed">
+      return `<article class="card acc ${sel ? 'wash-w' : 'wash'}" style="overflow:hidden;--card-accent:${acc};${sel ? 'border-color:#171717;box-shadow:0 0 0 1px #171717' : ''}">${base(e) ? '' : `<img data-shot="${c}" alt="${esc(e.label)} · ${LBL[c]} 3D 장면" style="display:block;width:100%;height:118px;object-fit:cover;border-bottom:1px solid var(--border);background:#eceeed">`}
 <div style="padding:12px 14px 14px"><div style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="sq" style="background:${COL[c]};width:8px;height:8px"></span>${LBL[c]}</div><div style="margin-top:10px;display:flex;align-items:baseline;justify-content:space-between"><span class="stat" style="font-size:24px">${p.per_1000 >= 100 ? n0(p.per_1000) : nf(p.per_1000)}</span><span class="num muted" style="font-size:11px">실제 ${nf(a)}</span></div>
 <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:6px"><span class="lbl" style="text-transform:none;white-space:nowrap">평소 대비 ${nf(p.lift, 1)}배</span><span class="tag ${ok ? 'tag-ok' : 'tag-no'}" style="white-space:nowrap">${k == null ? '—' : ok ? `실제의 ${nf(k)}` : `${n0(k)}배 과대`}</span></div>${p.mc_p05 != null ? `<div class="mono muted" style="margin-top:6px;font-size:10px;letter-spacing:.3px">90% ${n0(p.mc_p05)}–${n0(p.mc_p95)}건 · 손님 운</div>` : ''}</div></article>`;
     }).join('');
     return `<section><div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--border)"><span style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:500"><span class="sq" style="background:${sq};width:10px;height:10px"></span>${esc(e.label)}</span><span class="mono muted" style="font-size:11px;letter-spacing:.5px">${esc(e.note)}</span><span class="tag ${e.live ? 'tag-ok' : 'tag-ai'}">${e.live ? '지금 계산' : '저장된 평가'}</span></div><div style="margin-top:14px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">${cards}</div></section>`;
-  }).join('');
+  };
+  const main = engines.filter(e => !base(e)), rest = engines.filter(base);
+  return main.map(section).join('') + (rest.length ? `<details class="card" style="padding:12px 16px"><summary style="cursor:pointer;font-size:14px">비교 기준 ${rest.length}개 · ${rest.map(e => esc(e.label)).join(' · ')} <span class="mono muted" style="font-size:11px;margin-left:8px">진열 효과를 빼거나 평균으로 둔 경우</span></summary><div style="display:flex;flex-direction:column;gap:24px;margin-top:16px">${rest.map(section).join('')}</div></details>` : '');
 }
 function fillRun(root, r) {
   set(root, 'title', `실행 #${r.id}`);
-  set(root, 'intro', `엔진 ${r.engines.length}개 × 안 4개. 숫자는 방문 1,000회당 판매이고, 오른쪽은 시험 기간(48–53주) 실제값입니다. 모델이 이 기간의 구매를 본 적은 없습니다. 모든 안이 같은 방문과 같은 난수를 씁니다.`);
+  set(root, 'intro', `엔진 ${r.engines.filter(e => !['no_promo', 'avg_lift'].includes(e.id)).length}개 × 안 4개 (아래에 비교 기준 ${r.engines.filter(e => ['no_promo', 'avg_lift'].includes(e.id)).length}개). 숫자는 방문 1,000회당 판매이고, 오른쪽은 시험 기간(48–53주) 실제값입니다. 모델이 이 기간의 구매를 본 적은 없습니다. 모든 안이 같은 방문과 같은 난수를 씁니다.`);
   set(root, 'decisions', n0(r.decisions)); set(root, 'actual', n0(r.actual_buys)); set(root, 'seed', String(r.seed)); set(root, 'draws', String(r.draws)); set(root, 'weeks', `${r.weeks.join('–')}주`); set(root, 'at', r.at);
   slot(root, 'engines').innerHTML = runCards(r);
 }

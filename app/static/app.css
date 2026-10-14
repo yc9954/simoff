@@ -42,6 +42,10 @@ button.tab:hover:not(.on) { background: var(--muted-2); }
   .main { padding: 16px !important; }
   .main [style*="grid-template-columns:repeat(4"], .main [style*="grid-template-columns:repeat(2"], .main [style*="grid-template-columns:168px"],
   .main [style*="grid-template-columns:1fr 1fr"], .main [style*="minmax(420px"], .main [style*="minmax(380px"] { grid-template-columns: 1fr !important; }
+  .main [style*="grid-template-columns:minmax(0,340px)"] { grid-template-columns: 1fr !important; }
+  .main [style*="display:grid"] > * { min-width: 0; }
   .main .tbl { overflow-x: auto; }
 }
-@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+img[data-shot]:not([src]) { color: transparent; background: linear-gradient(100deg, #eceeed 40%, #f6f7f7 50%, #eceeed 60%) 0 0 / 300% 100% #eceeed !important; animation: shot-wait 1.4s linear infinite; }
+@keyframes shot-wait { to { background-position: -150% 0; } }
+@media (prefers-reduced-motion: reduce) { .spin, img[data-shot] { animation: none; } }
