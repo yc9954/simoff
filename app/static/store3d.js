@@ -331,9 +331,9 @@ export function mountStore(el, data, opts = {}) {
   const GROUPS = opts.groups || [{ key: 'main', plan: opts.plan || null, lift: 1 }];
   function addShoppers(asset, n) {
     const colors = ['#496077', '#954f51', '#657851', '#806488', '#337477', '#9d873e', '#6a6b79'], skins = ['#cfa281', '#b88668', '#d8ae8a', '#b78a70'];
-    const per = opts.groups ? (opts.perGroup || 7) : n;
+    const per = opts.groups ? (opts.perGroup || 7) : n, extra = opts.groups ? per : 0;
     GROUPS.forEach((g, gi) => {
-      for (let j = 0; j < per; j++) {
+      for (let j = 0; j < per + extra; j++) {
         const k = gi * 31 + j, rootC = cloneSkinned(asset.scene);
         rootC.traverse(o => { if (!o.isMesh) return; o.castShadow = true; o.material = o.material.clone();
           if (o.material.name === 'Outerwear') o.material.color.set(colors[(k * 3 + gi) % colors.length]);
@@ -342,7 +342,7 @@ export function mountStore(el, data, opts = {}) {
         rootC.scale.setScalar(.92 + Math.random() * .12);
         const mixer = new THREE.AnimationMixer(rootC);
         const acts = Object.fromEntries(asset.animations.map(c => [c.name, mixer.clipAction(c)]));
-        const sh = { root: rootC, mixer, acts, cur: null, seg: 0, t: 0, wait: 0, k, group: g.key, plan: g.plan, lift: g.lift, pace: .75 + Math.random() * .6 };
+        const sh = { root: rootC, mixer, acts, cur: null, seg: 0, t: 0, wait: 0, k, group: g.key, plan: g.plan, lift: g.lift, pace: .75 + Math.random() * .6, extra: j >= per };
         sh.path = route(sh); sh.seg = Math.floor(Math.random() * (sh.path.length - 2));      // already mid-trip at rest
         rootC.visible = !opts.groups || gi === 0;
         root.add(rootC); shoppers.push(sh); play(sh, 'Walk');
@@ -438,6 +438,7 @@ export function mountStore(el, data, opts = {}) {
   const ro = new ResizeObserver(resize); ro.observe(el);
   let alive = true, last = performance.now(), camAnim = null, following = false;
   const SPEED = opts.speed ?? 6;   // people walk in time-lapse, so a few seconds show a store's worth of trips
+  let boost = 1, crowdAll = false;  // liveCards turns these up while a run is computing
   function update(now) {
     const dt = Math.min(.05, (now - last) / 1000); last = now;
     if (animating) { const k = Math.min(1, (now - t0) / dur); items.forEach(it => place(it, ease(k))); if (k >= 1) animating = false; }
@@ -455,7 +456,7 @@ export function mountStore(el, data, opts = {}) {
       const c = state === 'next' ? it.p.next : it.p.now;
       it.tag.material.color.set(animating ? '#ffffff' : (c === 'A_front_endcap' ? '#cfdcff' : c === 'C_other_display' ? '#e3ebfe' : '#ffffff'));
     }
-    if (!reduce) moveShoppers(dt * SPEED);
+    if (!reduce) moveShoppers(dt * SPEED * boost);
     if (following && shoppers[0]) { const p = shoppers[0].root.position; controls.target.lerp(new THREE.Vector3(p.x, .9, p.z), .08);
       camera.position.copy(controls.target).addScaledVector(VIEWS.cereal.dir.clone().normalize(), 60); }
     controls.update(); if (!opts.manual) renderer.render(scene, camera);
@@ -479,9 +480,10 @@ export function mountStore(el, data, opts = {}) {
     setView(name) { view = VIEWS[name] || view; placeCamera(view); },
     ready: () => loadAssets(),
     advance(now) { update(now); },
+    pace(b, all) { boost = b; crowdAll = all; },
     // draw the scene as `card` wants it (highlight, view, plan state) into a 2D canvas; used by liveCards
     drawInto(ctx, w, h, card) {
-      if (opts.groups) shoppers.forEach(sh => { sh.root.visible = sh.group === card.group; });
+      if (opts.groups) shoppers.forEach(sh => { sh.root.visible = sh.group === card.group && (!sh.extra || crowdAll); });
       setHighlight(card.highlight); if (card.view && VIEWS[card.view] !== view) { view = VIEWS[card.view]; placeCamera(view); }
       if (card.state && card.state !== state) go(card.state, false);
       if (renderer.domElement.width !== w || renderer.domElement.height !== h) { renderer.setPixelRatio(1); renderer.setSize(w, h, false); }
@@ -520,7 +522,7 @@ export async function snapshots(data, list, w = 640, h = 300) {
 
 // Live cards: one store, rendered off-screen, drawn in turn into every visible card canvas. Each card keeps its own
 // highlight and view; the people are shared and keep walking. One WebGL context however many cards there are.
-export function liveCards(data, cards) {
+export function liveCards(data, cards, opts = {}) {
   const host = document.createElement('div');
   host.style.cssText = 'position:fixed;left:-10000px;top:0;width:640px;height:300px';
   document.body.appendChild(host);
@@ -529,20 +531,26 @@ export function liveCards(data, cards) {
   const dpr = Math.min(devicePixelRatio || 1, 2), seen = new Set();
   const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting ? seen.add(e.target) : seen.delete(e.target)), { rootMargin: '80px' });
   cards.forEach(c => io.observe(c.canvas));
-  let alive = true, turn = 0;
+  let alive = true, turn = 0, paused = false, freezeAt = opts.paused ? performance.now() + 1500 : Infinity, running = false;
+  function draw(c) {
+    const r = c.canvas.getBoundingClientRect(), w = Math.max(2, Math.round(r.width * dpr)), h = Math.max(2, Math.round(r.height * dpr));
+    if (c.canvas.width !== w || c.canvas.height !== h) { c.canvas.width = w; c.canvas.height = h; }
+    s3.drawInto(c.canvas.getContext('2d'), w, h, c);
+  }
   function frame(now) {
     if (!alive) return;
+    if (now >= freezeAt) { paused = true; freezeAt = Infinity; cards.forEach(draw); running = false; return; }   // last frame everywhere, then still
     s3.advance(now);
     const vis = cards.filter(c => seen.has(c.canvas));
-    for (let k = 0; k < Math.min(3, vis.length); k++) {          // three cards a frame: smooth enough, cheap enough
-      const c = vis[(turn + k) % vis.length], r = c.canvas.getBoundingClientRect();
-      const w = Math.max(2, Math.round(r.width * dpr)), h = Math.max(2, Math.round(r.height * dpr));
-      if (c.canvas.width !== w || c.canvas.height !== h) { c.canvas.width = w; c.canvas.height = h; }
-      s3.drawInto(c.canvas.getContext('2d'), w, h, c);
-    }
+    for (let k = 0; k < Math.min(3, vis.length); k++) draw(vis[(turn + k) % vis.length]);   // three cards a frame
     turn += 3;
     requestAnimationFrame(frame);
   }
-  s3.ready().then(() => setTimeout(() => alive && requestAnimationFrame(frame), 300));
-  return { dispose() { alive = false; io.disconnect(); s3.dispose(); host.remove(); } };
+  const start = () => { if (alive && !running) { running = true; requestAnimationFrame(frame); } };
+  s3.ready().then(() => setTimeout(start, 300));
+  return {
+    run() { paused = false; freezeAt = Infinity; s3.pace(4, true); start(); },          // simulation running: more people, faster
+    stop() { s3.pace(1, false); freezeAt = performance.now(); },                        // freeze on this frame
+    dispose() { alive = false; io.disconnect(); s3.dispose(); host.remove(); },
+  };
 }

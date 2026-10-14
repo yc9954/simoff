@@ -163,6 +163,11 @@ export function mountSpace(el, data, opts = {}) {
         const b = new THREE.Box3().setFromObject(c); mark(b, NEW);
         const t = tag(`새로 놓음 · ${op.label}`, 'new'); t.position.set((b.min.x + b.max.x) / 2, b.max.y + .9, (b.min.z + b.max.z) / 2); root.add(t); labels.set(op.new_id, t);
       } else if (op.op === 'remove') { n.visible = false; }
+      else if (op.op === 'move') {
+        n.position.x += op.dx; n.position.z -= op.dy; n.updateMatrixWorld(true);
+        const b = new THREE.Box3().setFromObject(n); mark(b, NEW);
+        const t = tag(`옮김 · ${op.label}`, 'new'); t.position.set((b.min.x + b.max.x) / 2, b.max.y + .9, (b.min.z + b.max.z) / 2); root.add(t); labels.set(op.id, t);
+      }
       else {
         const b = new THREE.Box3().setFromObject(n); mark(b, op.op === 'relabel' ? '#3B73FF' : NEW);
         const txt = op.op === 'relabel' ? op.label : `계산 자리 ${op.from} → ${op.to}`;

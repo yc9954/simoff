@@ -18,7 +18,8 @@ Routes (all GET unless noted):
   /api/report                      S7
   POST /api/connect {transactions, products?, placements?}   S8 CSV text -> full cycle in the background
   /api/job?id=                     S8 progress
-  POST /api/chat {history, files?}  시작: Claude talks, decides, and builds the space with tools (rules without a key)
+  /api/models                      the decision models a person can pick, with their training data and sources
+  POST /api/chat {history, files?, model?}  시작: Claude talks, decides, and builds the space with tools (rules without a key)
   /api/spaces                      the 27 archetype spaces (consumer-jev) the world builder recommends from
   POST /api/agent {description, category?, area?, files?, pick?}   시작: business in -> map, edits, people, decisions
 """
@@ -47,6 +48,7 @@ if _env.exists():
 import service  # noqa: E402
 import world  # noqa: E402
 import chat  # noqa: E402
+import decision_models  # noqa: E402
 
 STATIC = Path(__file__).resolve().parent / 'static'
 
@@ -119,7 +121,8 @@ class Handler(SimpleHTTPRequestHandler):
             ('GET', '/api/job'): lambda: S.JOBS[q['id']],
             ('GET', '/api/sample'): lambda: S.sample_files(q.get('store', '367')),
             ('GET', '/api/spaces'): world.catalog,
-            ('POST', '/api/chat'): lambda: chat.chat(body.get('history') or [], body.get('files') or []),
+            ('POST', '/api/chat'): lambda: chat.chat(body.get('history') or [], body.get('files') or [], body.get('model')),
+            ('GET', '/api/models'): lambda: {'models': decision_models.MODELS, 'default': decision_models.DEFAULT},
             ('POST', '/api/agent'): lambda: world.run_agent(body.get('description', ''), body.get('category'), body.get('area'),
                                                             body.get('files') or [], body.get('pick')),
         }

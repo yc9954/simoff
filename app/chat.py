@@ -12,6 +12,7 @@ import os
 import urllib.error
 import urllib.request
 
+import decision_models
 import service
 import world
 
@@ -26,7 +27,8 @@ SYSTEM = """너는 오프라인 공간(매장, 팝업, 행사, 전시, 식당 �
 
 규칙
 - 숫자는 도구가 돌려준 것만 말한다. 판매가 몇 % 늘 것 같다는 식의 짐작은 절대 하지 않는다. 결정의 숫자는 그 공간의 기록으로 보정된 모델만 낸다.
-- 기록이 없으면 "기록이 오면 숫자를 낸다"고 말하고, 보정까지 끝난 예시(미국 마트 시리얼 진열)를 볼 수 있다고 알려 준다.
+- 기록이 없으면 "기록이 오면 숫자를 낸다"고 한 문장으로만 말한다. 예시 데이터나 특정 데이터셋을 먼저 꺼내지 않는다.
+- 도구 이름, 모델 이름, 내부 방식(규칙, 원형 개수, 검사 방식)은 말하지 않는다. 사용자가 고른 결정 모델은 필요할 때 이름만 말한다.
 - 한국어로, 짧고 분명하게. 목록보다 문장. 마크다운 제목은 쓰지 않는다. 굵게는 꼭 필요한 곳 한두 군데만.
 - 화면에 맵 카드, 3D 공간, 바꾼 것 목록, 결정 카드가 함께 보인다. 결정 목록이나 맵 목록을 문장으로 다시 나열하지 않는다. 목록 기호(-)도 쓰지 않는다."""
 
@@ -46,7 +48,8 @@ TOOLS = [
          'business': {'type': 'string'},
          'area_m2': {'type': 'number'},
          'wants': {'type': 'array', 'items': {'type': 'string', 'enum': WANTS}},
-         'product': {'type': 'string', 'description': '행사·진열을 시험할 상품 이름이 있으면'}},
+         'product': {'type': 'string', 'description': '행사·진열을 시험할 상품 이름이 있으면'},
+         'move_to_entrance': {'type': 'array', 'items': {'type': 'string'}, 'description': '입구 쪽으로 옮길 집기 (예: 픽업대, 포토존, 계산대, 체험존)'}},
          'required': ['space_id', 'business']}},
 ]
 
@@ -76,7 +79,7 @@ def _run_tool(name, inp, files):
         if sid not in {c['id'] for c in world.catalog()}:
             return {'error': f'unknown space_id {sid}'}, None
         r = world.run_agent(inp.get('business', ''), None, inp.get('area_m2'), files, pick=sid,
-                            read={'wants': inp.get('wants'), 'product': inp.get('product'), 'by': service.llm_model()})
+                            read={'wants': inp.get('wants'), 'product': inp.get('product'), 'move': inp.get('move_to_entrance'), 'by': service.llm_model()})
         st = {s['key']: s for s in r['steps']}
         summary = {'space': r['space']['title'], 'area_m2': r['space']['area_m2'],
                    'edits': [o['why'] for o in st['adapt']['ops']], 'not_done': [f"{o['why']} — {o['reason']}" for o in st['adapt']['skipped']],
@@ -87,10 +90,13 @@ def _run_tool(name, inp, files):
     return {'error': f'unknown tool {name}'}, None
 
 
-def chat(history, files=None):
+def chat(history, files=None, model=None):
     """history: [{role: 'user'|'assistant', text}] as the browser shows it. Returns {reply, artifacts, by}."""
     files = files or []
+    dm = decision_models.get(model)
     msgs = [{'role': h['role'], 'content': h['text']} for h in history if h.get('text')]
+    if msgs and msgs[0]['role'] == 'user':
+        msgs[0]['content'] = f"(사용자가 고른 결정 모델: {dm['name']} — {dm['what']} 학습 데이터: {dm['trained_on']})\n\n" + msgs[0]['content']
     if files:
         msgs[-1]['content'] += f"\n\n(올린 기록 파일: {', '.join(files)})"
     if os.environ.get('ANTHROPIC_API_KEY'):
@@ -122,7 +128,7 @@ def chat(history, files=None):
 def _rules_turn(history, files, why=None):
     text = ' '.join(h['text'] for h in history if h['role'] == 'user')
     r = world.run_agent(text, None, None, files)
-    note = f" (언어 모델을 쓰지 못해 규칙으로 답합니다: {why})" if why else ' (언어 모델 키가 없어 규칙으로 답합니다)'
+    note = ''
     if not r['space']:
         return {'reply': '어떤 업종인지 알려 주시겠어요? 예: 카페, 편의점, 굿즈 팝업, 야외 축제.' + note, 'artifacts': [], 'by': 'rules'}
     st = {s['key']: s for s in r['steps']}

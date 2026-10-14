@@ -53,7 +53,7 @@ const storeData = () => storeDataP ??= api(`layout?store=${store.get('store', '3
 // card pictures are live: every <img data-shot> becomes a canvas fed by one shared off-screen store (store3d.liveCards),
 // so the people keep walking in every card while each card keeps its own highlighted zone
 let live = null;
-async function fillShots(root) {
+async function fillShots(root, opts = {}) {
   const imgs = $$('img[data-shot]', root); if (!imgs.length) return;
   const d = await storeData();
   live?.dispose();
@@ -63,12 +63,12 @@ async function fillShots(root) {
   const cards = imgs.map(i => {
     const c = document.createElement('canvas');
     c.className = i.className; c.setAttribute('style', i.getAttribute('style') || ''); c.setAttribute('role', 'img'); c.setAttribute('aria-label', i.alt || '');
-    c.style.width = '100%'; i.replaceWith(c);
+    c.style.width = '100%'; c.dataset.key = `${i.dataset.engine || 'calibrated'}:${i.dataset.shot}`; i.replaceWith(c);
     const k = i.dataset.shot, eng = i.dataset.engine || 'calibrated', plan = k === 'report' ? 'A_front_endcap' : k;
     const base = { canvas: c, plan, group: `${eng}:${plan}`, lift: liftOf(eng, plan) };
     return k === 'report' ? { ...base, highlight: 'A_front_endcap', view: 'cereal', state: 'next' } : { ...base, highlight: k, view: 'card', state: 'now' };
   });
-  live = liveCards(d, cards);
+  live = liveCards(d, cards, opts);
   const mine = live; cleanups.push(() => { mine.dispose(); if (live === mine) live = null; });
 }
 
@@ -126,7 +126,7 @@ async function render() {
     await VIEWS[view](root, params, cleanups);
     el.replaceChildren(...root.childNodes);
     VIEWS[view].after?.(el, params, cleanups);
-    paintGrads(el); fillShots(el).catch(() => {});
+    paintGrads(el); fillShots(el, VIEWS[view].live || {}).catch(() => {});
   } catch (e) { el.innerHTML = errBox(e); }
 }
 addEventListener('hashchange', render);
@@ -138,40 +138,56 @@ const VIEWS = {};
 
 // 시작 · the landing chat: the agent (Claude, rules without a key) reads the business, asks if it must, and builds the
 // space with tools; its cards, the 3D space, the edits and the decisions are drawn inside the conversation
-const EXAMPLES = [
-  ['카페', '성수동에 30평 카페를 열어요. 주말 줄이 걱정이고 좌석을 늘리고 싶어요.'],
-  ['편의점 신제품', '동네 편의점이에요. 신제품 제로콜라를 입구 쪽에 진열하면 더 팔릴까요?'],
-  ['굿즈 팝업', '캐릭터 굿즈 팝업스토어 200㎡를 2주 열어요. 포토존과 계산 대기 줄이 걱정이에요.'],
-  ['야외 축제', '야외 푸드 페스티벌을 열어요. 푸드 텐트와 무대 사이 동선이 궁금해요.'],
+const EXAMPLES = [   // placeholder prompts: large, real decisions people would pay to get right
+  '전국 300개 매장 커피 체인이 픽업대를 입구 쪽으로 옮기려 해요. 대기 줄과 매출이 어떻게 바뀔까요?',
+  '글로벌 뷰티 브랜드가 서울 · 도쿄 · LA 플래그십에 신제품 체험존을 열어요. 어디에 둬야 구매로 이어질까요?',
+  '대형마트 체인이 여름 시즌 음료를 입구 엔드캡에 둘지, 전단에 실을지 정해야 해요.',
+  '10만 명이 오는 음악 페스티벌의 푸드 · 굿즈 부스 배치를 정하려 해요. 줄이 어디서 막힐까요?',
 ];
-const OPS_TXT = { duplicate: '추가', relabel: '행사 자리', stations: '계산 자리', remove: '뺌' };
+const OPS_TXT = { duplicate: '추가', relabel: '행사 자리', stations: '계산 자리', remove: '뺌', move: '옮김' };
 const rich = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split(/\n{2,}/).map(p => {
   const ls = p.split('\n');
   return ls.every(l => /^\s*[-·•]\s/.test(l)) ? `<ul>${ls.map(l => `<li>${l.replace(/^\s*[-·•]\s/, '')}</li>`).join('')}</ul>`
     : ls.some(l => /^\s*[-·•]\s/.test(l)) ? ls.map(l => /^\s*[-·•]\s/.test(l) ? `<ul><li>${l.replace(/^\s*[-·•]\s/, '')}</li></ul>` : `<p>${l}</p>`).join('') : `<p>${p.replace(/\n/g, '<br>')}</p>`;
 }).join('');
 function recsHTML(recs) {
-  return `<div class="art"><div class="lbl">맵 추천 · 27개 원형 중</div><div class="recs">${recs.map((c, i) => `
+  return `<div class="art"><div class="lbl">추천 공간</div><div class="recs">${recs.map((c, i) => `
 <button type="button" class="rec card" data-pick="${c.id}" data-label="${esc(c.label)}"><img src="${c.thumb}" alt="${esc(c.title)} 3D 모형" loading="lazy"><span style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="font-weight:600">${i + 1}. ${esc(c.label)}</b><span class="mono muted" style="font-size:11px">${Math.round(c.area_m2).toLocaleString()}㎡${c.floors > 1 ? ` · ${c.floors}층` : ''}${c.outdoor ? ' · 야외' : ''}</span></span><span class="muted" style="font-size:12px;line-height:1.5">${esc(c.title)}</span><span style="display:flex;flex-wrap:wrap;gap:4px">${(c.why || []).map(w => `<span class="tag" style="background:rgba(0,0,0,.05)">${esc(w)}</span>`).join('')}</span><span class="tag tag-ok rec-on">이 맵으로 세움</span><span class="mono muted rec-cta">이 맵으로 바꾸기 →</span></button>`).join('')}</div></div>`;
 }
 function worldHTML(r) {
   const st = Object.fromEntries(r.steps.map(x => [x.key, x])), ad = st.adapt, pl = st.place, dc = st.decide;
   return `<div class="art card" style="overflow:hidden;padding:0"><div style="position:relative"><div data-slot="space" class="stage"></div>
-<div style="position:absolute;left:14px;top:14px;display:flex;flex-wrap:wrap;gap:8px;max-width:calc(100% - 28px)"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">${esc(r.space.title)}</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">손님 ${pl.people.count}명 · 걷는 모습은 표현</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">물체에 커서를 올려 보세요</span></div></div>
-<div class="world-cols"><div><div class="lbl">에이전트가 바꾼 것</div>${ad.ops.length ? ad.ops.map(o => `<button type="button" class="list-btn" data-focus="${o.id}" style="display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border);width:100%;text-align:left"><span class="tag ${o.op === 'relabel' ? '' : 'tag-ok'}" style="${o.op === 'relabel' ? 'background:#e3ebfe;color:#1d4ed8;' : ''}flex:none">${OPS_TXT[o.op] || o.op}</span><span style="font-size:13px;line-height:1.55">${esc(o.why)}</span></button>`).join('') : '<p class="muted" style="font-size:13px;margin-top:10px">요청에 맞춰 바꿀 것이 없어 원형 그대로 두었습니다.</p>'}
+<div style="position:absolute;left:14px;top:14px;display:flex;flex-wrap:wrap;gap:8px;max-width:calc(100% - 28px)"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">${esc(r.space.title)}</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">손님 ${pl.people.count}명</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">물체에 커서를 올려 보세요</span></div></div>
+<div class="world-cols"><div><div class="lbl">바꾼 것</div>${ad.ops.length ? ad.ops.map(o => `<button type="button" class="list-btn" data-focus="${o.id}" style="display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border);width:100%;text-align:left"><span class="tag ${o.op === 'relabel' ? '' : 'tag-ok'}" style="${o.op === 'relabel' ? 'background:#e3ebfe;color:#1d4ed8;' : ''}flex:none">${OPS_TXT[o.op] || o.op}</span><span style="font-size:13px;line-height:1.55">${esc(o.why)}</span></button>`).join('') : '<p class="muted" style="font-size:13px;margin-top:10px">요청에 맞춰 바꿀 것이 없어 원형 그대로 두었습니다.</p>'}
 ${ad.skipped.map(o => `<div style="display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border)"><span class="tag" style="background:#f6ebd3;color:#6b4a00;flex:none">못 바꿈</span><span style="font-size:13px;line-height:1.55">${esc(o.why)} — ${esc(o.reason)}</span></div>`).join('')}
-${ad.note ? `<p class="muted" style="font-size:12px;line-height:1.6;margin-top:8px">${esc(ad.note)}</p>` : ''}<p class="mono muted" style="font-size:10px;letter-spacing:.4px;margin-top:8px">통로 ${r.space.aisle_min_std ?? .8}m 이상 · 집기 겹침 없음 · 출입문 앞 비움을 지킨 수정만 적용</p></div>
+${ad.note ? `<p class="muted" style="font-size:12px;line-height:1.6;margin-top:8px">${esc(ad.note)}</p>` : ''}</div>
 <div><div class="lbl">이 공간에서 시험할 결정</div>${dc.decisions.map(d => `<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="font-size:15px;font-weight:500;line-height:1.5">${esc(d.q)}</div><div class="muted" style="font-size:12px;margin-top:4px">지표: ${esc(d.metric)} · 필요한 기록: ${esc(d.needs)}</div><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">${dc.calibrated ? '<a class="btn btn-mono btn-sm" href="#connect">올린 기록으로 보정하기 →</a>' : '<span class="tag" style="background:rgba(0,0,0,.05)">기록이 오면 숫자를 냅니다</span>'}${d.example ? `<a class="btn btn-outline btn-sm" href="${d.example}">보정된 예시로 보기 →</a>` : ''}</div></div>`).join('')}</div></div></div>`;
 }
 VIEWS.start = async (root) => {
-  slot(root, 'examples').innerHTML = EXAMPLES.map(([t], i) => `<button type="button" class="btn btn-sm mono" data-ex="${i}" style="height:30px;font-size:11px;letter-spacing:.5px;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.85);background:transparent">${esc(t)}</button>`).join('');
-  const h = await api('health').catch(() => ({}));
-  set(root, 'by', h.llm ? `에이전트: ${h.model} · 결정의 숫자는 그 공간의 기록으로 보정된 모델만 냅니다` : '에이전트: 규칙(언어 모델 키 없음) · 결정의 숫자는 그 공간의 기록으로 보정된 모델만 냅니다');
+  VIEWS.start._models = await api('models').catch(() => ({ models: [], default: null }));
 };
 VIEWS.start.after = (el, params, cleanups) => {
   const thread = slot(el, 'thread'), composer = slot(el, 'composer'), ta = K(el, 'ask');
   let history = [], files = [], s3 = null, busy = false;
   cleanups.push(() => s3?.dispose());
+  // rotating placeholder: one real-sized decision at a time
+  let ex = 0; ta.placeholder = EXAMPLES[0];
+  const rot = setInterval(() => { if (!ta.value && document.activeElement !== ta) ta.placeholder = EXAMPLES[ex = (ex + 1) % EXAMPLES.length]; }, 4200);
+  cleanups.push(() => clearInterval(rot));
+  ta.onkeydown = null;
+  // decision model picker (like choosing a model in any frontier-model product); each entry shows its training data and source
+  const M = VIEWS.start._models, menu = slot(el, 'models'), btn = $('[data-act="model"]', el);
+  let model = store.get('decisionModel', M.default) || M.default;
+  const showModel = () => { const m = M.models.find(x => x.id === model) || M.models[0]; if (m) set(el, 'modelName', m.name); };
+  menu.innerHTML = M.models.map(m => `<button type="button" role="option" class="mpick-item" data-model="${m.id}"><span class="mpick-row"><b>${esc(m.name)}</b><span class="mpick-tag">${esc(m.tag)}</span><span class="mpick-check">✓</span></span><span class="mpick-what">${esc(m.what)}</span><span class="mpick-data">학습 데이터 · ${esc(m.trained_on)}</span>${m.sources.length ? `<span class="mpick-src">${m.sources.map(x => `<a href="${x.url}" target="_blank" rel="noopener">${esc(x.label)} ↗</a>`).join('')}</span>` : ''}</button>`).join('');
+  const mark = () => $$('[data-model]', menu).forEach(b => { const on = b.dataset.model === model; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+  const close = () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
+  btn.onclick = e => { e.stopPropagation(); menu.hidden = !menu.hidden; btn.setAttribute('aria-expanded', String(!menu.hidden)); };
+  $$('[data-model]', menu).forEach(b => b.onclick = e => { if (e.target.closest('a')) return; model = b.dataset.model; store.set('decisionModel', model); showModel(); mark(); close(); });
+  const outside = e => { if (!e.target.closest('.mpick')) close(); }, esc_ = e => { if (e.key === 'Escape') close(); };
+  addEventListener('click', outside); addEventListener('keydown', esc_);
+  cleanups.push(() => { removeEventListener('click', outside); removeEventListener('keydown', esc_); });
+  showModel(); mark();
   const atBottom = () => thread.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   function bubble(role, html) {
     const d = document.createElement('div'); d.className = `msg ${role}`;
@@ -207,8 +223,8 @@ VIEWS.start.after = (el, params, cleanups) => {
     ta.value = '';
     const ai = bubble('ai', '<div class="typing" aria-label="생각하는 중"><i></i><i></i><i></i></div>');
     try {
-      const r = await api('chat', { history, files });
-      $('.body', ai).innerHTML = rich(r.reply) + (r.tools?.length ? `<div class="mono muted tools">${r.tools.map(t => t.tool === 'recommend_spaces' ? '맵 추천' : '공간 세우기').join(' → ')} · ${esc(r.by)}</div>` : '');
+      const r = await api('chat', { history, files, model });
+      $('.body', ai).innerHTML = rich(r.reply);
       history.push({ role: 'assistant', text: r.reply });
       for (const a of r.artifacts || []) draw(ai, a);
     } catch (e) { $('.body', ai).innerHTML = errBox(e); history.pop(); }
@@ -216,8 +232,7 @@ VIEWS.start.after = (el, params, cleanups) => {
   }
   $('[data-act="send"]', el).onclick = () => send(ta.value);
   ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(ta.value); } };
-  $$('[data-ex]', el).forEach(b => b.onclick = () => send(EXAMPLES[+b.dataset.ex][1]));
-  K(el, 'files').onchange = e => { files = [...e.target.files].map(f => f.name); set(el, 'fileLbl', files.length ? `기록 ${files.length}개` : '+ 기록 CSV'); };
+  K(el, 'files').onchange = e => { files = [...e.target.files].map(f => f.name); set(el, 'fileLbl', files.length ? `${files.length}` : ''); };
   if (params.q) send(params.q);
 };
 
@@ -390,9 +405,9 @@ function runCards(r) {
   const section = e => {
     const [sq, acc] = ENG[e.id] || ['#000', '#000'];
     const cards = PLANS.map(c => {
-      const p = e.plans.find(x => x.id === c), a = r.actual_per_1000[c], k = p.ratio_to_actual, sel = e.id === 'calibrated' && c === 'A_front_endcap';
+      const p = e.plans.find(x => x.id === c), a = r.actual_per_1000[c], k = p.ratio_to_actual, sel = false;
       const ok = k != null && k <= 3;
-      return `<article class="card acc ${sel ? 'wash-w' : 'wash'}" style="overflow:hidden;--card-accent:${acc};${sel ? 'border-color:#171717;box-shadow:0 0 0 1px #171717' : ''}">${base(e) ? '' : `<img data-shot="${c}" data-engine="${e.id}" alt="${esc(e.label)} · ${LBL[c]} 3D 장면" style="display:block;width:100%;height:118px;object-fit:cover;border-bottom:1px solid var(--border);background:#eceeed">`}
+      return `<article class="card acc run-card ${sel ? 'wash-w' : 'wash'}" data-card="${e.id}:${c}" style="overflow:hidden;--card-accent:${acc};${sel ? 'border-color:#171717;box-shadow:0 0 0 1px #171717' : ''}">${base(e) ? '' : `<img data-shot="${c}" data-engine="${e.id}" alt="${esc(e.label)} · ${LBL[c]} 3D 장면" style="display:block;width:100%;height:118px;object-fit:cover;border-bottom:1px solid var(--border);background:#eceeed">`}
 <div style="padding:12px 14px 14px"><div style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="sq" style="background:${COL[c]};width:8px;height:8px"></span>${LBL[c]}</div><div style="margin-top:10px;display:flex;align-items:baseline;justify-content:space-between"><span class="stat" style="font-size:24px">${p.per_1000 >= 100 ? n0(p.per_1000) : nf(p.per_1000)}</span><span class="num muted" style="font-size:11px">실제 ${nf(a)}</span></div>
 <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:6px"><span class="lbl" style="text-transform:none;white-space:nowrap">평소 대비 ${nf(p.lift, 1)}배</span>${ok ? '' : `<span class="tag tag-no" style="white-space:nowrap">실제의 ${n0(k)}배</span>`}</div></div></article>`;
     }).join('');
@@ -407,11 +422,47 @@ function fillRun(root, r) {
   const meta = K(root, 'decisions')?.closest('.card'); if (meta) meta.remove();
   slot(root, 'engines').innerHTML = runCards(r);
 }
-VIEWS.run = async (root) => { const r = await api('run/latest') || await api('run', { draws: 100, seed: 42 }); fillRun(root, r); VIEWS.run._r = r; };
+// the best plan of each engine: outlined and badged; the rest step back
+function markBest(root, r) {
+  for (const e of r.engines) {
+    const best = [...e.plans].sort((x, y) => y.per_1000 - x.per_1000)[0]?.id;
+    $$(`[data-card^="${e.id}:"]`, root).forEach(c => {
+      const on = c.dataset.card === `${e.id}:${best}`;
+      c.classList.toggle('best', on); c.classList.toggle('dim', !on);
+      $('.best-badge', c)?.remove();
+      if (on) c.insertAdjacentHTML('afterbegin', '<span class="best-badge">최선</span>');
+    });
+  }
+}
+VIEWS.run = async (root) => { const r = await api('run/latest') || await api('run', { draws: 100, seed: 42 }); fillRun(root, r); markBest(root, r); VIEWS.run._r = r; };
+VIEWS.run.live = { paused: true };     // the result is in: the cards settle, then hold still
 VIEWS.run.after = (el, params) => {
+  const gauge = slot(el, 'gauge'), bar = $('.gauge-bar i', gauge), txt = $('.gauge-txt', gauge);
   const rerun = async () => {
-    const b = $('[data-act="rerun"]', el); b.disabled = true; b.innerHTML = '<span class="spin"></span> 438,325 결정 × 4안';
-    try { const r = await api('run', { draws: 100, seed: Math.floor(Math.random() * 1e6) }); VIEWS.run._r = r; fillRun(el, r); fillShots(el); } catch (e) { slot(el, 'engines').insertAdjacentHTML('afterbegin', errBox(e)); }
+    const b = $('[data-act="rerun"]', el); if (b.disabled) return; b.disabled = true; b.textContent = '실행 중';
+    $$('.run-card', el).forEach(c => { c.classList.remove('best', 'dim'); $('.best-badge', c)?.remove(); });
+    gauge.hidden = false; bar.style.width = '0%';
+    live?.run();
+    const t0 = performance.now(), MIN = 4800; let res = null, err = null, done = false;
+    api('run', { draws: 100, seed: Math.floor(Math.random() * 1e6) }).then(r => { res = r; }).catch(e => { err = e; }).finally(() => { done = true; });
+    await new Promise(resolve => {
+      const tick = () => {
+        const t = performance.now() - t0;
+        const p = done && (err || t >= MIN) ? 1 : done ? Math.max(.9, t / MIN) : Math.min(.9, 1 - Math.exp(-t / 2200));
+        bar.style.width = `${(p * 100).toFixed(1)}%`;
+        txt.textContent = p >= 1 ? '완료' : `시뮬레이션 중 · 손님 ${n0(438325 * p)} 결정 / 438,325 × 안 4개`;
+        if (p >= 1) return resolve(); requestAnimationFrame(tick);
+      };
+      tick();
+    });
+    live?.stop();
+    if (res) {
+      const keep = new Map($$('canvas[data-key]', el).map(c => [c.dataset.key, c]));
+      VIEWS.run._r = res; fillRun(el, res);
+      $$('img[data-shot]', el).forEach(i => { const c = keep.get(`${i.dataset.engine}:${i.dataset.shot}`); if (c) i.replaceWith(c); });
+      markBest(el, res);
+    } else if (err) slot(el, 'engines').insertAdjacentHTML('afterbegin', errBox(err));
+    setTimeout(() => { gauge.hidden = true; }, 900);
     b.disabled = false; b.textContent = '다시 실행';
   };
   $('[data-act="rerun"]', el).onclick = rerun;
@@ -420,7 +471,7 @@ VIEWS.run.after = (el, params) => {
     r.engines.forEach(e => e.plans.forEach(p => rows.push([r.id, e.id, p.id, p.per_1000, p.lift, r.actual_per_1000[p.id], p.ratio_to_actual, p.mc_p05 ?? '', p.mc_p95 ?? ''])));
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows.map(x => x.join(',')).join('\n')], { type: 'text/csv' })); a.download = `run_${r.id}.csv`; a.click();
   };
-  if (params.go) { history.replaceState(null, '', '#run'); rerun(); }
+  if (params.go) { history.replaceState(null, '', '#run'); setTimeout(rerun, 1200); }
 };
 
 // S6 검증

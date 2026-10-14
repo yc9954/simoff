@@ -171,3 +171,38 @@ img[data-shot]:not([src]) { color: transparent; background: linear-gradient(100d
 @media (max-width: 1100px) { .fit-screen { grid-template-columns: 1fr; height: auto; } .fit-stage { height: 62vh; } .fit-list { max-height: 50vh; } }
 .grad:not([data-grad="origin"]) { color: #fff; text-shadow: 0 1px 12px rgba(10,12,30,.22); }
 .grad:not([data-grad="origin"]) [style*="color:rgba(255,255,255,.45)"], .grad:not([data-grad="origin"]) [style*="color:rgba(255,255,255,.5)"] { color: rgba(255,255,255,.78) !important; }
+/* composer: decision model picker and attach */
+.mpick-btn { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border: 1px solid rgba(255,255,255,.2); border-radius: 4px; background: transparent; color: rgba(255,255,255,.9); font: inherit; font-size: 12px; cursor: pointer; }
+.mpick-btn:hover { border-color: rgba(255,255,255,.4); }
+.mpick-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; }
+.mpick-menu { position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 30; width: min(440px, 86vw); max-height: 60vh; overflow: auto; padding: 6px; background: #17181a; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; box-shadow: 0 18px 48px rgba(0,0,0,.35); display: flex; flex-direction: column; gap: 2px; }
+.mpick-menu[hidden] { display: none; }
+.mpick-item { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 6px; color: #fff; }
+.mpick-item:hover, .mpick-item:focus-visible { background: rgba(255,255,255,.07); }
+.mpick-row { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.mpick-row b { font-weight: 600; }
+.mpick-tag { font-size: 10px; letter-spacing: .4px; padding: 1px 6px; border-radius: 3px; background: rgba(255,255,255,.1); color: rgba(255,255,255,.75); }
+.mpick-check { margin-left: auto; color: #34d399; visibility: hidden; }
+.mpick-item.on .mpick-check { visibility: visible; }
+.mpick-what { font-size: 12px; line-height: 1.5; color: rgba(255,255,255,.72); }
+.mpick-data { font-size: 11px; color: rgba(255,255,255,.5); }
+.mpick-src { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; }
+.mpick-src a { color: #8fd8ff; text-decoration: none; }
+.mpick-src a:hover { text-decoration: underline; }
+.attach-ic { display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 8px; border-radius: 4px; color: rgba(255,255,255,.75); cursor: pointer; }
+.attach-ic:hover { color: #fff; background: rgba(255,255,255,.08); }
+.chatting .composer > div:nth-child(2) { justify-content: space-between !important; }
+.chat-hero { overflow: visible !important; }
+.mpick-menu { top: calc(100% + 8px); bottom: auto; }
+.chatting .mpick-menu { top: auto; bottom: calc(100% + 8px); }
+/* 실행: progress while the simulation runs, then the best plan stands out */
+.gauge { display: flex; align-items: center; gap: 14px; margin-top: -8px; }
+.gauge[hidden] { display: none; }
+.gauge-bar { flex: 1; height: 6px; background: rgba(0,0,0,.08); overflow: hidden; }
+.gauge-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #0F766E, #34d399); transition: width .12s linear; }
+.gauge-txt { font-size: 11px; color: var(--mfg); white-space: nowrap; min-width: 300px; text-align: right; }
+.run-card { position: relative; transition: opacity .5s ease, filter .5s ease, box-shadow .3s ease; }
+.run-card.dim { opacity: .5; filter: saturate(.55); }
+.run-card.best { border-color: #171717 !important; box-shadow: 0 0 0 2px #171717 !important; }
+.best-badge { position: absolute; z-index: 2; left: 10px; top: 10px; padding: 3px 9px; background: #171717; color: #fff; font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+@media (prefers-reduced-motion: reduce) { .run-card, .gauge-bar i { transition: none; } }

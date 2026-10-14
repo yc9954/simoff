@@ -64,6 +64,9 @@ MODES = {'retail': ['arch_cvs', 'arch_supermarket', 'arch_drugstore', 'arch_stor
          'event': ['arch_festival', 'arch_concert_md', 'arch_fan_event', 'arch_event_hall', 'arch_expo_booth', 'arch_rental_venue', 'arch_rental_yard', 'arch_lobby'],
          'venue': ['arch_exhibition_hall', 'arch_factory_tour', 'arch_flagship_3f', 'arch_flagship_4f_esc']}
 MODE_OF = {s: m for m, ids in MODES.items() for s in ids}
+KIND_WORDS = {'pickup': ('픽업', 'pickup'), 'checkout': ('계산대', '계산', 'checkout', 'pos'), 'photo': ('포토존', '포토', 'photo'),
+              'cafe_counter': ('카운터', '주문대', 'counter'), 'table_set': ('테이블', '좌석', 'table'), 'display': ('진열대', 'display'), 'endcap': ('엔드캡',),
+              'chiller': ('냉장', 'chiller'), 'stage': ('무대', 'stage'), 'booth': ('부스', 'booth')}
 WANT_LABEL = {'checkout': '계산 줄', 'seat': '좌석', 'promo': '행사 진열', 'photo': '포토존', 'order': '주문 · 픽업'}
 MODE_LABEL = {'retail': '소매', 'fnb': '식음', 'popup': '팝업 · 프로모션', 'event': '행사 · 공연', 'venue': '전시 · 공간'}
 
@@ -182,12 +185,12 @@ def recommend(u, k=3):
         m = next((x for x in u['matches'] if x['id'] == sid), None)
         s, why = 0.0, []
         if m:
-            s += 3 * m['score']; why.append(f"업종 단어: {' · '.join(m['hits'][:3])}")
+            s += 3 * m['score']; why.append(f"{m['hits'][0]}에 맞는 공간" if m['hits'] else '업종이 맞음')
         if u['matches'] and MODE_OF.get(sid) == MODE_OF.get(u['matches'][0]['id']) and not m:
-            s += 1; why.append(f"같은 갈래({MODE_LABEL[MODE_OF[sid]]})")
+            s += 1; why.append(f"비슷한 업종 · {MODE_LABEL[MODE_OF[sid]]}")
         if u['area_m2']:
             r = abs(math.log(c['area_m2'] / u['area_m2']))
-            s += max(0, 2 - 2 * r); why.append(f"면적 {c['area_m2']:.0f}㎡ (입력 {u['area_m2']:.0f}㎡)")
+            s += max(0, 2 - 2 * r); why.append(f"{c['area_m2']:.0f}㎡")
         roles = {b.get('role') for b in space(sid)['booths'].values()} | {f['kind'] for f in space(sid)['fixtures']}
         for w in u['wants']:
             need = {'checkout': {'checkout'}, 'seat': {'seat', 'table_set'}, 'promo': {'endcap', 'display'}, 'photo': {'photo'}, 'order': {'order', 'pickup'}}[w]
@@ -195,9 +198,6 @@ def recommend(u, k=3):
                 s += .5; why.append({'checkout': '계산대 있음', 'seat': '좌석 있음', 'promo': '행사 진열대 있음', 'photo': '포토존 있음', 'order': '주문 · 픽업 있음'}[w])
         ranked.append({'id': sid, 'score': round(s, 2), 'why': why, **{k2: c[k2] for k2 in ('label', 'title', 'area_m2', 'thumb', 'glb', 'mode', 'floors', 'outdoor')}})
     ranked.sort(key=lambda x: -x['score'])
-    if not u['matches']:
-        for r in ranked:
-            r['why'].insert(0, '업종 단어를 못 찾아 면적과 원하는 점으로만 골랐습니다')
     return ranked[:k]
 
 
@@ -256,6 +256,26 @@ def adapt(sid, u):
             dup(f, '사진을 찍게 하고 싶다고 해서 포토존을 하나 더 놓았습니다')
         else:
             skipped.append({'op': 'duplicate', 'id': None, 'why': '포토존 추가', 'reason': '이 맵에는 포토존이 없음'})
+    for want in u.get('move') or []:                       # "move the pickup counter to the entrance"
+        w = want.strip().lower()
+        f = next((f for f in s['fixtures'] if f.get('klass') not in ('context', 'floor', 'boundary', 'structure') and
+                  (w in (f.get('label') or '').lower() or w == f['kind'] or w in KIND_WORDS.get(f['kind'], ()))), None)
+        if not f:
+            skipped.append({'op': 'move', 'id': None, 'why': f'{want} 옮기기', 'reason': '이 맵에서 그 집기를 찾지 못함'}); continue
+        cands = sorted(((i * .5, j * .5) for i in range(-60, 61) for j in range(0, 61)), key=lambda v: math.hypot(v[0] - ex, v[1] - ey))
+        for x, y in cands:
+            if math.hypot(x - ex, y - ey) >= math.hypot(f['cx'] - ex, f['cy'] - ey) - .5:
+                break
+            ok, _ = _fits(s, f, x, y)
+            if ok:
+                dx, dy = round(x - f['cx'], 2), round(y - f['cy'], 2)
+                f['cx'], f['cy'] = x, y
+                ops.append({'op': 'move', 'id': f['id'], 'dx': dx, 'dy': dy, 'label': f['label'], 'why': f"{f['label']} — 입구 쪽으로 {math.hypot(dx, dy):.1f}m 옮겼습니다"})
+                break
+        else:
+            skipped.append({'op': 'move', 'id': f['id'], 'why': f"{f['label']} 옮기기", 'reason': '입구 쪽에 통로 폭을 지킬 빈자리가 없음'})
+        if not any(o['op'] == 'move' and o['id'] == f['id'] for o in ops) and not any(o['id'] == f['id'] for o in skipped):
+            skipped.append({'op': 'move', 'id': f['id'], 'why': f"{f['label']} 옮기기", 'reason': '이미 입구 가까이 있음'})
     note = None
     if u.get('area_m2'):
         r = u['area_m2'] / s['area_m2']
@@ -297,6 +317,10 @@ def decisions(s, u, ops):
     if 'seat' in roles or 'table_set' in kinds:
         out.append({'id': 'seats', 'q': '좌석을 늘리면 머무는 시간과 추가 주문이 늘까?', 'metric': '체류 시간 · 1인 객단가',
                     'needs': '주문 기록(시간 포함)', 'example': None, 'ready': False})
+    for o in ops:
+        if o['op'] == 'move':
+            out.insert(0, {'id': f"move_{o['id']}", 'q': f"{o['label']} — 입구 쪽으로 옮기면 대기와 매출이 어떻게 바뀔까?", 'metric': '평균 대기 · 방문당 매출',
+                           'needs': '시간이 찍힌 주문 · 영수증 기록', 'example': None, 'ready': False})
     if 'photo' in kinds:
         out.append({'id': 'photo', 'q': '포토존을 입구 쪽으로 옮기면 안쪽까지 들어오는 사람이 늘까?', 'metric': '안쪽 구역 도달률',
                     'needs': '출입 · 동선 기록(센서)', 'example': None, 'ready': False})
@@ -315,6 +339,7 @@ def run_agent(desc, category=None, area=None, files=None, pick=None, read=None):
     if read:
         u['wants'] = [w for w in read.get('wants') or u['wants'] if w in WANTS]
         u['product'] = read.get('product') or u['product']
+        u['move'] = read.get('move') or []
         u['read_by'] = read.get('by', 'claude')
     elif has_llm():
         u = understand_llm(u)
@@ -339,6 +364,7 @@ def run_agent(desc, category=None, area=None, files=None, pick=None, read=None):
     data = bool(files)
     step('decide', '시험할 결정', {'decisions': ds, 'calibrated': data},
          f"결정 {len(ds)}개 · " + ('올린 기록으로 보정할 수 있음' if data else '기록이 없어 아직 숫자를 내지 않음 · 예시 데이터로 흐름만 볼 수 있음'))
+    s['title'] = s['title'].replace('[원형] ', '')
     return {'space': {k: s[k] for k in ('id', 'title', 'type_label', 'area_m2', 'floors', 'doors', 'fixtures', 'booths', 'zones', 'aisle_min_std')},
             'glb': f'spaces/{sid}.glb', 'steps': steps}
 
