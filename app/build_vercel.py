@@ -11,6 +11,7 @@ The local server needs numpy, pandas, pyarrow and scikit-learn; a serverless fun
   python3 sim/app/build_vercel.py          # then: cd sim/deploy && vercel deploy --prod
 """
 import json
+import math
 import re
 import shutil
 import sys
@@ -74,8 +75,17 @@ def main():
     api = OUT / 'public' / 'static-api'
     api.mkdir()
 
+    def clean(x):                            # JSON has no NaN/Infinity; the local server sends null for them too
+        if isinstance(x, float) and not math.isfinite(x):
+            return None
+        if isinstance(x, dict):
+            return {k: clean(v) for k, v in x.items()}
+        if isinstance(x, (list, tuple)):
+            return [clean(v) for v in x]
+        return x
+
     def put(path, value):
-        text = json.dumps(value, ensure_ascii=False, default=float)
+        text = json.dumps(clean(json.loads(json.dumps(value, default=float))), ensure_ascii=False, allow_nan=False)
         for ko, en in KO_EN.items():         # stored evaluation results keep their original Korean labels
             text = text.replace(f'"{ko}"', json.dumps(en))
         (api / f'{slug(path)}.json').write_text(text)
