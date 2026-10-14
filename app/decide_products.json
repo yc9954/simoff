@@ -1,0 +1,252 @@
+[
+ {
+  "product_id": "1054262",
+  "brand": "National",
+  "type": "KIDS CEREAL",
+  "size": "13 OZ",
+  "price": 2.19,
+  "private": false,
+  "prod_base": 0.0021847986864067526,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "960732",
+  "brand": "National",
+  "type": "ALL FAMILY CEREAL",
+  "size": "14 OZ",
+  "price": 3.99,
+  "private": false,
+  "prod_base": 0.0021847986864067526,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "1027068",
+  "brand": "National",
+  "type": "KIDS CEREAL",
+  "size": "15 OZ",
+  "price": 3.99,
+  "private": false,
+  "prod_base": 0.002157658330053874,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "1071342",
+  "brand": "National",
+  "type": "ALL FAMILY CEREAL",
+  "size": "12.25 OZ",
+  "price": 4.09,
+  "private": false,
+  "prod_base": 0.0020355267264659184,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "1135222",
+  "brand": "National",
+  "type": "ALL FAMILY CEREAL",
+  "size": "23 OZ",
+  "price": 4.79,
+  "private": false,
+  "prod_base": 0.0018048336974664477,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "5590613",
+  "brand": "Private",
+  "type": "KIDS CEREAL",
+  "size": "32 OZ",
+  "price": 2.99,
+  "private": true,
+  "prod_base": 0.00175055298476069,
+  "prod_private": 1.0
+ },
+ {
+  "product_id": "1122568",
+  "brand": "National",
+  "type": "KIDS CEREAL",
+  "size": "13 OZ",
+  "price": 2.19,
+  "private": false,
+  "prod_base": 0.001723412628407811,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "829001",
+  "brand": "National",
+  "type": "KIDS CEREAL",
+  "size": "11.25 OZ",
+  "price": 3.09,
+  "private": false,
+  "prod_base": 0.0016962722720549322,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "1130458",
+  "brand": "National",
+  "type": "KIDS CEREAL",
+  "size": "12.2 OZ",
+  "price": 3.99,
+  "private": false,
+  "prod_base": 0.0016148512029962954,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "5587656",
+  "brand": "Private",
+  "type": "KIDS CEREAL",
+  "size": "32 OZ",
+  "price": 2.99,
+  "private": true,
+  "prod_base": 0.001574140668466977,
+  "prod_private": 1.0
+ },
+ {
+  "product_id": "1133254",
+  "brand": "National",
+  "type": "KIDS CEREAL",
+  "size": "17 OZ",
+  "price": 4.09,
+  "private": false,
+  "prod_base": 0.0015605704902905376,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "856827",
+  "brand": "National",
+  "type": "ALL FAMILY CEREAL",
+  "size": "17 OZ",
+  "price": 2.79,
+  "private": false,
+  "prod_base": 0.001547000312114098,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "5570408",
+  "brand": "National",
+  "type": "KIDS CEREAL",
+  "size": "17 OZ",
+  "price": 3.19,
+  "private": false,
+  "prod_base": 0.0014791494212319008,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "837751",
+  "brand": "National",
+  "type": "KIDS CEREAL",
+  "size": "12.2 OZ",
+  "price": 3.79,
+  "private": false,
+  "prod_base": 0.0014791494212319008,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "1040346",
+  "brand": "Private",
+  "type": "ALL FAMILY CEREAL",
+  "size": "18 OZ",
+  "price": 2.39,
+  "private": true,
+  "prod_base": 0.0014655792430554612,
+  "prod_private": 1.0
+ },
+ {
+  "product_id": "905636",
+  "brand": "National",
+  "type": "KIDS CEREAL",
+  "size": "16 OZ",
+  "price": 3.99,
+  "private": false,
+  "prod_base": 0.0014384388867025825,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "843898",
+  "brand": "Private",
+  "type": "KIDS CEREAL",
+  "size": "14 OZ",
+  "price": 2.39,
+  "private": true,
+  "prod_base": 0.0014112985303497035,
+  "prod_private": 1.0
+ },
+ {
+  "product_id": "1102067",
+  "brand": "National",
+  "type": "ALL FAMILY CEREAL",
+  "size": "8.9 OZ",
+  "price": 2.79,
+  "private": false,
+  "prod_base": 0.0013434476394675063,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "923673",
+  "brand": "National",
+  "type": "ADULT CEREAL",
+  "size": "14.5 OZ",
+  "price": 2.69,
+  "private": false,
+  "prod_base": 0.0013298774612910667,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "1060408",
+  "brand": "National",
+  "type": "ALL FAMILY CEREAL",
+  "size": "21 OZ",
+  "price": 3.99,
+  "private": false,
+  "prod_base": 0.0011670353231737934,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "1046587",
+  "brand": "National",
+  "type": "KIDS CEREAL",
+  "size": "17 OZ",
+  "price": 4.29,
+  "private": false,
+  "prod_base": 0.001126324788644475,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "1121384",
+  "brand": "National",
+  "type": "ALL FAMILY CEREAL",
+  "size": "21 OZ",
+  "price": 3.99,
+  "private": false,
+  "prod_base": 0.0010856142541151566,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "1006878",
+  "brand": "National",
+  "type": "ALL FAMILY CEREAL",
+  "size": "18 OZ",
+  "price": 4.39,
+  "private": false,
+  "prod_base": 0.0010856142541151566,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "849003",
+  "brand": "National",
+  "type": "ADULT CEREAL",
+  "size": "16 OZ",
+  "price": 2.69,
+  "private": false,
+  "prod_base": 0.0008006405124099279,
+  "prod_private": 0.0
+ },
+ {
+  "product_id": "1075175",
+  "brand": "National",
+  "type": "KIDS CEREAL",
+  "size": "22 OZ",
+  "price": 4.39,
+  "private": false,
+  "prod_base": 0.000773500156057049,
+  "prod_private": 0.0
+ }
+]

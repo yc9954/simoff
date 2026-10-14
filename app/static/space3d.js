@@ -171,16 +171,16 @@ export function mountSpace(el, data, opts = {}) {
       if (op.op === 'duplicate') {
         const c = n.clone(true); c.userData = { ...n.userData, __clone: op.new_id }; c.position.x += op.dx; c.position.z -= op.dy; n.parent.add(c); c.updateMatrixWorld(true);
         const b = new THREE.Box3().setFromObject(c); mark(b, NEW);
-        const t = tag(`새로 놓음 · ${op.label}`, 'new'); t.position.set((b.min.x + b.max.x) / 2, b.max.y + .9, (b.min.z + b.max.z) / 2); root.add(t); labels.set(op.new_id, t);
+        const t = tag(`Added · ${op.label}`, 'new'); t.position.set((b.min.x + b.max.x) / 2, b.max.y + .9, (b.min.z + b.max.z) / 2); root.add(t); labels.set(op.new_id, t);
       } else if (op.op === 'remove') { n.visible = false; }
       else if (op.op === 'move') {
         n.position.x += op.dx; n.position.z -= op.dy; n.updateMatrixWorld(true);
         const b = new THREE.Box3().setFromObject(n); mark(b, NEW);
-        const t = tag(`옮김 · ${op.label}`, 'new'); t.position.set((b.min.x + b.max.x) / 2, b.max.y + .9, (b.min.z + b.max.z) / 2); root.add(t); labels.set(op.id, t);
+        const t = tag(`Moved · ${op.label}`, 'new'); t.position.set((b.min.x + b.max.x) / 2, b.max.y + .9, (b.min.z + b.max.z) / 2); root.add(t); labels.set(op.id, t);
       }
       else {
         const b = new THREE.Box3().setFromObject(n); mark(b, op.op === 'relabel' ? '#3B73FF' : NEW);
-        const txt = op.op === 'relabel' ? op.label : `계산 자리 ${op.from} → ${op.to}`;
+        const txt = op.op === 'relabel' ? op.label : `Checkout lanes ${op.from} → ${op.to}`;
         const t = tag(txt, op.op === 'relabel' ? 'promo' : 'new'); t.position.set((b.min.x + b.max.x) / 2, b.max.y + .9, (b.min.z + b.max.z) / 2); root.add(t); labels.set(op.id, t);
       }
     }
@@ -194,12 +194,12 @@ export function mountSpace(el, data, opts = {}) {
 
   // ---------------------------------------------------------------- hover card (after the 21st.dev contribution-skyline:
   // the object lifts a little and gets a dark outline, a dark card with an arrow rides it through orbit; tap/click pins, Esc clears)
-  const KIND = { display: '진열대', bench: '벤치', booth: '부스', table_set: '테이블 · 의자', gondola: '곤돌라 진열대', wallshelf: '벽면 선반', partition: '가벽',
-    photo: '포토존', checkout: '계산대', endcap: '엔드캡 진열대', stall: '판매대', barricade: '바리케이드', tent: '텐트', stanchion: '줄 서기 펜스', pillar: '기둥',
-    workstation: '작업대', counter: '카운터', room: '방', sign: '안내판', rack: '행거', pickup: '픽업대', robot: '로봇', toilet: '화장실', trash: '쓰레기통',
-    chiller: '냉장 쇼케이스', cafe_counter: '카페 카운터', patch: '바닥 표시', stage: '무대', freezer: '냉동고', conveyor: '컨베이어', gate: '게이트', machine: '기계', planter: '화분' };
-  const ROLE = { pick: '손님이 상품을 고르는 곳', seat: '앉아 머무는 곳', browse: '둘러보는 곳', service: '안내 · 체험', shop: '사는 곳', checkout: '계산하는 곳',
-    order: '주문하는 곳', work: '작업하는 곳', pickup: '받아 가는 곳' };
+  const KIND = { display: 'Display', bench: 'Bench', booth: 'Booth', table_set: 'Table · chairs', gondola: 'Gondola shelf', wallshelf: 'Wall shelf', partition: 'Partition wall',
+    photo: 'Photo spot', checkout: 'Checkout', endcap: 'Endcap display', stall: 'Stall', barricade: 'Barricade', tent: 'Tent', stanchion: 'Queue barrier', pillar: 'Pillar',
+    workstation: 'Workstation', counter: 'Counter', room: 'Room', sign: 'Sign', rack: 'Clothing rack', pickup: 'Pickup counter', robot: 'Robot', toilet: 'Restroom', trash: 'Trash bin',
+    chiller: 'Chiller case', cafe_counter: 'Café counter', patch: 'Floor marking', stage: 'Stage', freezer: 'Freezer', conveyor: 'Conveyor', gate: 'Gate', machine: 'Machine', planter: 'Planter' };
+  const ROLE = { pick: 'Where shoppers pick products', seat: 'Where people sit and stay', browse: 'Where people browse', service: 'Help · hands-on', shop: 'Where people buy', checkout: 'Where people pay',
+    order: 'Where people order', work: 'Where staff work', pickup: 'Where orders are picked up' };
   const fx = new Map(space.fixtures.map(f => [f.id, f]));
   const boothOf = id => Object.values(space.booths || {}).find(b => (b.fixtures || []).includes(id));
   if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
@@ -222,11 +222,11 @@ export function mountSpace(el, data, opts = {}) {
     const f = fx.get(id) || {}, op = cloneOf || ops.find(o => o.id === id && o.op !== 'duplicate');
     const b = boothOf(id), name = cloneOf ? cloneOf.label : (op?.op === 'relabel' ? op.label : f.label || KIND[n.userData.kind] || id);
     const size = f.w ? `${f.w}×${f.d}${f.h ? '×' + f.h : ''} m` : '';
-    const st = op?.op === 'stations' ? `계산 자리 ${op.from} → ${op.to}` : f.params?.stations ? `계산 자리 ${f.params.stations}` : '';
+    const st = op?.op === 'stations' ? `Checkout lanes ${op.from} → ${op.to}` : f.params?.stations ? `Checkout lanes ${f.params.stations}` : '';
     const rows = [`<b>${esc(name)}</b>`, `<span>${esc([KIND[f.kind || n.userData.kind] || f.kind, size].filter(Boolean).join(' · '))}</span>`];
     if (b || f.role) rows.push(`<span>${esc([b?.label, ROLE[f.role || b?.role]].filter(Boolean).join(' · '))}</span>`);
-    if (f.tiers || st) rows.push(`<span>${esc([f.tiers ? `선반 ${f.tiers}단` : '', st].filter(Boolean).join(' · '))}</span>`);
-    if (cloneOf || op) rows.push(`<em>에이전트 · ${esc((cloneOf || op).why)}</em>`);
+    if (f.tiers || st) rows.push(`<span>${esc([f.tiers ? `${f.tiers} shelf tiers` : '', st].filter(Boolean).join(' · '))}</span>`);
+    if (cloneOf || op) rows.push(`<em>Agent · ${esc((cloneOf || op).why)}</em>`);
     return rows.join('');
   }
   function setActive(n) {

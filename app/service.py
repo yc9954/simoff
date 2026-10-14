@@ -28,7 +28,7 @@ sys.path.insert(0, str(SIM))
 import spacemap                                                        # noqa: E402
 from datasets import DISPLAY_CODES, MAILER_CODES                       # noqa: E402
 from optimize import choose_layout                                     # noqa: E402
-from sim import LABEL, Plan, condition_name, load, replay_schedule, run, train_engines   # noqa: E402
+from sim import ENGINE_TEXT, LABEL, Plan, condition_name, load, replay_schedule, run, train_engines   # noqa: E402
 
 DS = SIM / 'datasets' / 'dunnhumby'
 EVAL = SIM / 'eval' / 'results'
@@ -73,16 +73,16 @@ def catalog():
             'households': pc.count_distinct(t['household_id']).as_py(), 'stores': pc.count_distinct(t['store_id']).as_py(),
             'visits': visits, 'receipt_lines': t.num_rows, 'placement_rows': pr.num_rows,
             'endpoints': [
-                {'method': 'POST', 'path': '/visit', 'source': 'transactions · basket_id, store_id, timestamp', 'events': visits, 'group': '영수증'},
-                {'method': 'GET', 'path': '/exposure/display', 'source': 'promotions · display_location ≠ 0', 'events': disp, 'group': '진열 · 전단'},
-                {'method': 'GET', 'path': '/exposure/mailer', 'source': 'promotions · mailer_location ≠ 0', 'events': mail, 'group': '진열 · 전단'},
-                {'method': 'POST', 'path': '/basket/add', 'source': 'transactions · product_id, quantity', 'events': t.num_rows, 'group': '영수증'},
-                {'method': 'POST', 'path': '/price/discount', 'source': 'transactions · retail_disc ≠ 0', 'events': pc.sum(pc.not_equal(t['retail_disc'], 0)).as_py(), 'group': '가격'},
-                {'method': 'POST', 'path': '/coupon/redeem', 'source': 'transactions · coupon_disc ≠ 0', 'events': pc.sum(pc.not_equal(t['coupon_disc'], 0)).as_py(), 'group': '가격'},
-                {'method': 'POST', 'path': '/checkout', 'source': 'Σ transactions · sales_value', 'events': visits, 'group': '영수증'},
-                {'method': '—', 'path': '/path · /dwell', 'source': '센서 연결 시 활성화', 'events': None, 'group': '센서'},
+                {'method': 'POST', 'path': '/visit', 'source': 'transactions · basket_id, store_id, timestamp', 'events': visits, 'group': 'Receipts'},
+                {'method': 'GET', 'path': '/exposure/display', 'source': 'promotions · display_location ≠ 0', 'events': disp, 'group': 'Displays · flyers'},
+                {'method': 'GET', 'path': '/exposure/mailer', 'source': 'promotions · mailer_location ≠ 0', 'events': mail, 'group': 'Displays · flyers'},
+                {'method': 'POST', 'path': '/basket/add', 'source': 'transactions · product_id, quantity', 'events': t.num_rows, 'group': 'Receipts'},
+                {'method': 'POST', 'path': '/price/discount', 'source': 'transactions · retail_disc ≠ 0', 'events': pc.sum(pc.not_equal(t['retail_disc'], 0)).as_py(), 'group': 'Prices'},
+                {'method': 'POST', 'path': '/coupon/redeem', 'source': 'transactions · coupon_disc ≠ 0', 'events': pc.sum(pc.not_equal(t['coupon_disc'], 0)).as_py(), 'group': 'Prices'},
+                {'method': 'POST', 'path': '/checkout', 'source': 'Σ transactions · sales_value', 'events': visits, 'group': 'Receipts'},
+                {'method': '—', 'path': '/path · /dwell', 'source': 'Turns on when sensors are connected', 'events': None, 'group': 'Sensors'},
             ]}
-    return _cached('catalog', build)
+    return _cached('catalog_en', build)
 
 
 def replay_basket(basket_id=None):
@@ -146,7 +146,14 @@ def stores():
 
 def latest_run():
     runs = sorted(CACHE.glob('run_*.json'), key=lambda f: f.stat().st_mtime)
-    return json.loads(runs[-1].read_text()) if runs else None
+    if not runs:
+        return None
+    out = json.loads(runs[-1].read_text())
+    for e in out.get('engines', []):          # a run saved before the labels changed still reads in current wording
+        e['label'], e['note'] = _ENGINE_TEXT.get(e['id'], (e.get('label'), e.get('note')))
+        for p in e.get('plans', []):
+            p['label'] = LABEL.get(p['id'], p.get('label'))
+    return out
 
 
 def _store_tables(store_id, lo, hi):
@@ -222,10 +229,10 @@ def household(hh, product_id=None):
         engines.append({'id': name, 'label': e.label, 'note': e.note, 'live': True,
                         'p': {c: float(e.predict(Plan(c, c).apply(probe))[0]) for c in PLANS}})
     jev, per = _stored()
-    for df, var, label, note in [(per, 'basic', '페르소나 · GPT', '인구통계 설명으로 역할극 · 저장된 평가 답'),
-                                 (per, 'history', '페르소나 + 이력', '설명 + 구매 이력 숫자 · 저장된 평가 답'),
-                                 (jev, 'jev_text', 'Jev · 글', 'jev-1.13 · 학습 없이 · 저장된 평가 답'),
-                                 (jev, 'jev_state', 'Jev · 숫자 상태', 'jev-1.13 · 학습 없이 · 저장된 평가 답')]:
+    for df, var, label, note in [(per, 'basic', 'Persona · GPT', 'Role-play from a demographic description · stored evaluation answers'),
+                                 (per, 'history', 'Persona + history', 'Description plus purchase-history numbers · stored evaluation answers'),
+                                 (jev, 'jev_text', 'Jev · text', 'jev-1.13 · no training · stored evaluation answers'),
+                                 (jev, 'jev_state', 'Jev · numeric state', 'jev-1.13 · no training · stored evaluation answers')]:
         d = df[(df.household_id == hh) & (df.product_id == product_id) & (df.variant == var)]
         if len(d):
             engines.append({'id': var, 'label': label, 'note': note, 'live': False, 'p': {r.condition: float(r.p) for r in d.itertuples()}})
@@ -269,7 +276,7 @@ def persona_live(hh, product_id):
               'Answer only JSON: {"none":p,"A_front_endcap":p,"B_mailer_only":p,"C_other_display":p}')
     txt = llm_text(prompt, json_mode=True, purpose='persona')
     p = json.loads(txt)
-    return {'id': 'persona_live', 'label': f'페르소나 · {llm_model()} (지금)', 'note': '같은 질문을 방금 다시 물음', 'live': True,
+    return {'id': 'persona_live', 'label': f'Persona · {llm_model()} (live)', 'note': 'The same question, asked again just now', 'live': True,
             'p': {c: float(p[c]) for c in PLANS}}
 
 
@@ -279,8 +286,15 @@ def plans():
     rows = state()['rows']
     c = rows.condition.value_counts()
     return [{'id': k, 'label': LABEL[k], 'evidence_rows': int(c.get(k, 0)),
-             'desc': {'A_front_endcap': '입구 쪽 통로 끝 · 진열 코드 3', 'B_mailer_only': '주간 전단 · 매장은 평소 진열',
-                      'C_other_display': '통로 안 · 뒤쪽 · 보조 진열', 'none': '비교 기준'}[k]} for k in PLANS]
+             'desc': {'A_front_endcap': 'End of the aisle, by the entrance', 'B_mailer_only': 'Weekly flyer · regular shelf in store',
+                      'C_other_display': 'Inside the aisle, toward the back · secondary display', 'none': 'Baseline'}[k]} for k in PLANS]
+
+
+_ENGINE_TEXT = {
+    **ENGINE_TEXT,
+    'jev_calibrated': ('Jev + store calibration', 'jev-1.13 ranking · calibrated on real purchases in weeks 45–47 · stored evaluation sample'),
+    'persona': ('Persona', 'GPT · household descriptions · 80-pair sample · stored evaluation'),
+}
 
 
 def run_plans(engine_ids=('calibrated', 'no_promo', 'avg_lift'), draws=50, seed=42):
@@ -311,8 +325,8 @@ def run_plans(engine_ids=('calibrated', 'no_promo', 'avg_lift'), draws=50, seed=
         out['engines'].append({'id': name, 'label': e.label, 'note': e.note, 'live': True, 'plans': plans_out})
     jc = json.loads((EVAL / 'jev_calib_results.json').read_text())['engines']['jev_calibrated']['by_condition']
     pr = json.loads((EVAL / 'persona_results.json').read_text())['engines']['basic']['mean_p_by_condition']
-    for eid, label, note, src in [('jev_calibrated', 'Jev + 매장 보정', 'jev-1.13 순위 · 45–47주 실제 구매로 보정 · 저장된 평가 표본', jc),
-                                  ('persona', '페르소나', 'GPT · 가구 설명 · 80쌍 표본 · 저장된 평가', pr)]:
+    for eid, src in [('jev_calibrated', jc), ('persona', pr)]:
+        label, note = _ENGINE_TEXT[eid]
         base = src['none']
         out['engines'].append({'id': eid, 'label': label, 'note': note, 'live': False, 'plans': [
             {'id': c, 'label': LABEL[c], 'per_1000': src[c] * 1000, 'lift': src[c] / base, 'ratio_to_actual': src[c] * 1000 / actual[c]} for c in PLANS]})
@@ -323,10 +337,10 @@ def run_plans(engine_ids=('calibrated', 'no_promo', 'avg_lift'), draws=50, seed=
 # ---------------------------------------------------------------- one model, nine plans
 # The store conditions the decision model knows are two axes, and the data holds every one of their 3 x 3 combinations:
 # where it sits in the store (regular shelf / in-store display / front endcap) and the flyer (none / inside page / front page).
-GRID_DISPLAY = [('shelf', '평소 선반', {'front_endcap': 0, 'other_display': 0}), ('other', '매장 안 보조 진열', {'front_endcap': 0, 'other_display': 1}),
-                ('front', '입구 엔드캡', {'front_endcap': 1, 'other_display': 0})]
-GRID_MAILER = [('none', '전단 없음', {'mailer': 0, 'mailer_front': 0}), ('inner', '전단 안쪽 면', {'mailer': 1, 'mailer_front': 0}),
-               ('front', '전단 1면', {'mailer': 1, 'mailer_front': 1})]
+GRID_DISPLAY = [('shelf', 'Regular shelf', {'front_endcap': 0, 'other_display': 0}), ('other', 'Secondary display', {'front_endcap': 0, 'other_display': 1}),
+                ('front', 'Entrance endcap', {'front_endcap': 1, 'other_display': 0})]
+GRID_MAILER = [('none', 'No flyer', {'mailer': 0, 'mailer_front': 0}), ('inner', 'Flyer inside page', {'mailer': 1, 'mailer_front': 0}),
+               ('front', 'Flyer front page', {'mailer': 1, 'mailer_front': 1})]
 # what the stored (non-live) engines were asked: four single conditions
 _STORED_CELL = {('shelf', 'none'): 'none', ('front', 'none'): 'A_front_endcap', ('other', 'none'): 'C_other_display', ('shelf', 'inner'): 'B_mailer_only'}
 
@@ -373,65 +387,25 @@ def run_grid(model='simoff_retail', draws=50, seed=42):
 
 
 # ---------------------------------------------------------------- playground: one customer, one product, one store condition
-DECIDE_FIELDS = {   # name: (default, lo, hi) — the household state SimOff-1 reads, in the units the data uses
-    'visits': (50, 1, 300), 'avg_spend': (30.0, 1, 150), 'cereal_visit_rate': (.1, 0, 1), 'disc_share': (.15, 0, .5),
-    'private_share': (.2, 0, 1), 'cereal_spend_share': (.013, 0, .2), 'hp_count': (0, 0, 13)}
-
-
-DECIDE_RANGE = {'visits': (10, 150), 'avg_spend': (12, 60), 'cereal_visit_rate': (.02, .3), 'cereal_spend_share': (.003, .035),
-                'disc_share': (.08, .25), 'private_share': (0, .8), 'hp_count': (0, 4)}
-DECIDE_LABEL = {'visits': '방문 횟수', 'avg_spend': '장볼 때 지출', 'cereal_visit_rate': '시리얼 사는 방문', 'cereal_spend_share': '지출 중 시리얼',
-                'disc_share': '할인 상품 비중', 'private_share': '자체 브랜드 비중', 'hp_count': '이 상품을 산 횟수'}
-
-
 def decide_products():
-    s = state()
-    base = s['rows'].groupby('product_id')[['prod_base', 'prod_private']].first()
-    pr = s['products'].join(base, how='inner')
-    return [{'product_id': str(i), 'brand': r.brand, 'type': r.product_type, 'size': r.package_size, 'price': float(r.shelf_price),
-             'private': bool(r.prod_private)} for i, r in pr.sort_values('prod_base', ascending=False).iterrows()]
+    return decide_core.product_list()
 
 
 def decide(inp):
-    """SimOff-1 for one visit: the probability this customer buys this product, under the asked condition and all nine."""
-    s = state()
-    hh = {k: float(np.clip(float(inp.get(k, d)), lo, hi)) for k, (d, lo, hi) in DECIDE_FIELDS.items()}
-    base = s['rows'].groupby('product_id')[['prod_base', 'prod_private']].first()
-    pid = str(inp.get('product_id') or base.prod_base.idxmax())
-    if pid not in base.index:
-        raise KeyError(f'unknown product {pid}')
-    want = (inp.get('display') or 'shelf', inp.get('mailer') or 'none')
-    X = []
-    for d, _, df in GRID_DISPLAY:
-        for m, _, mf in GRID_MAILER:
-            X.append({**hh, 'prod_base': float(base.prod_base[pid]), 'prod_private': float(base.prod_private[pid]), **df, **mf, '_id': (d, m)})
-    X = pd.DataFrame(X)
-    P = s['engines']['calibrated'].predict(X)
-    cells = [{'display': d, 'mailer': m, 'display_label': dl, 'mailer_label': ml, 'p': float(p)}
-             for (d, dl, _), (m, ml, _), p in zip([g for g in GRID_DISPLAY for _ in GRID_MAILER], GRID_MAILER * len(GRID_DISPLAY), P)]
-    ref = next(c['p'] for c in cells if (c['display'], c['mailer']) == ('shelf', 'none'))
-    pick = next((c for c in cells if (c['display'], c['mailer']) == want), cells[0])
-    pr = s['products'].loc[pid]
-    # what moves it: each customer trait from a low to a high value, everything else as asked
-    flags = {**dict((g[0], g[2]) for g in GRID_DISPLAY)[pick['display']], **dict((g[0], g[2]) for g in GRID_MAILER)[pick['mailer']]}
-    one = {**hh, 'prod_base': float(base.prod_base[pid]), 'prod_private': float(base.prod_private[pid]), **flags}
-    V = [{**one, k: v} for k, (lo, hi) in DECIDE_RANGE.items() for v in (lo, hi)]
-    V.append({**one, **{k: d for k, (d, _, _) in DECIDE_FIELDS.items()}})                 # the average customer, same product and condition
-    Q = s['engines']['calibrated'].predict(pd.DataFrame(V))
-    drivers = [{'field': k, 'label': DECIDE_LABEL[k], 'low': lo, 'high': hi, 'p_low': float(Q[2 * i]), 'p_high': float(Q[2 * i + 1])}
-               for i, (k, (lo, hi)) in enumerate(DECIDE_RANGE.items())]
-    drivers.sort(key=lambda d: -abs(d['p_high'] - d['p_low']))
-    return {'model': 'SimOff-1', 'input': {**hh, 'product_id': pid, 'display': pick['display'], 'mailer': pick['mailer']},
-            'average_customer_p': float(Q[-1]), 'drivers': drivers,
-            'product': {'brand': pr.brand, 'type': pr.product_type, 'size': pr.package_size, 'price': float(pr.shelf_price)},
-            'p_buy': pick['p'], 'per_1000_visits': pick['p'] * 1000, 'lift_vs_shelf': pick['p'] / ref if ref else None,
-            'all_conditions': [{**c, 'lift': c['p'] / ref if ref else None} for c in cells]}
+    """SimOff-1 for one visit (decide_core: pure Python on the exported trees, identical to the fitted engine)."""
+    return decide_core.decide(inp)
 
 
 def latest_grid(model='simoff_retail'):
     model = model if model in ('simoff_retail', 'jev_raw', 'persona') else 'simoff_retail'
     f = CACHE / f'grid_{model}.json'
-    return json.loads(f.read_text()) if f.exists() else run_grid(model)
+    if not f.exists():
+        return run_grid(model)
+    out = json.loads(f.read_text())
+    dl, ml = {d: l for d, l, _ in GRID_DISPLAY}, {m: l for m, l, _ in GRID_MAILER}
+    for p in out.get('plans', []):            # a grid saved before the labels changed still reads in current wording
+        p['display_label'], p['mailer_label'] = dl.get(p['display'], p.get('display_label')), ml.get(p['mailer'], p.get('mailer_label'))
+    return out
 
 
 def _mix(h, seed):
@@ -465,8 +439,8 @@ def layout(store_id, objective='revenue', draws=200):
             raise KeyError(f'store {store_id} has no visits in weeks {TEST[0]}–{TEST[1]}')
         e = s['engines']['calibrated']
         lay, table, moves = choose_layout(sched, e, s['products'], m['capacity'], current, objective=objective)
-        L = run(sched, [Plan('actual', 'actual', label='실제 진열 그대로'), Plan('current', 'layout', layout=current, label=f'{AS_OF}주 배치 고정'),
-                        Plan('proposed', 'layout', layout=lay, label='제안 배치')], e, s['products'], draws=draws, seed=42, baseline='current')
+        L = run(sched, [Plan('actual', 'actual', label='Actual displays'), Plan('current', 'layout', layout=current, label=f'Week {AS_OF} layout, unchanged'),
+                        Plan('proposed', 'layout', layout=lay, label='Proposed layout')], e, s['products'], draws=draws, seed=42, baseline='current')
         real = int(sched.y.sum())
         act = L['plans'][0]['totals']
         opt = {r['product_id']: r for r in table}
@@ -482,13 +456,20 @@ def layout(store_id, objective='revenue', draws=200):
                 'validation': {'actual': real, 'expected': act['expected_units'], 'mc_p05': act['mc_p05'], 'mc_p95': act['mc_p95'],
                                'in_band': bool(act['mc_p05'] <= real <= act['mc_p95'])},
                 'labels': LABEL}
-    return _cached(f'layout_{store_id}_{objective}', build)
+    return _cached(f'layout_{store_id}_{objective}_en', build)
 
 
 # ---------------------------------------------------------------- S7 report
 
+SEGMENT_EN = {'이 상품을 산 적 있는 가구': 'Households that bought it before', '산 적 없는 가구': 'Households that never bought it',
+              '시리얼 자주 사는 가구 (상위 1/3)': 'Frequent cereal buyers (top third)', '시리얼 드물게 사는 가구 (하위 1/3)': 'Rare cereal buyers (bottom third)',
+              '할인 민감 가구 (상위 1/3)': 'Discount-sensitive (top third)', '할인 덜 민감 (하위 1/3)': 'Less discount-sensitive (bottom third)'}
+
+
 def report():
     r = json.loads((EVAL / 'report_numbers.json').read_text())
+    for seg in r.get('segments', []):
+        seg['segment'] = SEGMENT_EN.get(seg['segment'], seg['segment'])
     v = json.loads((SIM / 'results' / 'validation.json').read_text())
     return {'recommendation': 'A_front_endcap', 'label': LABEL['A_front_endcap'], 'numbers': r,
             'effects': v['effects'], 'reproduction': v['report_reproduction'],
@@ -497,91 +478,21 @@ def report():
 
 # ---------------------------------------------------------------- LLM (question structuring, explanations, persona)
 
-USAGE_LOG = Path(__file__).resolve().parent / 'cache' / 'llm_usage.jsonl'
-
-
-def llm_model():
-    """The model that answers: Claude when ANTHROPIC_API_KEY is set (app/.env), otherwise OpenAI."""
-    if os.environ.get('ANTHROPIC_API_KEY'):
-        return os.environ.get('ANTHROPIC_MODEL', 'claude-sonnet-5-5')
-    return os.environ.get('OPENAI_MODEL', 'gpt-5-mini')
-
-
-def has_llm():
-    return bool(os.environ.get('ANTHROPIC_API_KEY') or os.environ.get('OPENAI_API_KEY'))
-
-
-def _log_usage(provider, model, purpose, inp, out):
-    """One line per call, so spend can be added up later: app/cache/llm_usage.jsonl."""
-    try:
-        USAGE_LOG.parent.mkdir(exist_ok=True)
-        with open(USAGE_LOG, 'a') as f:
-            f.write(json.dumps({'at': time.strftime('%Y-%m-%d %H:%M:%S'), 'provider': provider, 'model': model, 'purpose': purpose,
-                                'input_tokens': inp, 'output_tokens': out}) + '\n')
-    except OSError:
-        pass
-
-
-def _http_error(who, e):
-    try:
-        err = json.loads(e.read()).get('error') or {}
-    except Exception:
-        err = {}
-    # OpenAI's 429 is either a spent balance or a rate limit; only the body says which
-    return RuntimeError(f"{who} HTTP {e.code} {err.get('code') or err.get('type') or ''}: {(err.get('message') or e.reason)[:160]}".strip())
-
-
-def llm_text(prompt, json_mode=False, system=None, purpose='app'):
-    """Claude first (ANTHROPIC_API_KEY), OpenAI otherwise. json_mode asks for a bare JSON object and returns its text."""
-    if not has_llm():
-        raise RuntimeError('no language model key (ANTHROPIC_API_KEY or OPENAI_API_KEY)')
-    if os.environ.get('ANTHROPIC_API_KEY'):
-        model = llm_model()
-        body = {'model': model, 'max_tokens': 1024,
-                'messages': [{'role': 'user', 'content': prompt + ('\n\nReturn one JSON object only, no prose, no code fence.' if json_mode else '')}]}
-        if system:
-            body['system'] = system
-        req = urllib.request.Request('https://api.anthropic.com/v1/messages', data=json.dumps(body).encode(),
-                                     headers={'x-api-key': os.environ['ANTHROPIC_API_KEY'], 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json'})
-        try:
-            with urllib.request.urlopen(req, timeout=60) as r:
-                d = json.loads(r.read())
-        except urllib.error.HTTPError as e:
-            raise _http_error('Claude', e) from None
-        u = d.get('usage') or {}
-        _log_usage('anthropic', model, purpose, u.get('input_tokens'), u.get('output_tokens'))
-        txt = ''.join(c.get('text', '') for c in d.get('content', []) if c.get('type') == 'text')
-        if json_mode:
-            m = re.search(r'\{.*\}', txt, re.S)
-            txt = m.group(0) if m else txt
-        return txt
-    model = llm_model()
-    body = {'model': model, 'messages': ([{'role': 'system', 'content': system}] if system else []) + [{'role': 'user', 'content': prompt}]}
-    if json_mode:
-        body['response_format'] = {'type': 'json_object'}
-    req = urllib.request.Request(os.environ.get('OPENAI_BASE_URL', 'https://api.openai.com/v1') + '/chat/completions', data=json.dumps(body).encode(),
-                                 headers={'Authorization': f"Bearer {os.environ['OPENAI_API_KEY']}", 'Content-Type': 'application/json'})
-    try:
-        with urllib.request.urlopen(req, timeout=60) as r:
-            d = json.loads(r.read())
-    except urllib.error.HTTPError as e:
-        raise _http_error('OpenAI', e) from None
-    u = d.get('usage') or {}
-    _log_usage('openai', model, purpose, u.get('prompt_tokens'), u.get('completion_tokens'))
-    return d['choices'][0]['message']['content']
+import decide_core  # noqa: E402
+from llm import USAGE_LOG, _http_error, _log_usage, has_llm, llm_model, llm_text  # noqa: E402,F401  (stdlib only; shared with the serverless functions)
 
 
 def brief(question):
     """Turn one line into a testable decision. The plans can only be conditions the data actually saw."""
-    spec = {'question': question, 'category': 'COLD CEREAL', 'plans': PLANS, 'metric': '방문 1,000회당 판매 · 반응한 가구층',
+    spec = {'question': question, 'category': 'COLD CEREAL', 'plans': PLANS, 'metric': 'Sales per 1,000 visits · which households respond',
             'weeks': list(TEST), 'structured_by': 'rules'}
     if has_llm():
         try:
             txt = llm_text(
                 f'Shopper question: "{question}". Available plans (only these were ever observed in the store data): '
                 f'{json.dumps({k: LABEL[k] for k in PLANS}, ensure_ascii=False)}. Return JSON '
-                '{"question": a one-sentence Korean restatement as a measurable decision, "plans": the ids of the plans the question asks about '
-                '(always include "none" as the baseline), "excluded": [Korean notes for anything asked that the data cannot test, e.g. price discounts]}',
+                '{"question": a one-sentence English restatement as a measurable decision, "plans": the ids of the plans the question asks about '
+                '(always include "none" as the baseline), "excluded": [short English notes for anything asked that the data cannot test, e.g. price discounts]}',
                 json_mode=True, system='You turn a store manager\'s question into a testable decision. Never invent plans.', purpose='brief')
             j = json.loads(txt)
             spec.update(question=j.get('question') or question, plans=[p for p in j.get('plans', PLANS) if p in PLANS] or PLANS,
@@ -592,7 +503,7 @@ def brief(question):
         spec['plans'].append('none')
     q = question.lower()
     if 'excluded' not in spec:
-        spec['excluded'] = ['할인: 사지 않은 방문의 가격이 기록에 없어 시험할 수 없음'] if any(k in q for k in ['할인', 'discount', '가격', 'price']) else []
+        spec['excluded'] = ['Discounts: cannot be tested, because the records have no prices for visits where the item was not bought'] if any(k in q for k in ['할인', 'discount', '가격', 'price']) else []
     return spec
 
 
@@ -609,7 +520,7 @@ COLUMN_HINTS = {
     'retail_disc': ['discount', 'disc', '할인'],
 }
 ENDPOINT_OF = {'basket_id': 'POST /visit', 'product_id': 'POST /basket/add', 'quantity': 'POST /basket/add', 'sales_value': 'POST /checkout',
-               'retail_disc': 'POST /price/discount', 'household_id': '가구 상태 (비식별)', 'store_id': 'POST /visit', 'transaction_timestamp': 'POST /visit'}
+               'retail_disc': 'POST /price/discount', 'household_id': 'Household state (de-identified)', 'store_id': 'POST /visit', 'transaction_timestamp': 'POST /visit'}
 
 
 def map_columns(columns):
@@ -634,9 +545,9 @@ def connect(files):
     d.mkdir()
     tx = pd.read_csv(pd.io.common.BytesIO(files['transactions']), dtype=str)      # ids stay text: 852856 must not become 852856.0
     mapping = map_columns(list(tx.columns))
-    JOBS[jid] = {'id': jid, 'status': 'mapping', 'mapping': mapping, 'log': [f'{len(tx):,}줄 · 열 {len(tx.columns)}개']}
+    JOBS[jid] = {'id': jid, 'status': 'mapping', 'mapping': mapping, 'log': [f'{len(tx):,} rows · {len(tx.columns)} columns']}
     if mapping['missing']:
-        JOBS[jid].update(status='needs_columns', error=f"이 열을 찾지 못했습니다: {', '.join(mapping['missing'])}")
+        JOBS[jid].update(status='needs_columns', error=f"Couldn't find these columns: {', '.join(mapping['missing'])}")
         return JOBS[jid]
     tx = tx.rename(columns={m['column']: m['field'] for m in mapping['columns'] if m['field']})
     for c in ['quantity', 'sales_value', 'retail_disc']:

@@ -1,4 +1,4 @@
-"""모델 체험's chat: a sentence about a customer, a product and a store condition becomes SimOff-1's input.
+"""Try the model's chat: a sentence about a customer, a product and a store condition becomes SimOff-1's input.
 
 Claude reads the sentence and calls the `decide` tool with the fields it can infer (anything unsaid stays at the
 average customer); each call runs service.decide and goes back to the browser as the request/response pair the
@@ -14,25 +14,26 @@ import urllib.request
 import service
 
 FIELDS = {
-    'visits': ('integer', '26주(반년) 동안 매장에 온 횟수. 주 2번이면 52, 한 달에 한 번이면 6'),
-    'avg_spend': ('number', '한 번 장볼 때 평균 지출 (달러)'),
-    'cereal_visit_rate': ('number', '방문 중 시리얼을 사는 방문의 비율 0–1'),
-    'cereal_spend_share': ('number', '전체 지출 중 시리얼 비중 0–0.2 (보통 0.01)'),
-    'disc_share': ('number', '할인 상품을 사는 비중 0–0.5 (보통 0.15)'),
-    'private_share': ('number', '자체 브랜드(PB) 상품 비중 0–1 (보통 0.2)'),
-    'hp_count': ('integer', '이 상품을 전에 산 횟수'),
+    'visits': ('integer', 'Store visits over 26 weeks (half a year). Twice a week is 52; once a month is 6'),
+    'avg_spend': ('number', 'Average spend per shopping trip (dollars)'),
+    'cereal_visit_rate': ('number', 'Share of visits that include a cereal purchase, 0–1'),
+    'cereal_spend_share': ('number', 'Cereal as a share of total spend, 0–0.2 (typically 0.01)'),
+    'disc_share': ('number', 'Share of purchases that are discounted items, 0–0.5 (typically 0.15)'),
+    'private_share': ('number', 'Share of store-brand (private label) items, 0–1 (typically 0.2)'),
+    'hp_count': ('integer', 'Times this customer has bought this product before'),
 }
-SYSTEM = """너는 SimOff-1 결정 모델의 입력을 만들어 주는 도우미다. SimOff-1은 한 손님이 매장에 한 번 들렀을 때 특정 시리얼 상품을 살 확률을 낸다.
-사용자가 손님, 상품, 매장 조건을 말로 설명하면 decide 도구를 부른다. 말하지 않은 값은 비워 둔다(평균 손님 값이 들어간다).
-둘 이상을 비교해 달라고 하면 decide 를 여러 번 부른다.
+SYSTEM = """You help build the input for the SimOff-1 decision model. SimOff-1 gives the probability that one customer buys a specific cereal product on one store visit.
+When the person describes a customer, a product and a store condition in words, call the decide tool. Leave out any value they did not mention (the average customer's value is used).
+If they ask to compare two or more cases, call decide once per case.
+Always call decide before answering; never ask a follow-up question. If something is ambiguous (for example which kids cereal), pick the first matching product in the list (the list is ordered from best-selling down) and say which one you used.
 
-상품 목록 (product_id: 설명)
+Products (product_id: description)
 {products}
 
-매장 조건: display = shelf(평소 선반) | other(매장 안 보조 진열) | front(입구 엔드캡), mailer = none(전단 없음) | inner(전단 안쪽 면) | front(전단 1면).
+Store conditions: display = shelf (regular shelf) | other (secondary display in the store) | front (entrance endcap); mailer = none (no flyer) | inner (flyer inside page) | front (flyer front page).
 
-답은 한국어로 2~4문장. 숫자는 도구가 돌려준 것만 쓴다(확률은 %로, 소수 둘째 자리까지). 어떤 값으로 해석했는지 한 문장, 결과 한 문장, 가장 크게 움직이는 요인 한 문장.
-마크다운 제목과 목록은 쓰지 않는다. 도구 이름이나 필드 이름(영문)은 말하지 않는다."""
+Reply in English in 2 to 4 sentences. Only use numbers the tool returned (probabilities as %, to two decimal places). One sentence on how you read their description, one on the result, one on the factor that moves it most.
+No markdown headings or lists. Do not mention the tool name or field names."""
 
 
 def _tools(products):
@@ -40,8 +41,8 @@ def _tools(products):
     props['product_id'] = {'type': 'string', 'enum': [p['product_id'] for p in products]}
     props['display'] = {'type': 'string', 'enum': ['shelf', 'other', 'front']}
     props['mailer'] = {'type': 'string', 'enum': ['none', 'inner', 'front']}
-    props['label'] = {'type': 'string', 'description': '이 경우를 부를 짧은 이름 (예: 시리얼 단골 · 입구 엔드캡)'}
-    return [{'name': 'decide', 'description': 'SimOff-1로 한 손님 · 한 상품 · 한 매장 조건의 구매 확률과 분석을 계산한다.', 'input_schema': {'type': 'object', 'properties': props}}]
+    props['label'] = {'type': 'string', 'description': 'A short name for this case (e.g. Loyal cereal buyer · entrance endcap)'}
+    return [{'name': 'decide', 'description': 'Runs SimOff-1 for one customer, one product and one store condition: the probability of buying, and what drives it.', 'input_schema': {'type': 'object', 'properties': props}}]
 
 
 def _post(body):
@@ -83,7 +84,7 @@ def chat(history):
 
 
 def _claude(history, products):
-    plist = '\n'.join(f"{p['product_id']}: {p['type']} {p['size']} ${p['price']}{' (자체 브랜드)' if p['private'] else ''}" for p in products)
+    plist = '\n'.join(f"{p['product_id']}: {p['type']} {p['size']} ${p['price']}{' (store brand)' if p['private'] else ''}" for p in products)
     msgs = [{'role': h['role'], 'content': h['text']} for h in history if h.get('text')]
     calls = []
     for _ in range(5):
@@ -102,32 +103,62 @@ def _claude(history, products):
                 content = json.dumps({'error': str(e)})
             results.append({'type': 'tool_result', 'tool_use_id': t['id'], 'content': content})
         msgs.append({'role': 'user', 'content': results})
-    return {'reply': '여기까지 계산했습니다.', 'calls': calls, 'by': service.llm_model()}
+    return {'reply': 'That is as far as I got.', 'calls': calls, 'by': service.llm_model()}
+
+
+_COUNT = {'once': 1, 'one': 1, 'twice': 2, 'two': 2, 'thrice': 3, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7}
+
+
+def _times(word):
+    return int(word) if word.isdigit() else _COUNT.get(word, 1)
 
 
 def _rules(history, products):
     text = ' '.join(h['text'] for h in history if h['role'] == 'user')[-400:]
+    t = text.lower()
     inp = {}
+    every = r'\s*(?:times?\s+)?(?:a|per|each|every)\s+'
+    count = r'\b(\d+|once|twice|thrice|one|two|three|four|five|six|seven)'
     if m := re.search(r'주\s*(\d+)\s*(번|회)', text):
         inp['visits'] = int(m[1]) * 26
+    elif m := re.search(count + every + r'week', t):
+        inp['visits'] = _times(m[1]) * 26
     elif m := re.search(r'(한\s*)?달에\s*(\d+|한)\s*(번|회)', text):
         inp['visits'] = 6 * (1 if m[2] == '한' else int(m[2]))
-    if '단골' in text or '자주' in text:
+    elif m := re.search(count + every + r'month', t):
+        inp['visits'] = 6 * _times(m[1])
+    elif re.search(r'\b(every day|daily)\b', t):
+        inp['visits'] = 182
+    elif re.search(r'\bweekly\b', t):
+        inp['visits'] = 26
+    elif re.search(r'\bmonthly\b', t):
+        inp['visits'] = 6
+    if '단골' in text or '자주' in text or re.search(r'\b(loyal|regulars?|frequent(ly)?|often)\b(?!\s+(shelf|shelves|spot|place))', t):
         inp.setdefault('visits', 120); inp['cereal_visit_rate'] = .35; inp['hp_count'] = 4
-    if '가끔' in text:
+    if '가끔' in text or re.search(r'\b(occasional(ly)?|sometimes|rarely|now and then)\b', t):
         inp.setdefault('visits', 10)
-    if '할인' in text:
+    if '할인' in text or re.search(r'\b(discounts?|deals?|coupons?|bargains?|on sale)\b', t):
         inp['disc_share'] = .35
-    if 'PB' in text or '자체 브랜드' in text:
+    if 'PB' in text or '자체 브랜드' in text or re.search(r'\b(store[- ]brand|private[- ]label|own[- ]brand|house brand)', t):
         inp['private_share'] = .7
-    inp['display'] = 'front' if ('엔드캡' in text or '입구' in text) else 'other' if '보조' in text else 'shelf'
-    inp['mailer'] = 'front' if '1면' in text else 'inner' if '전단' in text else 'none'
-    kind = 'KIDS CEREAL' if ('어린이' in text or '아이' in text) else 'ADULT CEREAL' if '성인' in text else 'ALL FAMILY CEREAL' if '가족' in text else None
+    front = '엔드캡' in text or '입구' in text or re.search(r'\b(end[- ]?caps?|entrance|front of the store|store front)\b', t)
+    other = '보조' in text or re.search(r'\b(secondary|extra|in-store|other) display', t)
+    inp['display'] = 'front' if front else 'other' if other else 'shelf'
+    fpage = '1면' in text or re.search(r'\b(front page|cover page|flyer front|front of the (flyer|mailer)|on the cover)\b', t)
+    flyer = '전단' in text or re.search(r'\b(flyers?|mailers?|circulars?|leaflets?)\b', t)
+    no_flyer = '전단 없' in text or re.search(r'\b(no|without(?: a| the)?) (flyers?|mailers?|circulars?)\b', t)
+    inp['mailer'] = 'none' if no_flyer else 'front' if fpage else 'inner' if flyer else 'none'
+    kids = '어린이' in text or '아이' in text or re.search(r'\b(kids?|children|child)\b', t)
+    adult = '성인' in text or re.search(r'\badults?\b', t)
+    family = '가족' in text or re.search(r'\bfamil(y|ies)\b', t)
+    kind = 'KIDS CEREAL' if kids else 'ADULT CEREAL' if adult else 'ALL FAMILY CEREAL' if family else None
     if kind:
         inp['product_id'] = next(p['product_id'] for p in products if p['type'] == kind)
     res = _call(inp)
     r = res['response']
-    top = r['drivers'][0]
-    reply = (f"이번 방문에 이 상품을 살 확률은 {r['p_buy'] * 100:.2f}%로, 평소 선반 · 전단 없음보다 {r['lift_vs_shelf']:.1f}배입니다. "
-             f"같은 조건의 평균 손님은 {r['average_customer_p'] * 100:.2f}%입니다. 가장 크게 움직이는 것은 {top['label']}입니다.")
+    top = r['drivers'][0]['label']
+    reply = (f"The chance this customer buys this product on this visit is {r['p_buy'] * 100:.2f}%, "
+             f"{r['lift_vs_shelf']:.1f}× the regular shelf with no flyer. "
+             f"An average customer under the same conditions: {r['average_customer_p'] * 100:.2f}%. "
+             f"What moves it most is {top[:1].lower() + top[1:]}.")
     return {'reply': reply, 'calls': [res], 'by': 'rules'}

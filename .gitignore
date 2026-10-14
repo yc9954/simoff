@@ -9,3 +9,7 @@ __pycache__/
 app/static/spaces/
 app/.env
 eval/results/von_full/
+
+# built by app/build_vercel.py
+deploy/
+.vercel-link/

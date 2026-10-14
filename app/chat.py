@@ -16,43 +16,43 @@ import decision_models
 import service
 import world
 
-SYSTEM = """너는 오프라인 공간(매장, 팝업, 행사, 전시, 식당 등)의 결정을 미리 시뮬레이션하는 에이전트다.
-주제: Decision model for offline world simulation. 매장은 여러 예시 중 하나일 뿐이다.
+SYSTEM = """You are an agent that simulates decisions for offline spaces (stores, pop-ups, events, exhibitions, restaurants and more) before they happen.
+Theme: Decision model for offline world simulation. A store is just one example among many.
 
-할 일
-1. 상대의 오프라인 비즈니스를 이해한다: 업종, 대략의 면적, 걱정되거나 바꿔 보고 싶은 것, 기록(영수증·주문·진열 일정) 유무.
-2. 업종을 모르면 한 번에 하나만 짧게 되묻는다. 업종을 알면 되묻지 말고 바로 recommend_spaces 를 부른다.
-3. 추천 중 가장 맞는 맵으로 build_space 를 부른다. 상대가 다른 맵이나 다른 변경을 원하면 다시 부른다.
-4. 마트(식료품) 공간이면 실제 매장 데이터로 세워지고, 시험할 결정은 다음 주 시리얼 진열 4안이다. 이 경우 기록이 이미 있으니 "다음 단계인 기록 연결로 이어가면 된다"고 안내한다.
-5. 결과는 최대 4문장으로 쉽게 설명한다: 왜 이 맵인지, 무엇을 바꿨는지(못 바꾼 것도), 기록이 있으면 무엇을 숫자로 볼 수 있는지 한 문장.
+What to do
+1. Understand the person's offline business: the type of business, rough size, what worries them or what they want to change, and whether they have records (receipts, orders, display schedules).
+2. If the type of business is unclear, ask one short question at a time. If it is clear, do not ask; call recommend_spaces right away.
+3. Call build_space with the best-fitting suggested space. If the person wants a different space or different changes, call it again.
+4. For a grocery store or supermarket, the space is built from real store data and the decision to test is where to put cereal next week, across four plans. Records already exist in that case, so tell them they can go straight on to the next step, connecting records.
+5. Explain the result plainly in at most 4 sentences: why this space, what changed (and what could not be changed), and, if there are records, one sentence on what can be measured.
 
-규칙
-- 숫자는 도구가 돌려준 것만 말한다. 판매가 몇 % 늘 것 같다는 식의 짐작은 절대 하지 않는다. 결정의 숫자는 그 공간의 기록으로 보정된 모델만 낸다.
-- 기록이 없으면 "기록이 오면 숫자를 낸다"고 한 문장으로만 말한다. 예시 데이터나 특정 데이터셋을 먼저 꺼내지 않는다.
-- 도구 이름, 모델 이름, 내부 방식(규칙, 원형 개수, 검사 방식)은 말하지 않는다. 사용자가 고른 결정 모델은 필요할 때 이름만 말한다.
-- 한국어로, 짧고 분명하게. 목록보다 문장. 마크다운 제목은 쓰지 않는다. 굵게는 꼭 필요한 곳 한두 군데만.
-- 화면에 맵 카드, 3D 공간, 바꾼 것 목록, 결정 카드가 함께 보인다. 결정 목록이나 맵 목록을 문장으로 다시 나열하지 않는다. 목록 기호(-)도 쓰지 않는다."""
+Rules
+- Only state numbers the tools returned. Never guess things like "sales will rise by some %". Decision numbers come only from a model calibrated on that space's records.
+- If there are no records, say in one sentence that numbers will come once records are connected. Do not bring up sample data or any particular dataset first.
+- Never mention tool names, model names or internal mechanics (rules, how many template spaces exist, how checks work). Mention the decision model the person picked by name only when needed.
+- Reply in English, short and clear. Prefer sentences to lists. No markdown headings. Bold at most once or twice, only where it matters.
+- The screen already shows the space cards, the 3D space, the list of changes and the decision cards. Do not repeat the decisions or spaces as a list in prose, and do not use bullet characters (-)."""
 
 WANTS = ['checkout', 'seat', 'promo', 'photo', 'order']
 MART_SPACES = {'arch_supermarket'}   # grocery: the one domain with calibrated records in this build
 MART_STORE = '367'
 TOOLS = [
     {'name': 'recommend_spaces',
-     'description': '비즈니스 설명으로 27개 원형 공간(카페, 편의점, 마트, 드럭스토어, 팝업, 전시, 축제 등) 중 맞는 3개를 이유와 함께 고른다.',
+     'description': 'From a business description, picks the 3 best-fitting spaces out of 27 templates (cafe, convenience store, supermarket, drugstore, pop-up, exhibition, festival and more), with reasons.',
      'input_schema': {'type': 'object', 'properties': {
-         'business': {'type': 'string', 'description': '업종이 드러나는 한두 문장 (예: 성수동 30평 카페)'},
-         'area_m2': {'type': 'number', 'description': '면적(㎡). 평이면 3.3058을 곱해서'},
-         'wants': {'type': 'array', 'items': {'type': 'string', 'enum': WANTS}, 'description': '걱정·바라는 것: checkout=계산 줄, seat=좌석, promo=행사 진열, photo=포토존, order=주문·픽업'}},
+         'business': {'type': 'string', 'description': 'One or two sentences that make the type of business clear (e.g. a 100 m² coffee shop in Brooklyn)'},
+         'area_m2': {'type': 'number', 'description': 'Area in m². Multiply sq ft by 0.0929, or pyeong by 3.3058'},
+         'wants': {'type': 'array', 'items': {'type': 'string', 'enum': WANTS}, 'description': 'Worries or goals: checkout=checkout line, seat=seating, promo=promo display, photo=photo spot, order=ordering and pickup'}},
          'required': ['business']}},
     {'name': 'build_space',
-     'description': '고른 공간을 3D로 세운다: 요청에 맞춘 집기 수정(통로 폭·겹침·출입문 검사 통과한 것만), 손님 배치, 이 공간에서 시험할 결정.',
+     'description': 'Builds the chosen space in 3D: fixture edits that follow the request (only those that pass aisle-width, overlap and door checks), shoppers placed in it, and the decisions this space can test.',
      'input_schema': {'type': 'object', 'properties': {
-         'space_id': {'type': 'string', 'description': 'recommend_spaces 가 돌려준 id (예: arch_cafe)'},
+         'space_id': {'type': 'string', 'description': 'An id returned by recommend_spaces (e.g. arch_cafe)'},
          'business': {'type': 'string'},
          'area_m2': {'type': 'number'},
          'wants': {'type': 'array', 'items': {'type': 'string', 'enum': WANTS}},
-         'product': {'type': 'string', 'description': '행사·진열을 시험할 상품 이름이 있으면'},
-         'move_to_entrance': {'type': 'array', 'items': {'type': 'string'}, 'description': '입구 쪽으로 옮길 집기 (예: 픽업대, 포토존, 계산대, 체험존)'}},
+         'product': {'type': 'string', 'description': 'The product to test a promo or display with, if one was named'},
+         'move_to_entrance': {'type': 'array', 'items': {'type': 'string'}, 'description': 'Fixtures to move toward the entrance (e.g. pickup counter, photo spot, checkout, experience zone)'}},
          'required': ['space_id', 'business']}},
 ]
 
@@ -81,9 +81,9 @@ def _run_tool(name, inp, files):
         # a grocery store is the case we have records for: build the real store from the data, with the decisions the
         # rest of the flow (records, plans, run, layout, report) works on
         plans = service.plans()
-        summary = {'space': f'실제 마트 매장 · Store {MART_STORE} (데이터에서 세운 통로 · 진열대 · 엔드캡 · 전단대)',
-                   'decision': '다음 주 콜드 시리얼을 어디에 둘까: ' + ' / '.join(p['label'] for p in plans),
-                   'has_records': True, 'next_step': '기록 연결에서 POS 파일을 올리거나 이 매장의 기록으로 바로 이어간다'}
+        summary = {'space': f'A real supermarket · Store {MART_STORE} (aisles, shelves, endcaps and flyer stand built from its data)',
+                   'decision': 'Where should cold cereal go next week: ' + ' / '.join(p['label'] for p in plans),
+                   'has_records': True, 'next_step': 'In Connect records, upload a POS file or continue with this store\'s records'}
         return summary, {'type': 'mart', 'store': MART_STORE, 'plans': plans, 'business': inp.get('business', '')}
     if name == 'build_space':
         sid = inp.get('space_id')
@@ -107,9 +107,9 @@ def chat(history, files=None, model=None):
     dm = decision_models.get(model)
     msgs = [{'role': h['role'], 'content': h['text']} for h in history if h.get('text')]
     if msgs and msgs[0]['role'] == 'user':
-        msgs[0]['content'] = f"(사용자가 고른 결정 모델: {dm['name']} — {dm['what']} 학습 데이터: {dm['trained_on']})\n\n" + msgs[0]['content']
+        msgs[0]['content'] = f"(Decision model the person picked: {dm['name']} — {dm['what']}. Trained on: {dm['trained_on']})\n\n" + msgs[0]['content']
     if files:
-        msgs[-1]['content'] += f"\n\n(올린 기록 파일: {', '.join(files)})"
+        msgs[-1]['content'] += f"\n\n(Uploaded record files: {', '.join(files)})"
     if os.environ.get('ANTHROPIC_API_KEY'):
         try:
             artifacts, steps = [], []
@@ -128,7 +128,7 @@ def chat(history, files=None, model=None):
                         artifacts.append(art)
                     results.append({'type': 'tool_result', 'tool_use_id': t['id'], 'content': json.dumps(out, ensure_ascii=False)})
                 msgs.append({'role': 'user', 'content': results})
-            return {'reply': '여기까지 진행했습니다. 더 바꾸고 싶은 것을 말씀해 주세요.', 'artifacts': artifacts, 'tools': steps, 'by': service.llm_model()}
+            return {'reply': 'That is as far as I got. Tell me what else you would like to change.', 'artifacts': artifacts, 'tools': steps, 'by': service.llm_model()}
         except Exception as e:  # noqa: BLE001 — fall through to the rules, and say so
             fallback = str(e)[:160]
     else:
@@ -141,14 +141,15 @@ def _rules_turn(history, files, why=None):
     r = world.run_agent(text, None, None, files)
     note = ''
     if not r['space']:
-        return {'reply': '어떤 업종인지 알려 주시겠어요? 예: 카페, 편의점, 굿즈 팝업, 야외 축제.' + note, 'artifacts': [], 'by': 'rules'}
+        return {'reply': 'What kind of business is it? For example: a cafe, a convenience store, a merch pop-up or an outdoor festival.' + note, 'artifacts': [], 'by': 'rules'}
     if r['space']['id'] in MART_SPACES:
         _, art = _run_tool('build_space', {'space_id': r['space']['id'], 'business': text}, files)
-        return {'reply': f'실제 마트 매장(Store {MART_STORE})으로 세웠습니다. 시험할 결정은 다음 주 시리얼을 앞쪽 엔드캡, 전단, 기타 진열, 평소대로 중 어디에 둘지입니다. 이 매장은 기록이 있으니 기록 연결로 이어가면 됩니다.',
+        return {'reply': f'Built from a real supermarket (Store {MART_STORE}). The decision to test is where cereal goes next week: front endcap, flyer, secondary display, or as usual. This store has records, so you can go straight on to Connect records.',
                 'artifacts': [art], 'by': 'rules'}
     st = {s['key']: s for s in r['steps']}
     edits = st['adapt']['ops']
-    reply = (f"{st['recommend']['detail'].split('고른 맵: ')[-1]}으로 세웠습니다. "
-             + (f"요청에 맞춰 {len(edits)}가지를 바꿨고, " if edits else '원형 그대로 두었고, ')
-             + f"손님 {st['place']['people']['count']}명을 걷게 했습니다. 아래 결정들은 이 공간의 기록이 오면 숫자를 냅니다." + note)
+    n = len(edits)
+    reply = (f"Here is your space: {st['recommend']['detail'].split('Chosen: ')[-1]}. "
+             + (f"Made {n} change{'s' if n != 1 else ''} to fit your request, " if edits else 'Kept the layout as it is, ')
+             + f"and added {st['place']['people']['count']} shoppers. The decisions below get numbers once this space's records are connected." + note)
     return {'reply': reply, 'artifacts': [{'type': 'recs', 'recs': st['recommend']['recommendations']}, {'type': 'world', 'run': r}], 'by': 'rules'}

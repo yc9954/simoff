@@ -36,7 +36,12 @@ HERE = Path(__file__).parent
 HH = ['visits', 'avg_spend', 'cereal_visit_rate', 'disc_share', 'cereal_spend_share', 'private_share', 'hp_count', 'prod_base', 'prod_private']
 COND = ['front_endcap', 'other_display', 'mailer', 'mailer_front']
 CONDS = {'none': (0, 0, 0, 0), 'A_front_endcap': (1, 0, 0, 0), 'B_mailer_only': (0, 0, 1, 1), 'C_other_display': (0, 1, 0, 0)}
-LABEL = {'none': '평소대로', 'A_front_endcap': '앞쪽 엔드캡', 'B_mailer_only': '전단', 'C_other_display': '기타 진열', 'actual': '실제 진열 그대로'}
+LABEL = {'none': 'As usual', 'A_front_endcap': 'Front endcap', 'B_mailer_only': 'Flyer', 'C_other_display': 'Secondary display', 'actual': 'Actual displays'}
+ENGINE_TEXT = {   # (label, note) shown for each live engine
+    'calibrated': ('Calibrated model', 'Trained on household state, product and store condition (weeks 27–44), isotonic-calibrated on real purchases in weeks 45–47'),
+    'no_promo': ('As-usual forecast', 'The same model without the store condition. A baseline that treats display effects as zero'),
+    'avg_lift': ('Average effect', 'Product base purchase rate × the overall average effect of each condition. A baseline that ignores household differences'),
+}
 STATE_FIELDS = ['visits', 'avg_spend', 'cereal_visit_rate', 'disc_share', 'private_share', 'hp_count']
 
 
@@ -92,10 +97,9 @@ def train_engines(rows, cache=HERE / 'data' / 'engines.pkl'):
 
     lift = fitted['avg_lift']
     return {
-        'calibrated': Engine('calibrated', '보정 모델',
-                             '가구 상태 + 상품 + 매장 조건으로 학습(27–44주), 45–47주 실제 구매로 등위 보정', gbm(fitted['calibrated'], HH + COND)),
-        'no_promo': Engine('no_promo', '평소대로 예측', '같은 모델에서 매장 조건을 뺀 것. 진열 효과를 0으로 보는 기준선', gbm(fitted['no_promo'], HH)),
-        'avg_lift': Engine('avg_lift', '평균 효과', '상품 기본 구매율 × 조건별 전체 평균 효과. 가구 차이를 무시하는 기준선',
+        'calibrated': Engine('calibrated', *ENGINE_TEXT['calibrated'], gbm(fitted['calibrated'], HH + COND)),
+        'no_promo': Engine('no_promo', *ENGINE_TEXT['no_promo'], gbm(fitted['no_promo'], HH)),
+        'avg_lift': Engine('avg_lift', *ENGINE_TEXT['avg_lift'],
                            lambda X: np.clip(X.prod_base.values * pd.Series(condition_name(X)).map(lift).values, 1e-6, 1 - 1e-6)),
     }
 
@@ -232,12 +236,12 @@ def run(sched, plans, engine, products, draws=100, seed=42, sample_per_day=12, b
 
     n_visits = int(sched.basket_id.nunique())
     seg_masks = {
-        '이 상품을 산 적 있는 가구': sched.hp_count.to_numpy() > 0,
-        '이 상품을 산 적 없는 가구': sched.hp_count.to_numpy() == 0,
-        '시리얼 자주 삼 (상위 1/3)': (sched.cereal_visit_rate >= sched.cereal_visit_rate.quantile(2 / 3)).to_numpy(),
-        '시리얼 드물게 삼 (하위 1/3)': (sched.cereal_visit_rate <= sched.cereal_visit_rate.quantile(1 / 3)).to_numpy(),
-        '할인 민감 (상위 1/3)': (sched.disc_share >= sched.disc_share.quantile(2 / 3)).to_numpy(),
-        '할인 덜 민감 (하위 1/3)': (sched.disc_share <= sched.disc_share.quantile(1 / 3)).to_numpy(),
+        'Households that bought this product before': sched.hp_count.to_numpy() > 0,
+        'Households that never bought this product': sched.hp_count.to_numpy() == 0,
+        'Frequent cereal buyers (top third)': (sched.cereal_visit_rate >= sched.cereal_visit_rate.quantile(2 / 3)).to_numpy(),
+        'Rare cereal buyers (bottom third)': (sched.cereal_visit_rate <= sched.cereal_visit_rate.quantile(1 / 3)).to_numpy(),
+        'Discount-sensitive (top third)': (sched.disc_share >= sched.disc_share.quantile(2 / 3)).to_numpy(),
+        'Less discount-sensitive (bottom third)': (sched.disc_share <= sched.disc_share.quantile(1 / 3)).to_numpy(),
     }
 
     out_plans = []
@@ -292,12 +296,12 @@ def run(sched, plans, engine, products, draws=100, seed=42, sample_per_day=12, b
                 'households': int(sched.household_id.nunique()), 'stores': int(sched.store_id.nunique()),
                 'products': int(sched.product_id.nunique()), 'schedule': str(sched.split.iloc[0])},
         'definitions': {
-            'units': '이 상품을 산 방문 수 (방문 1회에 몇 개를 샀는지는 세지 않음)',
-            'expected_units': '모든 결정의 확률 합',
-            'simulated_units': '0번 추첨으로 실제로 굴린 하루하루의 기록. 대표 방문과 3D 재생이 이 기록을 읽는다',
-            'mc_p05_p95': f'{draws}번 추첨의 5–95% 범위. 손님 운에 의한 흔들림만 담고, 모델 자체의 오차는 담지 않는다',
-            'revenue': '판매 방문 수 × 상품별 할인 전 가격 중간값 (USD)',
-            'same_luck': '모든 안이 같은 방문과 같은 (방문, 상품, 추첨)별 난수를 쓴다',
+            'units': 'Visits that bought this product (how many items per visit is not counted)',
+            'expected_units': 'Sum of the probabilities over every decision',
+            'simulated_units': 'The day-by-day record actually rolled with draw 0. The sample visits and the 3D replay read this record',
+            'mc_p05_p95': f'5–95% range over {draws} draws. It captures only the luck of which customers buy, not the error of the model itself',
+            'revenue': 'Visits with a sale × the median pre-discount price of each product (USD)',
+            'same_luck': 'Every plan uses the same visits and the same random number per (visit, product, draw)',
         },
         'plans': out_plans,
     }
@@ -351,8 +355,8 @@ def main():
     print(f"{ledger['run']} -> {a.out}")
     for x in ledger['plans']:
         t, v = x['totals'], x['vs_baseline']
-        print(f"  {x['label']:<8} 기대 {t['expected_units']:8.2f}  추첨0 {t['simulated_units']:5d}  90% [{t['mc_p05']:.0f}, {t['mc_p95']:.0f}]"
-              f"  1,000결정당 {t['per_1000_decisions']:.3f}  ${t['expected_revenue']:,.2f}  vs {v['baseline']} ×{v['lift']:.2f}")
+        print(f"  {x['label']:<18} expected {t['expected_units']:8.2f}  draw0 {t['simulated_units']:5d}  90% [{t['mc_p05']:.0f}, {t['mc_p95']:.0f}]"
+              f"  per 1,000 decisions {t['per_1000_decisions']:.3f}  ${t['expected_revenue']:,.2f}  vs {v['baseline']} ×{v['lift']:.2f}")
 
 
 if __name__ == '__main__':

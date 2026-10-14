@@ -20,9 +20,9 @@ Routes (all GET unless noted):
   /api/job?id=                     S8 progress
   POST /api/grid {model, seed} · /api/grid/latest?model=   the chosen model on all nine plans (display x flyer)
   /api/models                      the decision models a person can pick, with their training data and sources
-  POST /api/chat {history, files?, model?}  시작: Claude talks, decides, and builds the space with tools (rules without a key)
+  POST /api/chat {history, files?, model?}  Start: Claude talks, decides, and builds the space with tools (rules without a key)
   /api/spaces                      the 27 archetype spaces (consumer-jev) the world builder recommends from
-  POST /api/agent {description, category?, area?, files?, pick?}   시작: business in -> map, edits, people, decisions
+  POST /api/agent {description, category?, area?, files?, pick?}   Start: business in -> map, edits, people, decisions
 """
 import json
 import math

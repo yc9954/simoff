@@ -10,7 +10,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const n0 = x => x == null ? '—' : Math.round(x).toLocaleString('en-US');
 const nf = (x, d = 2) => x == null ? '—' : Number(x).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 const pct = p => p == null ? '—' : p === 0 ? '0%' : p >= .1 ? `${Math.round(p * 100)}%` : p >= .01 ? `${(p * 100).toFixed(1)}%` : `${(p * 100).toFixed(3)}%`;
-const LBL = { A_front_endcap: '앞쪽 엔드캡', B_mailer_only: '전단', C_other_display: '기타 진열', none: '평소대로' };
+const LBL = { A_front_endcap: 'Front endcap', B_mailer_only: 'Flyer', C_other_display: 'Secondary display', none: 'As usual' };
 const COL = { A_front_endcap: '#3B73FF', B_mailer_only: '#FCBB00', C_other_display: '#88ACFA', none: '#B8BEC2' };
 const PLANS = ['A_front_endcap', 'B_mailer_only', 'C_other_display', 'none'];
 const ENG = { calibrated: ['#0F766E', '#0F766E'], jev_calibrated: ['linear-gradient(90deg,#6D5BD0 50%,#0F766E 50%)', '#6D5BD0'], persona: ['#F99C00', '#F99C00'],
@@ -19,9 +19,26 @@ const store = { get(k, d) { try { return JSON.parse(localStorage.getItem('oa:' +
                 set(k, v) { try { localStorage.setItem('oa:' + k, JSON.stringify(v)); } catch {} } };
 const arrowSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 
+// Hosted (not localhost): read-only answers are precomputed files and only the chats and the single-visit model answer
+// run as functions; see build_vercel.py. The run's "run again" reuses the precomputed grid (its per-1,000 numbers do
+// not depend on the seed) and connecting records returns the finished sample calibration.
+const STATIC = !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+const staticPath = p => p.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+const FN = { chat: 'chat', decide: 'decide', 'decide/chat': 'decide_chat' };
 async function api(path, body) {
+  if (STATIC) {
+    if (path === 'grid' && body !== undefined) return { ...(await api(`grid/latest?model=${body.model}`)), seed: body.seed, id: Math.random().toString(16).slice(2, 10) };
+    if (path === 'connect' && body !== undefined) return api('connect');
+    if (body !== undefined && !FN[path]) throw new Error('Not available in the hosted demo');
+    if (body === undefined) {
+      const r = await fetch(`/static-api/${staticPath(path)}.json`);
+      if (!r.ok) throw new Error('Not available in the hosted demo');
+      return r.json();
+    }
+    path = FN[path];
+  }
   const r = await fetch('/api/' + path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const j = await r.json().catch(() => ({ error: `서버 응답을 읽지 못했습니다 (${r.status})` }));
+  const j = await r.json().catch(() => ({ error: `Couldn't read the server response (${r.status})` }));
   if (!r.ok || j?.error) throw new Error(j?.error || r.statusText);
   return j;
 }
@@ -30,16 +47,16 @@ const template = id => tplCache[id] ??= fetch(`screens/${id}.html`).then(r => r.
 const K = (root, k) => root.querySelector(`[data-k="${k}"]`);
 function set(root, k, v, html = false) { const e = K(root, k); if (e) html ? e.innerHTML = v : e.textContent = v; return e; }
 const slot = (root, n) => root.querySelector(`[data-slot="${n}"]`);
-const llmWhy = m => /insufficient_quota|credit_balance_exhausted/.test(m) ? 'OpenAI 크레딧이 바닥나 언어 모델을 쓰지 못했습니다' : /429/.test(m) ? 'OpenAI 요청 한도에 걸려(429) 언어 모델을 쓰지 못했습니다' : `언어 모델 호출 실패(${esc(m)})`;
+const llmWhy = m => /insufficient_quota|credit_balance_exhausted/.test(m) ? 'The language model was unavailable: OpenAI credits ran out' : /429/.test(m) ? 'The language model was unavailable: OpenAI rate limit hit (429)' : `Language model call failed (${esc(m)})`;
 const errBox = e => `<div class="errbox" role="alert">${esc(e.message || e)}</div>`;
 
 const tip = $('#tip');
 function showTip(html, x, y) { tip.innerHTML = html; tip.hidden = false; tip.style.left = Math.min(x + 14, innerWidth - tip.offsetWidth - 8) + 'px'; tip.style.top = Math.min(y + 14, innerHeight - tip.offsetHeight - 8) + 'px'; }
 const hideTip = () => { tip.hidden = true; };
 function productTip(p, state, weeks) {
-  const on = state === 'next' ? p.next : p.now, name = c => c === 'none' ? '선반' : LBL[c];
-  const rows = p.units && Object.keys(p.units).length ? `<table>${['none', 'A_front_endcap', 'C_other_display'].map(o => `<tr class="${o === on ? 'on' : ''}"><td>${name(o)}</td><td>${nf(p.units[o])}</td></tr>`).join('')}</table><span style="color:#4d5353">기대 판매 방문 · ${weeks || '48–53'}주</span>` : '';
-  return `<b>${p.n}. ${esc(p.name)} ${esc(p.size)}</b><br>${p.moved ? `${name(p.now)} → <b>${name(p.next)}</b>` : name(on)}${p.mailer ? ' · 전단' : ''}${rows}`;
+  const on = state === 'next' ? p.next : p.now, name = c => c === 'none' ? 'Shelf' : LBL[c];
+  const rows = p.units && Object.keys(p.units).length ? `<table>${['none', 'A_front_endcap', 'C_other_display'].map(o => `<tr class="${o === on ? 'on' : ''}"><td>${name(o)}</td><td>${nf(p.units[o])}</td></tr>`).join('')}</table><span style="color:#4d5353">Expected sales visits · weeks ${weeks || '48–53'}</span>` : '';
+  return `<b>${p.n}. ${esc(p.name)} ${esc(p.size)}</b><br>${p.moved ? `${name(p.now)} → <b>${name(p.next)}</b>` : name(on)}${p.mailer ? ' · flyer' : ''}${rows}`;
 }
 function stage3d(el, data, opts = {}) {
   const r = () => el.getBoundingClientRect();
@@ -90,21 +107,21 @@ function makeProject(r, business) {
   const mv = ops.find(o => o.op === 'move'), rl = ops.find(o => o.op === 'relabel');
   const target = (mv && sp.fixtures.find(f => f.id === mv.id)) || (rl && sp.fixtures.find(f => f.id === rl.id)) || [...shop].sort((a, b) => dist(a) - dist(b))[0];
   const inner = [...shop].filter(f => f !== target).sort((a, b) => dist(b) - dist(a))[0];
-  const T = (rl?.label && !mv ? rl.label.replace(/^행사: /, '') : target?.label) || '대표 상품';
+  const T = (rl?.label && !mv ? rl.label.replace(/^[^:：]{1,16}[:：]\s*/, '') : target?.label) || 'Featured item';
   return { kind: 'space', title: business || sp.title, spaceTitle: sp.title.split(' — ')[0], glb: r.glb, space: sp, ops, people: st.place.people,
-    plans: { A_front_endcap: { label: `${T} · 입구 쪽`, desc: '들어오자마자 보이는 자리', fx: target?.id },
-             B_mailer_only: { label: '전단 · 쿠폰 홍보', desc: '공간은 그대로 두고 밖에서 알림', fx: null },
-             C_other_display: { label: `${T} · 안쪽 자리`, desc: '매장 안쪽 보조 자리', fx: inner?.id },
-             none: { label: '지금 그대로', desc: '비교 기준', fx: null } } };
+    plans: { A_front_endcap: { label: `${T} · near the entrance`, desc: 'The first spot people see as they walk in', fx: target?.id },
+             B_mailer_only: { label: 'Flyer · coupon', desc: 'Leave the space as it is and promote outside', fx: null },
+             C_other_display: { label: `${T} · inner spot`, desc: 'A secondary spot further inside', fx: inner?.id },
+             none: { label: 'As it is', desc: 'Baseline', fx: null } } };
 }
-const MODEL_NOTE = 'SimOff-1 · 마트 데이터로 추정';
+const MODEL_NOTE = 'SimOff-1 · estimated from grocery data';
 // the close of every step: one line on what this step settled, and the way to the next
 const STEP_FOOT = {
-  connect: ['Calibrated to People, not to Answers.', '답이 맞을 확률이 아니라, 이 공간의 손님이 실제로 그 행동을 할 확률. 사람이 오가고 고르는 곳이라면 같은 방식으로 보정합니다.', '#plans', '다음: 시험할 안'],
-  plans: ['아홉 가지 안, 같은 손님.', '모든 안을 같은 방문, 같은 손님으로 비교합니다. 달라지는 건 안 하나뿐입니다.', '#run?go=1', '실행하기'],
-  run: ['가장 잘 팔린 안이 강조됩니다.', '다시 실행하면 손님의 운만 바꿔 한 번 더 돌립니다. 순서가 바뀌지 않으면 그 안이 답입니다.', '#layout', '다음: 최종 배치'],
-  layout: ['문 열기 전에 고른 배치.', '실제로 해 보기 전, 시뮬레이션이 고른 배치입니다. 리포트에서 근거와 함께 정리합니다.', '#report', '다음: 리포트'],
-  report: ['결정을 내릴 차례.', '승인하면 이 배치로 진행합니다. 다른 공간이나 결정은 새로 세우면 됩니다.', '#start?new=1', '새 공간 세우기', `<span data-slot="approve"><button type="button" class="btn btn-mono" data-act="approve">이 안 승인</button></span>`],
+  connect: ['Calibrated to People, not to Answers.', 'Not the odds that an answer is right, but the odds that this space\'s shoppers actually do it. Anywhere people come, go and choose is calibrated the same way.', '#plans', 'Next: Plans to test'],
+  plans: ['Nine plans, the same shoppers.', 'Every plan is compared on the same visits and the same shoppers. The only thing that changes is the plan.', '#run?go=1', 'Run'],
+  run: ['The best-selling plan is highlighted.', 'Run again to reroll only the shoppers\' luck. If the order holds, that plan is the answer.', '#layout', 'Next: Final layout'],
+  layout: ['The layout, chosen before the doors open.', 'This is the layout the simulation picked before you try it for real. The report sets it out with the evidence.', '#report', 'Next: Report'],
+  report: ['Time to decide.', 'Approve to go ahead with this layout. For another space or decision, build a new one.', '#start?new=1', 'Build a new space', `<span data-slot="approve"><button type="button" class="btn btn-mono" data-act="approve">Approve this plan</button></span>`],
 };
 const stepFoot = view => { const f = STEP_FOOT[view]; return f ? `<div class="step-foot"><p><b>${f[0]}</b> ${f[1]}</p><span class="step-acts">${f[4] || ''}<a class="btn ${f[4] ? 'btn-outline' : 'btn-mono'}" href="${f[2]}">${f[3]} ${arrowSvg}</a></span></div>` : ''; };
 
@@ -158,9 +175,9 @@ async function render() {
   const flow = $('[data-flow]'); if (flow) flow.style.setProperty('--fill', at <= 0 ? '0%' : `${(at / (flowSteps.length - 1)) * 100}%`);
   cleanups.forEach(f => { try { f(); } catch {} }); cleanups = []; hideTip();
   const el = $('#view');
-  el.innerHTML = '<div class="loading"><span class="spin"></span> 불러오는 중</div>';
-  const TITLES = { start: '공간 세우기', connect: '기록 연결', plans: '시험할 안', run: '실행', layout: '최종 배치', report: '리포트', verify: '모델 검증', try: '모델 체험',
-                  brief: '결정 브리프', endpoints: '엔드포인트', world: '매장 월드', engines: '엔진 비교' };
+  el.innerHTML = '<div class="loading"><span class="spin"></span> Loading</div>';
+  const TITLES = { start: 'Build the space', connect: 'Connect records', plans: 'Plans to test', run: 'Run', layout: 'Final layout', report: 'Report', verify: 'Model check', try: 'Try the model',
+                  brief: 'Decision brief', endpoints: 'Endpoints', world: 'Store world', engines: 'Engine comparison' };
   document.title = `${TITLES[view] || ''} · SimOff`;
   try {
     const html = await template(view);
@@ -180,32 +197,33 @@ async function boot() {}
 // ---------------------------------------------------------------- screens
 const VIEWS = {};
 
-// 시작 · the landing chat: the agent (Claude, rules without a key) reads the business, asks if it must, and builds the
+// start · the landing chat: the agent (Claude, rules without a key) reads the business, asks if it must, and builds the
 // space with tools; its cards, the 3D space, the edits and the decisions are drawn inside the conversation
+const FIRST_ASK = "We're opening a 20,000 sq ft neighborhood supermarket. For next week's cold cereal, should it go on the entrance endcap, a secondary display, or the flyer?";
 const EXAMPLES = [   // placeholder prompts: openings people would pay to get right before the doors open
-  '성수동에 30평 카페를 열려고 해요. 픽업대를 입구 쪽에 둘지 안쪽에 둘지 열기 전에 보고 싶어요.',
-  '글로벌 뷰티 브랜드가 서울 · 도쿄 · LA에 플래그십을 열어요. 신제품 체험존을 어디에 둬야 구매로 이어질까요?',
-  '동네에 60평 슈퍼마켓을 열 예정이에요. 시즌 음료를 입구 엔드캡에 둘지, 전단에 실을지 정하고 싶어요.',
-  '10만 명이 오는 음악 페스티벌에 푸드 · 굿즈 부스를 열어요. 문 열기 전에 줄이 어디서 막힐지 알고 싶어요.',
+  'I\'m opening a 1,000 sq ft café in Seongsu. Before we open, I want to see whether the pickup counter works better by the entrance or further inside.',
+  'A global beauty brand is opening flagships in Seoul, Tokyo and LA. Where should the new-product trial zone go so it turns into purchases?',
+  'I\'m opening a 2,000 sq ft neighborhood supermarket. I want to decide whether the seasonal drink goes on the entrance endcap or in the flyer.',
+  'We\'re running food and merch booths at a music festival with 100,000 visitors. Before the gates open, I want to know where the lines will jam.',
 ];
-const OPS_TXT = { duplicate: '추가', relabel: '행사 자리', stations: '계산 자리', remove: '뺌', move: '옮김' };
+const OPS_TXT = { duplicate: 'Added', relabel: 'Promo spot', stations: 'Checkout', remove: 'Removed', move: 'Moved' };
 const rich = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split(/\n{2,}/).map(p => {
   const ls = p.split('\n');
   return ls.every(l => /^\s*[-·•]\s/.test(l)) ? `<ul>${ls.map(l => `<li>${l.replace(/^\s*[-·•]\s/, '')}</li>`).join('')}</ul>`
     : ls.some(l => /^\s*[-·•]\s/.test(l)) ? ls.map(l => /^\s*[-·•]\s/.test(l) ? `<ul><li>${l.replace(/^\s*[-·•]\s/, '')}</li></ul>` : `<p>${l}</p>`).join('') : `<p>${p.replace(/\n/g, '<br>')}</p>`;
 }).join('');
 function recsHTML(recs) {
-  return `<div class="art"><div class="lbl">추천 공간</div><div class="recs">${recs.map((c, i) => `
-<button type="button" class="rec card" data-pick="${c.id}" data-label="${esc(c.label)}"><img src="${c.thumb}" alt="${esc(c.title)} 3D 모형" loading="lazy"><span style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="font-weight:600">${i + 1}. ${esc(c.label)}</b><span class="mono muted" style="font-size:11px">${Math.round(c.area_m2).toLocaleString()}㎡${c.floors > 1 ? ` · ${c.floors}층` : ''}${c.outdoor ? ' · 야외' : ''}</span></span><span class="muted" style="font-size:12px;line-height:1.5">${esc(c.title)}</span><span style="display:flex;flex-wrap:wrap;gap:4px">${(c.why || []).map(w => `<span class="tag" style="background:rgba(0,0,0,.05)">${esc(w)}</span>`).join('')}</span><span class="tag tag-ok rec-on">이 맵으로 세움</span><span class="mono muted rec-cta">이 맵으로 바꾸기 →</span></button>`).join('')}</div></div>`;
+  return `<div class="art"><div class="lbl">Suggested spaces</div><div class="recs">${recs.map((c, i) => `
+<button type="button" class="rec card" data-pick="${c.id}" data-label="${esc(c.label)}"><img src="${c.thumb}" alt="3D model of ${esc(c.title)}" loading="lazy"><span style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="font-weight:600">${i + 1}. ${esc(c.label)}</b><span class="mono muted" style="font-size:11px">${Math.round(c.area_m2).toLocaleString('en-US')} m²${c.floors > 1 ? ` · ${c.floors} floors` : ''}${c.outdoor ? ' · outdoor' : ''}</span></span><span class="muted" style="font-size:12px;line-height:1.5">${esc(c.title)}</span><span style="display:flex;flex-wrap:wrap;gap:4px">${(c.why || []).map(w => `<span class="tag" style="background:rgba(0,0,0,.05)">${esc(w)}</span>`).join('')}</span><span class="tag tag-ok rec-on">Built on this map</span><span class="mono muted rec-cta">Switch to this map →</span></button>`).join('')}</div></div>`;
 }
 function worldHTML(r) {
   const st = Object.fromEntries(r.steps.map(x => [x.key, x])), ad = st.adapt, pl = st.place, dc = st.decide;
   return `<div class="art card" style="overflow:hidden;padding:0"><div style="position:relative"><div data-slot="space" class="stage"></div>
-<div style="position:absolute;left:14px;top:14px;display:flex;flex-wrap:wrap;gap:8px;max-width:calc(100% - 28px)"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">${esc(r.space.title)}</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">손님 ${pl.people.count}명</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">물체에 커서를 올려 보세요</span></div></div>
-<div class="world-cols"><div><div class="lbl">바꾼 것</div>${ad.ops.length ? ad.ops.map(o => `<button type="button" class="list-btn" data-focus="${o.id}" style="display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border);width:100%;text-align:left"><span class="tag ${o.op === 'relabel' ? '' : 'tag-ok'}" style="${o.op === 'relabel' ? 'background:#e3ebfe;color:#1d4ed8;' : ''}flex:none">${OPS_TXT[o.op] || o.op}</span><span style="font-size:13px;line-height:1.55">${esc(o.why)}</span></button>`).join('') : '<p class="muted" style="font-size:13px;margin-top:10px">요청에 맞춰 바꿀 것이 없어 원형 그대로 두었습니다.</p>'}
-${ad.skipped.map(o => `<div style="display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border)"><span class="tag" style="background:#f6ebd3;color:#6b4a00;flex:none">못 바꿈</span><span style="font-size:13px;line-height:1.55">${esc(o.why)} — ${esc(o.reason)}</span></div>`).join('')}
+<div style="position:absolute;left:14px;top:14px;display:flex;flex-wrap:wrap;gap:8px;max-width:calc(100% - 28px)"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">${esc(r.space.title)}</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">${pl.people.count} shoppers</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">Hover over an object</span></div></div>
+<div class="world-cols"><div><div class="lbl">What changed</div>${ad.ops.length ? ad.ops.map(o => `<button type="button" class="list-btn" data-focus="${o.id}" style="display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border);width:100%;text-align:left"><span class="tag ${o.op === 'relabel' ? '' : 'tag-ok'}" style="${o.op === 'relabel' ? 'background:#e3ebfe;color:#1d4ed8;' : ''}flex:none">${OPS_TXT[o.op] || o.op}</span><span style="font-size:13px;line-height:1.55">${esc(o.why)}</span></button>`).join('') : '<p class="muted" style="font-size:13px;margin-top:10px">Nothing needed to change for this request, so the space is left as it was.</p>'}
+${ad.skipped.map(o => `<div style="display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border)"><span class="tag" style="background:#f6ebd3;color:#6b4a00;flex:none">Not changed</span><span style="font-size:13px;line-height:1.55">${esc(o.why)} — ${esc(o.reason)}</span></div>`).join('')}
 ${ad.note ? `<p class="muted" style="font-size:12px;line-height:1.6;margin-top:8px">${esc(ad.note)}</p>` : ''}</div>
-<div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div class="lbl">이 공간에서 시험할 결정</div><a class="btn btn-mono btn-sm" href="#connect">다음: 기록 연결 →</a></div>${dc.decisions.map(d => `<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="font-size:15px;font-weight:500;line-height:1.5">${esc(d.q)}</div><div class="muted" style="font-size:12px;margin-top:4px">지표: ${esc(d.metric)} · 필요한 기록: ${esc(d.needs)}</div><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">${dc.calibrated ? '<a class="btn btn-mono btn-sm" href="#connect">올린 기록으로 보정하기 →</a>' : '<span class="tag" style="background:rgba(0,0,0,.05)">기록이 오면 숫자를 냅니다</span>'}${d.example ? `<a class="btn btn-outline btn-sm" href="${d.example}">보정된 예시로 보기 →</a>` : ''}</div></div>`).join('')}</div></div></div>`;
+<div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div class="lbl">Decisions to test in this space</div><a class="btn btn-mono btn-sm" href="#connect">Next: Connect records →</a></div>${dc.decisions.map(d => `<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="font-size:15px;font-weight:500;line-height:1.5">${esc(d.q)}</div><div class="muted" style="font-size:12px;margin-top:4px">Metric: ${esc(d.metric)} · Records needed: ${esc(d.needs)}</div><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">${dc.calibrated ? '<a class="btn btn-mono btn-sm" href="#connect">Calibrate with your records →</a>' : '<span class="tag" style="background:rgba(0,0,0,.05)">Numbers arrive with your records</span>'}${d.example ? `<a class="btn btn-outline btn-sm" href="${d.example}">See a calibrated example →</a>` : ''}</div></div>`).join('')}</div></div></div>`;
 }
 // the conversation outlives the page: going to another step and back shows it again (this tab only)
 const CHAT = (() => { try { return JSON.parse(sessionStorage.getItem('oa:chat')) || { turns: [] }; } catch { return { turns: [] }; } })();
@@ -217,10 +235,11 @@ VIEWS.start = async (root, params) => {
 VIEWS.start.after = (el, params, cleanups) => {
   const thread = slot(el, 'thread'), composer = slot(el, 'composer'), ta = K(el, 'ask');
   let history = [], files = [], s3 = null, busy = false;
-  const startChat = () => { if (el.classList.contains('chatting')) return; el.classList.add('chatting'); thread.style.display = 'flex'; thread.after(composer); ta.placeholder = '이어서 묻거나 바꾸고 싶은 것을 말해 주세요'; };
+  const startChat = () => { if (el.classList.contains('chatting')) return; el.classList.add('chatting'); thread.style.display = 'flex'; thread.after(composer); ta.placeholder = 'Ask a follow-up or tell me what to change'; };
   cleanups.push(() => s3?.dispose());
   // rotating placeholder: one real-sized decision at a time
   let ex = 0; ta.placeholder = EXAMPLES[0];
+  if (!CHAT.turns.length && !params.q) ta.value = FIRST_ASK;
   const rot = setInterval(() => { if (!ta.value && document.activeElement !== ta && !el.classList.contains('chatting')) ta.placeholder = EXAMPLES[ex = (ex + 1) % EXAMPLES.length]; }, 4200);
   cleanups.push(() => clearInterval(rot));
   ta.onkeydown = null;
@@ -246,7 +265,7 @@ VIEWS.start.after = (el, params, cleanups) => {
   }
   function freeze() {          // keep one live 3D scene: the older one becomes a still picture of itself
     if (!s3) return; const host = s3.__host;
-    try { const u = s3.shot(); host.innerHTML = `<img src="${u}" alt="이전 3D 공간" style="width:100%;height:100%;object-fit:cover;display:block">`; } catch { host.innerHTML = ''; }
+    try { const u = s3.shot(); host.innerHTML = `<img src="${u}" alt="Previous 3D space" style="width:100%;height:100%;object-fit:cover;display:block">`; } catch { host.innerHTML = ''; }
     s3.dispose(); s3 = null;
   }
   function draw(msgEl, art) {
@@ -265,15 +284,15 @@ VIEWS.start.after = (el, params, cleanups) => {
     }
     if (art.type === 'mart') {
       freeze();
-      setProject({ title: art.business || '마트', store: art.store, kind: 'mart' });
+      setProject({ title: art.business || 'Grocery store', store: art.store, kind: 'mart' });
       body.insertAdjacentHTML('beforeend', `<div class="art card" style="overflow:hidden;padding:0"><div style="position:relative"><div data-slot="space" class="stage"></div>
-<div style="position:absolute;left:14px;top:14px;display:flex;flex-wrap:wrap;gap:8px"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">Store ${esc(art.store)} · 실제 매장 데이터</span></div></div>
-<div class="world-cols"><div><div class="lbl">시험할 결정 · 다음 주 콜드 시리얼</div><div class="plan-chips">${art.plans.map(p => `<span class="plan-chip"><i style="background:${COL[p.id]}"></i>${esc(p.label)}</span>`).join('')}</div></div>
-<div style="display:flex;align-items:flex-end;justify-content:flex-end"><a class="btn btn-mono" href="#connect">다음: 기록 연결 →</a></div></div></div>`);
+<div style="position:absolute;left:14px;top:14px;display:flex;flex-wrap:wrap;gap:8px"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">Store ${esc(art.store)} · real store data</span></div></div>
+<div class="world-cols"><div><div class="lbl">Decision to test · cold cereal next week</div><div class="plan-chips">${art.plans.map(p => `<span class="plan-chip"><i style="background:${COL[p.id]}"></i>${esc(p.label)}</span>`).join('')}</div></div>
+<div style="display:flex;align-items:flex-end;justify-content:flex-end"><a class="btn btn-mono" href="#connect">Next: Connect records →</a></div></div></div>`);
       const host = $$('[data-slot="space"]', body).at(-1);
       storeData().then(d => { s3 = stage3d(host, { aisles: d.aisles, products: d.products }, { state: 'now', shoppers: 24, weeks: d.L.weeks.join('–') }); s3.__host = host; });
     }
-    $$('[data-pick]', body).forEach(b => b.onclick = () => !b.classList.contains('on') && send(`${b.dataset.label} 맵(${b.dataset.pick})으로 바꿔서 다시 세워 주세요.`));
+    $$('[data-pick]', body).forEach(b => b.onclick = () => !b.classList.contains('on') && send(`Please rebuild it on the ${b.dataset.label} map (${b.dataset.pick}).`));
   }
   async function send(text) {
     text = (text || '').trim(); if (!text || busy) return;
@@ -282,7 +301,7 @@ VIEWS.start.after = (el, params, cleanups) => {
     history.push({ role: 'user', text });
     bubble('user', esc(text)).scrollIntoView({ behavior: 'smooth', block: 'center' });
     ta.value = '';
-    const ai = bubble('ai', '<div class="typing" aria-label="생각하는 중"><i></i><i></i><i></i></div>');
+    const ai = bubble('ai', '<div class="typing" aria-label="Thinking"><i></i><i></i><i></i></div>');
     try {
       const r = await api('chat', { history, files, model });
       $('.body', ai).innerHTML = rich(r.reply);
@@ -311,14 +330,14 @@ VIEWS.start.after = (el, params, cleanups) => {
   if (params.q) { window.history.replaceState(null, '', '#start'); send(params.q); }
 };
 
-// S0 결정 브리프
+// S0 decision brief
 VIEWS.brief = async (root) => {
   const [cat, health, last] = await Promise.all([api('catalog'), api('health'), api('run/latest')]);
   const q = store.get('question'); if (q) K(root, 'q').textContent = q;
-  set(root, 'llm', health.llm ? `예측은 언어 모델이 아니라 보정된 결정 모델이 합니다. 언어 모델(${health.model})은 질문 정리와 설명만 맡습니다.` : '예측은 언어 모델이 아니라 보정된 결정 모델이 합니다. 언어 모델은 질문 정리와 설명만 맡습니다. (OPENAI_API_KEY 없음 · 규칙으로 정리)');
-  set(root, 'basis', `${n0(cat.households)}가구 · 1년 · 영수증 ${n0(cat.receipt_lines)}줄 · 진열 기록 ${n0(cat.placement_rows)}줄`);
+  set(root, 'llm', health.llm ? `Predictions come from a calibrated decision model, not a language model. The language model (${health.model}) only structures the question and explains the result.` : 'Predictions come from a calibrated decision model, not a language model. The language model only structures the question and explains the result. (No OPENAI_API_KEY · structured with rules)');
+  set(root, 'basis', `${n0(cat.households)} households · 1 year · ${n0(cat.receipt_lines)} receipt lines · ${n0(cat.placement_rows)} placement rows`);
   const engines = last?.engines?.length || 5;
-  set(root, 'runs', String(4 * engines)); set(root, 'runsSub', engines === 5 ? '실행 · 안 4 × (엔진 3 + 비교 기준 2)' : `실행 · 안 4 × 엔진 ${engines}`); set(root, 'runN', `${4 * engines}개`);
+  set(root, 'runs', String(4 * engines)); set(root, 'runsSub', engines === 5 ? 'runs · 4 plans × (3 engines + 2 baselines)' : `runs · 4 plans × ${engines} engines`); set(root, 'runN', `${4 * engines}`);
   if (last) set(root, 'decisions', n0(last.decisions));
   const p = store.get('partner', {}); K(root, 'pw').value = p.weeks || ''; K(root, 'pv').value = p.visits || '';
   const spec = store.get('spec'); if (spec) showSpec(root, spec);
@@ -326,9 +345,9 @@ VIEWS.brief = async (root) => {
 function showSpec(root, s) {
   set(root, 'question', s.question); set(root, 'plans', s.plans.map(p => LBL[p]).join(' · '));
   const ex = slot(root, 'excluded');
-  ex.innerHTML = (s.excluded || []).map(x => `<div style="display:grid;grid-template-columns:140px minmax(0,1fr);gap:16px;padding:16px 0;border-top:1px solid var(--border)"><span class="lbl" style="padding-top:4px">제외</span><span style="font-size:16px;color:var(--mfg)">${esc(x)}</span></div>`).join('')
-    + (s.llm_error ? `<div style="padding:8px 0" class="err">${llmWhy(s.llm_error)}, 규칙으로 정리했습니다.</div>` : '')
-    + `<div style="padding:4px 0 0" class="lbl">${s.structured_by === 'rules' ? '규칙으로 정리' : esc(s.structured_by) + '로 정리'}</div>`;
+  ex.innerHTML = (s.excluded || []).map(x => `<div style="display:grid;grid-template-columns:140px minmax(0,1fr);gap:16px;padding:16px 0;border-top:1px solid var(--border)"><span class="lbl" style="padding-top:4px">Excluded</span><span style="font-size:16px;color:var(--mfg)">${esc(x)}</span></div>`).join('')
+    + (s.llm_error ? `<div style="padding:8px 0" class="err">${llmWhy(s.llm_error)}; structured with rules instead.</div>` : '')
+    + `<div style="padding:4px 0 0" class="lbl">${s.structured_by === 'rules' ? 'Structured with rules' : 'Structured by ' + esc(s.structured_by)}</div>`;
 }
 VIEWS.brief.after = (el) => {
   const save = () => store.set('partner', { weeks: K(el, 'pw').value.replace(/\D/g, ''), visits: K(el, 'pv').value.replace(/\D/g, '') });
@@ -344,42 +363,42 @@ VIEWS.brief.after = (el) => {
   K(el, 'q').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); go(); } };
 };
 
-// S1 엔드포인트
-const EP_COL = { '영수증': '#000', '진열 · 전단': '#3B73FF', '가격': '#FCBB00', '센서': '#B8BEC2' };
+// S1 endpoints · coloured by route (receipts / display · flyer / price / sensors), not by the server's group label
+const EP_COL = e => /^\/(visit|basket|checkout)/.test(e.path) ? '#000' : /^\/exposure/.test(e.path) ? '#3B73FF' : /^\/(price|coupon)/.test(e.path) ? '#FCBB00' : '#B8BEC2';
 VIEWS.endpoints = async (root) => {
   const c = await api('catalog');
   set(root, 'households', n0(c.households)); set(root, 'stores', n0(c.stores)); set(root, 'visits', n0(c.visits));
   set(root, 'on', String(c.endpoints.filter(e => e.events != null).length)); set(root, 'wait', String(c.endpoints.filter(e => e.events == null).length));
-  slot(root, 'rows').innerHTML = c.endpoints.map(e => `<div class="tr" style="grid-template-columns:52px 180px minmax(0,1fr) 92px;"><span class="" style="min-width:0"><span class="badge">${e.method}</span></span><span class="" style="min-width:0"><span style="display:flex;align-items:center;gap:8px;font-weight:500" class="mono"><span class="sq" style="background:${EP_COL[e.group]};width:8px;height:8px"></span><span style="font-size:13px">${esc(e.path)}</span></span></span><span class="" style="min-width:0"><span class="mono muted" style="font-size:11px">${esc(e.source)}</span></span><span class="r" style="min-width:0"><span class="num" style="font-size:12px;${e.events == null ? 'color:rgba(77,83,83,.6)' : ''}">${e.events == null ? '대기' : n0(e.events)}</span></span></div>`).join('');
+  slot(root, 'rows').innerHTML = c.endpoints.map(e => `<div class="tr" style="grid-template-columns:52px 180px minmax(0,1fr) 92px;"><span class="" style="min-width:0"><span class="badge">${e.method}</span></span><span class="" style="min-width:0"><span style="display:flex;align-items:center;gap:8px;font-weight:500" class="mono"><span class="sq" style="background:${EP_COL(e)};width:8px;height:8px"></span><span style="font-size:13px">${esc(e.path)}</span></span></span><span class="" style="min-width:0"><span class="mono muted" style="font-size:11px">${esc(e.source)}</span></span><span class="r" style="min-width:0"><span class="num" style="font-size:12px;${e.events == null ? 'color:rgba(77,83,83,.6)' : ''}">${e.events == null ? 'Pending' : n0(e.events)}</span></span></div>`).join('');
 };
 VIEWS.endpoints.after = (el) => {
   const play = async (basket) => {
     slot(el, 'log').innerHTML = '<span class="spin"></span>';
     try {
       const r = await api('replay' + (basket ? `?basket=${basket}` : ''));
-      set(el, 'basket', `basket ${r.basket_id} · ${r.time} · store ${r.store_id} · 가구 ${r.household_id}`);
+      set(el, 'basket', `basket ${r.basket_id} · ${r.time} · store ${r.store_id} · household ${r.household_id}`);
       const color = e => e.path === '/checkout' ? 'color:#000;font-weight:600' : e.m === 'GET' ? 'color:#3B73FF' : /discount|coupon/.test(e.path) ? 'color:#9a6b00' : 'color:rgba(0,0,0,.85)';
       const money = a => a == null ? '' : `  ${a < 0 ? '-' : ''}$${nf(Math.abs(a))}`;
       slot(el, 'log').innerHTML = r.events.map(e => `<div style="${color(e)}">${esc(`${e.m.padEnd(4)} ${e.path.padEnd(18)} ${e.args}${money(e.amount)}${e.item ? '  ' + e.item : ''}${e.note ? '  · ' + e.note : ''}`)}</div>`).join('');
       const d = r.events.find(e => e.path === '/exposure/display' && / loc=3$/.test(e.args));
       const pid = d && d.args.split(' ')[0].split('=')[1], item = d && r.events.find(e => e.path === '/basket/add' && e.args.startsWith(`product=${pid} `))?.item;
-      slot(el, 'quote').innerHTML = d ? `<p style="font-size:15px;line-height:1.7">그 주 Store ${esc(r.store_id)}의 <b style="font-weight:600">앞쪽 엔드캡</b>(진열 코드 3)에 있던 상품: #${esc(pid)}${item ? ' ' + esc(item) : ''}</p>`
-        : `<p style="font-size:15px;line-height:1.7">이 방문의 상품은 그 주 Store ${esc(r.store_id)}에서 앞쪽 엔드캡에 없었습니다.</p>`;
+      slot(el, 'quote').innerHTML = d ? `<p style="font-size:15px;line-height:1.7">On Store ${esc(r.store_id)}\'s <b style="font-weight:600">front endcap</b> (display code 3) that week: #${esc(pid)}${item ? ' ' + esc(item) : ''}</p>`
+        : `<p style="font-size:15px;line-height:1.7">None of this visit\'s items were on Store ${esc(r.store_id)}\'s front endcap that week.</p>`;
     } catch (e) { slot(el, 'log').innerHTML = errBox(e); }
   };
   $('[data-act="replay"]', el).onclick = () => play('random');
   play();
 };
 
-// S2 매장 월드
-const STATE_ROWS = [['visits', '방문', v => `${n0(v)}회`, 160], ['avg_spend', '평균 장바구니', v => `$${nf(v)}`, 120], ['cereal_visit_rate', '시리얼을 산 방문', pct, 1],
-                    ['disc_share', '할인받은 금액 비중', pct, 1], ['private_share', '시리얼 중 자체 브랜드', pct, 1], ['cereal_spend_share', '지출 중 시리얼', pct, .1]];
+// S2 store world
+const STATE_ROWS = [['visits', 'Visits', v => `${n0(v)}`, 160], ['avg_spend', 'Average basket', v => `$${nf(v)}`, 120], ['cereal_visit_rate', 'Visits with cereal', pct, 1],
+                    ['disc_share', 'Share of spend discounted', pct, 1], ['private_share', 'Store brand share of cereal', pct, 1], ['cereal_spend_share', 'Cereal share of spend', pct, .1]];
 function personaLine(d) {
-  if (!d) return '인구통계 없음 · 이 가구로는 페르소나를 만들 수 없습니다';
-  const kids = /no kids/i.test(d.household_comp) ? '자녀 없는' : /kid/i.test(d.household_comp) ? '자녀 있는' : '';
-  const age = /\+$/.test(d.age) ? `${d.age.slice(0, -1)}세 이상` : `${d.age.replace('-', '–')}세`;
-  const size = String(d.household_size).replace('+', '인 이상').replace(/^(\d+)$/, '$1인');
-  return `“${age} · ${kids ? kids + ' ' : ''}${size} 가구 · 소득 ${d.income.replace('K', '천 달러').replace('-', '–')}.”`;
+  if (!d) return 'No demographics · no persona can be built for this household';
+  const kids = /no kids/i.test(d.household_comp) ? 'without kids' : /kid/i.test(d.household_comp) ? 'with kids' : '';
+  const age = /\+$/.test(d.age) ? `Aged ${d.age.slice(0, -1)}+` : `Aged ${d.age.replace('-', '–')}`;
+  const size = String(d.household_size).replace(/^(\d+)\+$/, '$1+ person').replace(/^(\d+)$/, '$1-person');
+  return `“${age} · ${size} household${kids ? ' ' + kids : ''} · income ${d.income.replace('-', '–')}.”`;
 }
 VIEWS.world = async (root, params, cleanups) => {
   const stores = await api('stores');
@@ -388,18 +407,18 @@ VIEWS.world = async (root, params, cleanups) => {
   const hh = params.hh || (w.households.find(h => h.demographics) || w.households[0]).household_id;
   const d = await api(`household?id=${hh}`).catch(() => null);
   const m = w.map;
-  set(root, 'title', `매장 월드 · Store ${sid}`);
+  set(root, 'title', `Store world · Store ${sid}`);
   K(root, 'store').innerHTML = stores.map(s => `<option value="${s.store_id}" ${s.store_id === sid ? 'selected' : ''}>Store ${s.store_id}</option>`).join('');
   const caps = m.displays.filter(x => x.condition === 'A_front_endcap').length;
-  set(root, 'storeChip', `Store ${sid} · 통로 ${m.aisles.length} · 진열 ${m.displays.length}종 · 계산대 4 · ${m.as_of_week}주 배치`);
-  set(root, 'visitsChip', `48–53주 방문 ${n0(w.visits_test)}회 · 가구 ${n0(w.households_test)}`);
+  set(root, 'storeChip', `Store ${sid} · ${m.aisles.length} aisles · ${m.displays.length} display types · 4 checkouts · layout as of week ${m.as_of_week}`);
+  set(root, 'visitsChip', `Weeks 48–53 · ${n0(w.visits_test)} visits · ${n0(w.households_test)} households`);
   set(root, 'hhBadge', hh);
   const hhs = w.households;
-  set(root, 'hhLabel', `가구 ${hh} · 지난 26주 · 행동에서 계산`, false);
-  K(root, 'hhLabel').innerHTML = `가구 <select data-k="hhSel" aria-label="가구" class="num" style="font:inherit;border:1px solid var(--border);border-radius:2px;background:#fff;padding:1px 3px">${hhs.map(h => `<option ${h.household_id === hh ? 'selected' : ''}>${h.household_id}</option>`).join('')}</select> · 지난 26주 · 행동에서 계산`;
+  set(root, 'hhLabel', `Household ${hh} · last 26 weeks · computed from behavior`, false);
+  K(root, 'hhLabel').innerHTML = `Household <select data-k="hhSel" aria-label="Household" class="num" style="font:inherit;border:1px solid var(--border);border-radius:2px;background:#fff;padding:1px 3px">${hhs.map(h => `<option ${h.household_id === hh ? 'selected' : ''}>${h.household_id}</option>`).join('')}</select> · last 26 weeks · computed from behavior`;
   const st = d?.state || hhs.find(h => h.household_id === hh)?.state || {};
   slot(root, 'bars').innerHTML = STATE_ROWS.map(([k, lab, f, max]) => `<div style="display:grid;grid-template-columns:150px minmax(0,1fr) 70px;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--border)"><span style="font-size:14px">${lab}</span><div class="bar"><i style="width:${Math.min(100, Math.max(1.5, (st[k] || 0) / max * 100)).toFixed(1)}%;background:#171717"></i></div><span class="num r" style="font-size:12px">${f(st[k])}</span></div>`).join('')
-    + (d ? `<div style="display:grid;grid-template-columns:150px minmax(0,1fr) 70px;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--border)"><span style="font-size:14px">#${d.product.product_id} 구매</span><div class="bar"><i style="width:${Math.max(1.5, Math.min(100, d.state.hp_count * 10))}%;background:#171717"></i></div><span class="num r" style="font-size:12px">${n0(d.state.hp_count)}회</span></div>` : '');
+    + (d ? `<div style="display:grid;grid-template-columns:150px minmax(0,1fr) 70px;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--border)"><span style="font-size:14px">#${d.product.product_id} purchases</span><div class="bar"><i style="width:${Math.max(1.5, Math.min(100, d.state.hp_count * 10))}%;background:#171717"></i></div><span class="num r" style="font-size:12px">${n0(d.state.hp_count)}</span></div>` : '');
   set(root, 'persona', personaLine(d?.demographics));
   K(root, 'compare').href = `#engines?hh=${hh}`;
   VIEWS.world._data = { sid, hh, L, w };
@@ -415,12 +434,13 @@ VIEWS.world.after = (el, params, cleanups) => {
   K(el, 'hhSel').onchange = e => { location.hash = `#world?store=${sid}&hh=${e.target.value}`; };
 };
 
-// S3 엔진 비교
-const ENGINE_ROWS = [['basic', '페르소나', 'GPT · 인구통계 설명', false], ['history', '페르소나 + 이력', 'GPT · 설명 + 구매 이력 숫자', false], ['jev_text', 'Jev · 글', 'jev-1.13 · 학습 없이', false],
-                     ['jev_state', 'Jev · 숫자 상태', 'jev-1.13 · 학습 없이', false], ['no_promo', '평소대로 예측', '같은 모델 · 매장 조건 뺌', true], ['calibrated', '보정 모델', '엔드포인트로 학습 · 45–47주 보정', true]];
+// S3 engine comparison
+const ENGINE_ROWS = [['basic', 'Persona', 'GPT · demographic description', false], ['history', 'Persona + history', 'GPT · description + purchase-history numbers', false], ['jev_text', 'Jev · text', 'jev-1.13 · no training', false],
+                     ['jev_state', 'Jev · numeric state', 'jev-1.13 · no training', false], ['no_promo', 'As-usual prediction', 'Same model · store condition removed', true], ['calibrated', 'Calibrated model', 'Trained on endpoints · calibrated on weeks 45–47', true]];
+const PP_ORDER = ['none', 'A_front_endcap', 'B_mailer_only', 'C_other_display'];   // the persona strip's four cells, in board order (as usual · front endcap · flyer · secondary display)
 function engineRow(id, label, note, strong, p, live) {
   const order = ['none', 'A_front_endcap', 'B_mailer_only', 'C_other_display'];
-  return `<div class="tr" style="grid-template-columns:minmax(0,1.3fr) repeat(4,minmax(0,1fr));${strong ? 'background:#fff;' : ''}"><span class="" style="min-width:0"><span style="display:flex;flex-direction:column;gap:3px"><span style="display:flex;align-items:center;gap:8px;font-weight:500"><span class="sq" style="background:${(ENG[id] || ['#000'])[0]};width:8px;height:8px"></span>${esc(label)}${live === false ? ' <span class="tag tag-ai">저장된 평가</span>' : live ? ' <span class="tag tag-ok">지금 계산</span>' : ''}</span><span class="mono muted" style="font-size:10px;letter-spacing:.5px;padding-left:16px">${esc(note)}</span></span></span>${order.map(c => `<span class="r" style="min-width:0"><span class="num" style="font-size:13px;${strong ? 'color:#000;font-weight:500' : 'color:var(--mfg)'}">${pct(p[c])}</span></span>`).join('')}</div>`;
+  return `<div class="tr" style="grid-template-columns:minmax(0,1.3fr) repeat(4,minmax(0,1fr));${strong ? 'background:#fff;' : ''}"><span class="" style="min-width:0"><span style="display:flex;flex-direction:column;gap:3px"><span style="display:flex;align-items:center;gap:8px;font-weight:500"><span class="sq" style="background:${(ENG[id] || ['#000'])[0]};width:8px;height:8px"></span>${esc(label)}${live === false ? ' <span class="tag tag-ai">Saved evaluation</span>' : live ? ' <span class="tag tag-ok">Computed now</span>' : ''}</span><span class="mono muted" style="font-size:10px;letter-spacing:.5px;padding-left:16px">${esc(note)}</span></span></span>${order.map(c => `<span class="r" style="min-width:0"><span class="num" style="font-size:13px;${strong ? 'color:#000;font-weight:500' : 'color:var(--mfg)'}">${pct(p[c])}</span></span>`).join('')}</div>`;
 }
 VIEWS.engines = async (root, params) => {
   const hh = params.hh || '1804';
@@ -429,18 +449,17 @@ VIEWS.engines = async (root, params) => {
   K(root, 'hh').innerHTML = opts.map(h => `<option ${h === hh ? 'selected' : ''}>${h}</option>`).join('');
   const pr = d.product;
   set(root, 'prod', `#${pr.product_id}`); set(root, 'visits', String(d.actual.visits)); set(root, 'buys', String(d.actual.bought_this));
-  const pname = `${pr.brand === 'Private' ? '자체 브랜드' : pr.brand} ${pr.type.toLowerCase()}(${pr.size.toLowerCase()})`;
-  const who = d.demographics ? personaLine(d.demographics).replace(/[“”.]/g, '') : '인구통계가 없는 가구';
-  set(root, 'desc', `${who}에게 ${pname}을 이번 장보기에 장바구니에 넣을 확률을 물었습니다.`);
-  set(root, 'pq', d.demographics ? `“${who}. 이번 장보기에 ${pname}을 담을 확률은?”` : '“이 가구는 인구통계가 없어 페르소나에게 물을 수 없습니다.”');
+  const pname = `${pr.brand === 'Private' ? 'store-brand' : pr.brand} ${pr.type.toLowerCase()} (${pr.size.toLowerCase()})`;
+  const who = d.demographics ? personaLine(d.demographics).replace(/[“”.]/g, '') : 'No demographics for this household';
+  set(root, 'desc', `Persona: ${who}. We asked how likely they are to put ${pname} in the basket on this trip.`);
+  set(root, 'pq', d.demographics ? `“${who}. How likely are you to put ${pname} in your basket on this trip?”` : '“This household has no demographics, so there is no persona to ask.”');
   const persona = d.engines.find(e => e.id === 'basic');
-  const ppMap = { '평소': 'none', '앞쪽 엔드캡': 'A_front_endcap', '전단': 'B_mailer_only', '기타 진열': 'C_other_display' };
-  $$('[data-pp]', root).forEach(x => x.textContent = persona ? pct(persona.p[ppMap[x.dataset.pp]]) : '—');
-  set(root, 'pnote', persona ? '그럴듯하고, 조건과 무관하다 · 저장된 평가 답' : '이 가구·상품 쌍은 페르소나 평가 표본에 없습니다');
+  $$('[data-pp]', root).forEach((x, k) => x.textContent = persona ? pct(persona.p[PP_ORDER[k]]) : '—');
+  set(root, 'pnote', persona ? 'Plausible, and blind to the store condition · saved evaluation answer' : 'This household–product pair is not in the persona evaluation sample');
   const btn = $('[data-act="persona"]', root); if (!health.llm || !d.demographics) btn.remove();
-  set(root, 'recLabel', `가구 ${hh}의 영수증 · 48–53주 · 실제`);
-  slot(root, 'receipts').innerHTML = d.receipts.slice(0, 5).map(r => `<li style="display:flex;flex-direction:column;gap:4px"><span class="mono" style="font-size:10px;letter-spacing:1px;color:rgba(255,255,255,.65)">STORE ${esc(r.store_id)} · ${esc(r.time)}</span><span style="font-size:15px;line-height:1.6;text-shadow:0 1px 8px rgba(72,0,24,.3)">${r.items}개 · $${nf(r.total)} · ${esc(r.top.join(', '))}${r.bought_this ? ' · <b>이 시리얼</b>' : ''}</span></li>`).join('');
-  set(root, 'recFoot', `${d.receipts.length}번 방문 · 이 시리얼 ${d.actual.bought_this}번 · 시리얼 전체 ${d.actual.cereal_visits}번`);
+  set(root, 'recLabel', `Household ${hh} receipts · weeks 48–53 · actual`);
+  slot(root, 'receipts').innerHTML = d.receipts.slice(0, 5).map(r => `<li style="display:flex;flex-direction:column;gap:4px"><span class="mono" style="font-size:10px;letter-spacing:1px;color:rgba(255,255,255,.65)">STORE ${esc(r.store_id)} · ${esc(r.time)}</span><span style="font-size:15px;line-height:1.6;text-shadow:0 1px 8px rgba(72,0,24,.3)">${r.items} items · $${nf(r.total)} · ${esc(r.top.join(', '))}${r.bought_this ? ' · <b>this cereal</b>' : ''}</span></li>`).join('');
+  set(root, 'recFoot', `${d.receipts.length} visits · this cereal ${d.actual.bought_this} times · any cereal ${d.actual.cereal_visits} times`);
   const byId = Object.fromEntries(d.engines.map(e => [e.id, e]));
   slot(root, 'eng').innerHTML = ENGINE_ROWS.filter(([id]) => byId[id]).map(([id, lab, note, strong]) => engineRow(id, lab, note, strong, byId[id].p, byId[id].live)).join('');
   VIEWS.engines._d = { hh, pr };
@@ -450,41 +469,40 @@ VIEWS.engines.after = (el) => {
   K(el, 'hh').onchange = e => location.hash = `#engines?hh=${e.target.value}`;
   const b = $('[data-act="persona"]', el);
   if (b) b.onclick = async () => {
-    b.disabled = true; b.innerHTML = '<span class="spin"></span> 묻는 중';
+    b.disabled = true; b.innerHTML = '<span class="spin"></span> Asking';
     try {
       const e = await api(`persona?id=${hh}&product=${pr.product_id}`);
       slot(el, 'eng').insertAdjacentHTML('afterbegin', engineRow('persona_live', e.label, e.note, false, e.p, true));
-      const ppMap = { '평소': 'none', '앞쪽 엔드캡': 'A_front_endcap', '전단': 'B_mailer_only', '기타 진열': 'C_other_display' };
-      $$('[data-pp]', el).forEach(x => x.textContent = pct(e.p[ppMap[x.dataset.pp]]));
-      set(el, 'pnote', `방금 ${e.label}에게 다시 물은 답`); b.remove();
-    } catch (err) { b.disabled = false; b.textContent = '다시 묻기'; set(el, 'pnote', llmWhy(err.message)); }
+      $$('[data-pp]', el).forEach((x, k) => x.textContent = pct(e.p[PP_ORDER[k]]));
+      set(el, 'pnote', `Fresh answer from ${e.label}`); b.remove();
+    } catch (err) { b.disabled = false; b.textContent = 'Ask again'; set(el, 'pnote', llmWhy(err.message)); }
   };
 };
 
-// S4 결정 안
+// S4 plans
 VIEWS.plans = async (root) => {
   const P = projSpace(), g = await api(`grid/latest?model=${currentModel()}`);
-  root.innerHTML = `<div class="hdr"><h1 class="ptitle">시험할 안 · ${esc(P ? P.spaceTitle : '다음 주 콜드 시리얼 · Store 367')}</h1></div>
-<p class="body muted" style="margin-top:-8px;max-width:820px">어디에 둘지 세 가지와 전단 세 가지를 곱한 아홉 가지 안입니다. 모두 같은 손님, 같은 방문으로 ${esc(MODEL_TITLE[currentModel()] || 'SimOff-1')} 하나가 시험합니다.</p>
+  root.innerHTML = `<div class="hdr"><h1 class="ptitle">Plans to test · ${esc(P ? P.spaceTitle : 'Cold cereal next week · Store 367')}</h1></div>
+<p class="body muted" style="margin-top:-8px;max-width:980px">Three places × three flyer options = nine plans, all tested by ${esc(MODEL_TITLE[currentModel()] || 'SimOff-1')} on the same shoppers and visits.</p>
 ${gridHTML(g, false)}`;
 };
 
 // one model, nine plans: where it sits (shelf / in-store display / front endcap) x the flyer (none / inside / front page)
 const GRID_ZONE = { shelf: 'none', other: 'C_other_display', front: 'A_front_endcap' };
 const currentModel = () => { const m = store.get('decisionModel', 'simoff_retail'); return ['simoff_retail', 'jev_raw', 'persona'].includes(m) ? m : 'simoff_retail'; };
-const MODEL_TITLE = { simoff_retail: 'SimOff-1', jev_raw: 'Jev', persona: '언어 모델 페르소나' };
+const MODEL_TITLE = { simoff_retail: 'SimOff-1', jev_raw: 'Jev', persona: 'Language-model persona' };
 function gridLabels(p) {
   const P = projSpace();
   const d = P ? { shelf: P.plans.none.label, other: P.plans.C_other_display.label, front: P.plans.A_front_endcap.label }[p.display] : p.display_label;
-  const m = P ? { none: '홍보 없음', inner: '전단 · 쿠폰 안내', front: '전단 1면' }[p.mailer] : p.mailer_label;
+  const m = P ? { none: 'No promotion', inner: 'Flyer · coupon', front: 'Flyer front page' }[p.mailer] : p.mailer_label;
   return [d, m];
 }
 function crowdPlan(p) { return p.display === 'front' ? 'A_front_endcap' : p.display === 'other' ? 'C_other_display' : p.mailer !== 'none' ? 'B_mailer_only' : 'none'; }
 function gridCard(p, g, withNumbers) {
   const [d, m] = gridLabels(p), num = p.per_1000;
-  const v = withNumbers ? [`<span class="stat" style="font-size:20px">${num == null ? '—' : num >= 100 ? n0(num) : nf(num)}</span>`, `<span class="lbl" style="text-transform:none">${p.lift == null ? '평가 없음' : `지금 대비 ${nf(p.lift, 1)}배`}</span>`] : ['', ''];
+  const v = withNumbers ? [`<span class="stat" style="font-size:20px">${num == null ? '—' : num >= 100 ? n0(num) : nf(num)}</span>`, `<span class="lbl" style="text-transform:none">${p.lift == null ? 'Not evaluated' : `${nf(p.lift, 1)}× vs now`}</span>`] : ['', ''];
   return `<article class="card run-card grid-card" data-card="${p.id}">
-<img class="g9-shot" data-shot="${GRID_ZONE[p.display]}" data-plan="${crowdPlan(p)}" data-group="g:${p.id}" data-lift="${p.lift ?? 1}" alt="${esc(d)} · ${esc(m)} 3D 장면" style="display:block;width:100%;background:#eceeed">
+<img class="g9-shot" data-shot="${GRID_ZONE[p.display]}" data-plan="${crowdPlan(p)}" data-group="g:${p.id}" data-lift="${p.lift ?? 1}" alt="3D scene: ${esc(d)} · ${esc(m)}" style="display:block;width:100%;background:#eceeed">
 <div class="g9-txt"><div class="g9-l"><span style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;min-width:0"><span class="sq" style="background:${COL[GRID_ZONE[p.display]]};width:8px;height:8px;flex:none"></span>${esc(d)}</span>${v[0]}</div>
 <div class="g9-l muted" style="font-size:12px"><span style="display:flex;align-items:center;gap:6px;min-width:0">${p.mailer !== 'none' ? `<span class="sq" style="background:${COL.B_mailer_only};width:7px;height:7px;flex:none"></span>` : ''}${esc(m)}</span>${v[1]}</div></div></article>`;
 }
@@ -493,17 +511,17 @@ function gridHTML(g, withNumbers) {
 ${['none', 'inner', 'front'].map(m => `<span class="grid9-r">${esc(gridLabels({ display: 'shelf', mailer: m, display_label: '', mailer_label: g.plans.find(p => p.mailer === m).mailer_label })[1])}</span>${['shelf', 'other', 'front'].map(d => gridCard(g.plans.find(p => p.display === d && p.mailer === m), g, withNumbers)).join('')}`).join('')}</div>`;
 }
 function markBestGrid(root, g) {
-  $$('.grid-card', root).forEach(c => { const on = c.dataset.card === g.best; c.classList.toggle('best', on); c.classList.toggle('dim', !on); $('.best-badge', c)?.remove(); if (on) c.insertAdjacentHTML('afterbegin', '<span class="best-badge">최선</span>'); });
+  $$('.grid-card', root).forEach(c => { const on = c.dataset.card === g.best; c.classList.toggle('best', on); c.classList.toggle('dim', !on); $('.best-badge', c)?.remove(); if (on) c.insertAdjacentHTML('afterbegin', '<span class="best-badge">Best</span>'); });
 }
 
-// S5 실행
+// S5 run
 VIEWS.run = async (root) => {
   const g = await api(`grid/latest?model=${currentModel()}`); VIEWS.run._g = g;
-  set(root, 'title', '실행 결과');
-  set(root, 'intro', `${MODEL_TITLE[g.model] || g.model} 하나로 아홉 가지 안을 같은 손님, 같은 방문(${n0(g.decisions)}개 결정)에 돌렸습니다. 숫자는 방문 1,000회당 판매.`);
+  set(root, 'title', 'Run results');
+  set(root, 'intro', `${MODEL_TITLE[g.model] || g.model} ran all nine plans on the same shoppers and the same visits (${n0(g.decisions)} decisions). Numbers are sales per 1,000 visits.`);
   const meta = K(root, 'decisions')?.closest('.card'); if (meta) meta.remove();
   const ran = ranGrid(g.model);
-  if (!ran) { set(root, 'title', '실행'); set(root, 'intro', `아홉 가지 안이 준비됐습니다. 실행을 누르면 ${MODEL_TITLE[g.model] || g.model}이(가) 같은 손님, 같은 방문으로 모두 시뮬레이션합니다.`); const b = $('[data-act="rerun"]', root); if (b) b.textContent = '실행'; }
+  if (!ran) { set(root, 'title', 'Run'); set(root, 'intro', `Nine plans are ready. Press Run and ${MODEL_TITLE[g.model] || g.model} simulates every one on the same shoppers and the same visits.`); const b = $('[data-act="rerun"]', root); if (b) b.textContent = 'Run'; }
   slot(root, 'engines').innerHTML = gridHTML(g, ran); if (ran) markBestGrid(root, g);
 };
 const ranGrid = (m, on) => { try { if (on) sessionStorage.setItem(`oa:ran:${m}`, '1'); return sessionStorage.getItem(`oa:ran:${m}`) === '1'; } catch { return !!on; } };
@@ -511,7 +529,7 @@ VIEWS.run.live = { paused: true };     // the result is in: the cards settle, th
 VIEWS.run.after = (el, params) => {
   const gauge = slot(el, 'gauge'), bar = $('.gauge-bar i', gauge), txt = $('.gauge-txt', gauge);
   const rerun = async () => {
-    const b = $('[data-act="rerun"]', el); if (b.disabled) return; b.disabled = true; b.textContent = '실행 중';
+    const b = $('[data-act="rerun"]', el); if (b.disabled) return; b.disabled = true; b.textContent = 'Running';
     $$('.run-card', el).forEach(c => { c.classList.remove('best', 'dim'); $('.best-badge', c)?.remove(); });
     const intro = K(el, 'intro'); gauge.hidden = false; if (intro) intro.hidden = true; bar.style.width = '0%';
     live?.run();
@@ -522,7 +540,7 @@ VIEWS.run.after = (el, params) => {
         const t = performance.now() - t0;
         const p = done && (err || t >= MIN) ? 1 : done ? Math.max(.9, t / MIN) : Math.min(.9, 1 - Math.exp(-t / 2200));
         bar.style.width = `${(p * 100).toFixed(1)}%`;
-        txt.textContent = p >= 1 ? '완료' : `시뮬레이션 중 · ${n0(438325 * p)} / 438,325 결정 × 안 9개`;
+        txt.textContent = p >= 1 ? 'Done' : `Simulating · ${n0(438325 * p)} / 438,325 decisions × 9 plans`;
         if (p >= 1) return resolve(); setTimeout(tick, 40);   // a timer, not rAF: the gauge must finish even in a background tab
       };
       tick();
@@ -534,8 +552,8 @@ VIEWS.run.after = (el, params) => {
       $$('img[data-shot]', el).forEach(i => { const c = keep.get(i.dataset.group); if (c) i.replaceWith(c); });
       markBestGrid(el, res);
     } else if (err) slot(el, 'engines').insertAdjacentHTML('afterbegin', errBox(err));
-    setTimeout(() => { gauge.hidden = true; const i = K(el, 'intro'); if (i) { i.hidden = false; if (res) i.textContent = `${MODEL_TITLE[res.model] || res.model} 하나로 아홉 가지 안을 같은 손님, 같은 방문(${n0(res.decisions)}개 결정)에 돌렸습니다. 숫자는 방문 1,000회당 판매.`; } }, 900);
-    b.disabled = false; b.textContent = '다시 실행';
+    setTimeout(() => { gauge.hidden = true; const i = K(el, 'intro'); if (i) { i.hidden = false; if (res) i.textContent = `${MODEL_TITLE[res.model] || res.model} ran all nine plans on the same shoppers and the same visits (${n0(res.decisions)} decisions). Numbers are sales per 1,000 visits.`; } }, 900);
+    b.disabled = false; b.textContent = 'Run again';
   };
   $('[data-act="rerun"]', el).onclick = rerun;
   $('[data-act="csv"]', el).onclick = () => {
@@ -546,57 +564,59 @@ VIEWS.run.after = (el, params) => {
   if (params.go) { history.replaceState(null, '', '#run'); setTimeout(rerun, 1200); }
 };
 
-// S6 검증
+// S6 model check
 VIEWS.verify = async (root) => {
   const v = await api('validation');
   const pe = v.persona.engines, me = v.model_eval, act = v.persona.actual_rate_by_condition_all_test, L = v.persona.actual_lift_pooled.A_front_endcap;
   // keep the calibration chart from the board, on a plain card
-  const chart = $$('.card', root).find(c => c.textContent.includes('보정 곡선'));
-  if (chart) { chart.className = 'card'; chart.style.removeProperty('--card-accent'); $('.lbl', chart).textContent = 'SimOff-1이 말한 확률 vs 실제 비율';
-    const cap = [...chart.querySelectorAll('p, div')].reverse().find(e => e.textContent.includes('점선')); if (cap) cap.innerHTML = '모델이 "1%"라고 하면 실제로도 1%쯤 샀다는 뜻입니다. 점이 점선에 붙을수록 믿을 만한 확률입니다.'; }
+  // found by structure, not wording: the card that draws the dashed diagonal, and the caption that carries the ECE
+  const chart = $$('.card', root).find(c => c.querySelector('line[stroke-dasharray]'));
+  if (chart) { chart.className = 'card'; chart.style.removeProperty('--card-accent'); $('.lbl', chart).textContent = 'SimOff-1\'s stated probability vs actual rate';
+    const cap = chart.querySelector('[data-k="ece"]')?.closest('p'); if (cap) cap.innerHTML = 'When the model says "1%", about 1% actually bought. The closer the dots sit to the dashed line, the more you can trust the probability.'; }
   const M = [{ name: 'SimOff-1', c: '#0F766E', p: pe.calibrated, auc: me.engines.calibrated.auc },
              { name: 'Jev', c: '#6D5BD0', p: pe.jev_state, auc: v.jev.engines.jev_raw.auc },
-             { name: '언어 모델 페르소나', c: '#F99C00', p: pe.basic, auc: null }];
+             { name: 'Language-model persona', c: '#F99C00', p: pe.basic, auc: null }];
   const real = act.none, inBand = x => x >= L.ci95[0] && x <= L.ci95[1];
   const verdict = (ok, txt) => `<span class="tag ${ok ? 'tag-ok' : 'tag-no'}">${txt}</span>`;
   const row = (m, val, v2) => `<div class="vq-row"><span class="vq-m"><span class="sq" style="background:${m.c};width:8px;height:8px"></span>${m.name}</span><span class="vq-v">${val}</span>${v2}</div>`;
-  const q = (n, title, sub, realTxt, rows) => `<article class="card vq"><div class="lbl">질문 ${n}</div><h3>${title}</h3><p class="muted">${sub}</p><div class="vq-real"><span>실제</span><b>${realTxt}</b></div>${rows}</article>`;
-  root.innerHTML = `<div class="hdr"><h1 class="ptitle">모델 검증</h1></div>
-<section><h2 class="display" style="font-size:24px;max-width:820px">결정 모델이 본 적 없는 6주의 실제 구매로 시험했습니다.</h2>
-<p class="body muted" style="margin-top:6px;max-width:860px">미국 식료품 체인 2,469가구의 기록 중 마지막 6주(방문 × 상품 ${n0(me.n_test_rows)}건, 실제 구매 ${n0(me.n_test_buys)}건)는 학습에 쓰지 않고 정답으로만 남겼습니다. 세 모델에 같은 질문을 했습니다.</p></section>
+  const q = (n, title, sub, realTxt, rows) => `<article class="card vq"><div class="lbl">Question ${n}</div><h3>${title}</h3><p class="muted">${sub}</p><div class="vq-real"><span>Actual</span><b>${realTxt}</b></div>${rows}</article>`;
+  root.innerHTML = `<div class="hdr"><h1 class="ptitle">Model check</h1></div>
+<section><h2 class="display" style="font-size:24px;max-width:820px">We tested the decision model on six weeks of real purchases it had never seen.</h2>
+<p class="body muted" style="margin-top:6px;max-width:860px">Of the records from 2,469 households at a US grocery chain, the last six weeks (${n0(me.n_test_rows)} visit × product rows, ${n0(me.n_test_buys)} actual purchases) were held out of training and kept only as the answer key. All three models were asked the same questions.</p></section>
 <section class="vq-grid">
-${q(1, '몇 명이 살지 맞히나', '평소 진열일 때 한 번 들른 손님이 그 상품을 살 확률', pct(real), M.map(m => { const r = m.p.mean_p_by_condition.none / real; return row(m, pct(m.p.mean_p_by_condition.none), r < 1.5 && r > 1 / 1.5 ? verdict(true, '거의 맞음') : verdict(false, `${n0(r)}배 부풀림`)); }).join(''))}
-${q(2, '진열하면 얼마나 더 팔릴지 맞히나', '입구 엔드캡에 두면 평소보다 몇 배', `${nf(L.actual, 1)}배 <span class="muted" style="font-weight:400">(${nf(L.ci95[0], 1)}–${nf(L.ci95[1], 1)})</span>`, M.map(m => row(m, `${nf(m.p.lift_A_endcap, 1)}배`, inBand(m.p.lift_A_endcap) ? verdict(true, '범위 안') : verdict(false, '작게 봄'))).join(''))}
-${q(3, '누가 살지 먼저 짚나', '살 손님을 안 살 손님보다 높게 놓는 정도 (0.5 = 찍기, 1 = 완벽)', '—', M.map(m => row(m, m.auc == null ? '측정 안 함' : nf(m.auc, 2), m.auc == null ? '' : `<span class="vq-bar"><i style="width:${Math.max(0, (m.auc - .5) * 200).toFixed(0)}%;background:${m.c}"></i></span>`)).join(''))}
+${q(1, 'Does it get how many will buy?', 'The chance a shopper on one visit buys the item from the regular shelf', pct(real), M.map(m => { const r = m.p.mean_p_by_condition.none / real; return row(m, pct(m.p.mean_p_by_condition.none), r < 1.5 && r > 1 / 1.5 ? verdict(true, 'Close') : verdict(false, `${n0(r)}× too high`)); }).join(''))}
+${q(2, 'Does it get how much a display adds?', 'How many times more it sells on the entrance endcap than usual', `${nf(L.actual, 1)}× <span class="muted" style="font-weight:400">(${nf(L.ci95[0], 1)}–${nf(L.ci95[1], 1)})</span>`, M.map(m => row(m, `${nf(m.p.lift_A_endcap, 1)}×`, inBand(m.p.lift_A_endcap) ? verdict(true, 'In range') : verdict(false, 'Too low'))).join(''))}
+${q(3, 'Does it spot who will buy?', 'How well it ranks buyers above non-buyers (0.5 = a coin flip, 1 = perfect)', '—', M.map(m => row(m, m.auc == null ? 'Not measured' : nf(m.auc, 2), m.auc == null ? '' : `<span class="vq-bar"><i style="width:${Math.max(0, (m.auc - .5) * 200).toFixed(0)}%;background:${m.c}"></i></span>`)).join(''))}
 </section>
 <section class="vq-bottom"><div data-slot="chart"></div>
-<div><div class="lbl">정리</div><ul class="vq-list"><li><b>SimOff-1</b> 은 실제 구매 수준과 진열 효과를 모두 실제 범위 안에서 맞혔습니다.</li><li><b>Jev</b> 는 누가 살지 순위는 꽤 짚지만, 구매 확률을 수십 배 부풀리고 진열 효과를 작게 봅니다.</li><li><b>언어 모델 페르소나</b> 는 그럴듯하게 답하지만 구매를 약 200배 부풀리고, 진열이 달라져도 답이 거의 같습니다.</li></ul></div>
-<div><div class="lbl">아직 판정하지 못한 것</div><ul class="vq-list muted"><li>전단 효과 — 같은 주에 전단을 안 한 매장이 없어 비교할 수 없음</li><li>할인 — 사지 않은 방문의 가격이 기록에 없음</li></ul></div></section>`;
+<div><div class="lbl">Summary</div><ul class="vq-list"><li><b>SimOff-1</b> got both the real purchase level and the display effect within the actual range.</li><li><b>Jev</b> ranks who will buy fairly well, but inflates the purchase probability tens of times over and underestimates the display effect.</li><li><b>Language-model persona</b> answers plausibly, but inflates purchases about 200× and barely changes its answer when the display changes.</li></ul></div>
+<div><div class="lbl">Not yet judged</div><ul class="vq-list muted"><li>Flyer effect — every store ran the flyer in the same weeks, so there is nothing to compare against</li><li>Discounts — prices on visits without a purchase are not recorded</li></ul></div></section>`;
   if (chart) slot(root, 'chart').replaceWith(chart);
 };
 
-// 모델 체험: say who, what and where in a sentence; the model's input, its output (JSON) and what moves the answer
-const PG_TYPE = { 'KIDS CEREAL': '어린이 시리얼', 'ALL FAMILY CEREAL': '가족용 시리얼', 'ADULT CEREAL': '성인용 시리얼' };
+// Try the model: say who, what and where in a sentence; the model's input, its output (JSON) and what moves the answer
+const PG_TYPE = { 'KIDS CEREAL': 'Kids cereal', 'ALL FAMILY CEREAL': 'Family cereal', 'ADULT CEREAL': 'Adult cereal' };
 const pgProd = p => p ? `${PG_TYPE[p.type] || p.type} ${p.size.toLowerCase()} · $${nf(p.price)}` : '';
-const PG_D = { shelf: '평소 선반', other: '매장 안 보조 진열', front: '입구 엔드캡' }, PG_M = { none: '전단 없음', inner: '전단 안쪽 면', front: '전단 1면' };
-const PG_IN = [['visits', v => `반년 방문 ${n0(v)}회`], ['avg_spend', v => `장볼 때 $${n0(v)}`], ['cereal_visit_rate', v => `시리얼 사는 방문 ${Math.round(v * 100)}%`],
-  ['cereal_spend_share', v => `지출 중 시리얼 ${nf(v * 100, 1)}%`], ['disc_share', v => `할인 상품 ${Math.round(v * 100)}%`], ['private_share', v => `자체 브랜드 ${Math.round(v * 100)}%`], ['hp_count', v => `이 상품 산 횟수 ${v}회`]];
-const PG_EXAMPLES = ['주 2번 오는 시리얼 단골이, 입구 엔드캡에 어린이 시리얼이 있으면 살까?',
-  '한 달에 한 번 오고 할인 상품만 찾는 손님에게 가족용 시리얼을 전단 1면에 실으면 어때?',
-  '같은 평균 손님에게 성인용 시리얼을 평소 선반에 둘 때와 입구 엔드캡에 둘 때를 비교해 줘.'];
+const PG_D = { shelf: 'Regular shelf', other: 'In-store secondary display', front: 'Entrance endcap' }, PG_M = { none: 'No flyer', inner: 'Flyer inside page', front: 'Flyer front page' };
+const PG_IN = [['visits', v => `${n0(v)} visits in six months`], ['avg_spend', v => `$${n0(v)} per trip`], ['cereal_visit_rate', v => `cereal on ${Math.round(v * 100)}% of visits`],
+  ['cereal_spend_share', v => `cereal ${nf(v * 100, 1)}% of spend`], ['disc_share', v => `discounted items ${Math.round(v * 100)}%`], ['private_share', v => `store brand ${Math.round(v * 100)}%`], ['hp_count', v => `bought this item ${v} times`]];
+const PG_EXAMPLES = ['A cereal regular who comes twice a week: would they buy kids cereal from the entrance endcap?',
+  'What if family cereal goes on the flyer front page for a shopper who comes once a month and only buys on discount?',
+  'For the same average shopper, compare adult cereal on the regular shelf with the entrance endcap.'];
 const PG = (() => { try { return JSON.parse(sessionStorage.getItem('oa:pg')) || { turns: [] }; } catch { return { turns: [] }; } })();
 const pgSave = () => { try { sessionStorage.setItem('oa:pg', JSON.stringify(PG)); } catch {} };
 VIEWS.try = async () => { VIEWS.try._prods = await api('decide/products'); };
 VIEWS.try.after = (el, params, cleanups) => {
   const thread = slot(el, 'thread'), ta = K(el, 'ask'), sendB = $('[data-act="send"]', el), prods = VIEWS.try._prods;
   const prodOf = id => prods.find(p => p.product_id === id);
+  if (!PG.turns.length) ta.value = PG_EXAMPLES[0];
   let history = [], busy = false, current = null;
   slot(el, 'examples').innerHTML = PG_EXAMPLES.map(t => `<button type="button" data-ex>${esc(t)}</button>`).join('');
   $$('[data-ex]', el).forEach(b => b.onclick = () => send(b.textContent));
   const caseName = c => c.label || `${pgProd(prodOf(c.response.input.product_id))} · ${PG_D[c.response.input.display]}`;
   function show(c, allCases) {
     current = c; const r = c.response, i = r.input;
-    set(el, 'outTitle', `SimOff-1의 답 · ${caseName(c)}`);
+    set(el, 'outTitle', `SimOff-1's answer · ${caseName(c)}`);
     const cs = slot(el, 'cases');
     cs.hidden = !(allCases && allCases.length > 1);
     if (allCases && allCases.length > 1) {
@@ -608,13 +628,13 @@ VIEWS.try.after = (el, params, cleanups) => {
       .map(([k, t]) => `<span style="${said.has(k) ? 'background:#171717;color:#fff' : ''}">${esc(t)}</span>`).join('');
     const top = Math.max(...r.drivers.flatMap(d => [d.p_low, d.p_high]), r.p_buy) * 1.08, X = p => (p / top * 100).toFixed(1);
     const D = ['shelf', 'other', 'front'], M = ['none', 'inner', 'front'], gmax = Math.max(...r.all_conditions.map(x => x.p));
-    slot(el, 'view').innerHTML = `<div class="lbl">모델이 받은 입력 <span class="muted" style="text-transform:none;letter-spacing:0">· 검은 칸은 문장에서 읽은 값, 나머지는 평균 손님 값</span></div><div class="pg-in-row">${chips}</div>
-<div class="pg-big" style="margin-top:18px"><span>${nf(r.p_buy * 100, 3)}%</span><span class="pg-big-s">이번 방문에 살 확률 · ${n0(1 / r.p_buy)}번 들르면 한 번꼴</span></div>
-<div class="pg-stats"><div><span class="lbl">방문 1,000회당</span><b>${nf(r.per_1000_visits, 2)}개</b></div><div><span class="lbl">평소 선반 · 전단 없음 대비</span><b>×${nf(r.lift_vs_shelf, 2)}</b></div><div><span class="lbl">같은 조건의 평균 손님 대비</span><b>×${nf(r.p_buy / r.average_customer_p, 2)}</b></div></div>
-<div class="lbl" style="margin-top:22px">무엇이 확률을 움직이나 <span class="muted" style="text-transform:none;letter-spacing:0">· 한 가지만 낮게 → 높게 바꿨을 때, 세로선은 지금</span></div>
+    slot(el, 'view').innerHTML = `<div class="lbl">What the model received <span class="muted" style="text-transform:none;letter-spacing:0">· dark chips were read from your sentence; the rest are average-shopper values</span></div><div class="pg-in-row">${chips}</div>
+<div class="pg-big" style="margin-top:18px"><span>${nf(r.p_buy * 100, 3)}%</span><span class="pg-big-s">chance of buying on this visit · about once every ${n0(1 / r.p_buy)} visits</span></div>
+<div class="pg-stats"><div><span class="lbl">Per 1,000 visits</span><b>${nf(r.per_1000_visits, 2)}</b></div><div><span class="lbl">vs regular shelf · no flyer</span><b>×${nf(r.lift_vs_shelf, 2)}</b></div><div><span class="lbl">vs the average shopper, same conditions</span><b>×${nf(r.p_buy / r.average_customer_p, 2)}</b></div></div>
+<div class="lbl" style="margin-top:22px">What moves the probability <span class="muted" style="text-transform:none;letter-spacing:0">· one input changed from low → high; the vertical line is now</span></div>
 <div style="margin-top:6px">${r.drivers.map(d => { const lo = Math.min(d.p_low, d.p_high), hi = Math.max(d.p_low, d.p_high);
       return `<div class="pg-drv"><span>${esc(d.label)}</span><span class="trk"><i style="left:${X(lo)}%;width:${Math.max(.8, X(hi) - X(lo))}%"></i><em style="left:${X(r.p_buy)}%"></em></span><span class="v">${nf(d.p_low * 100, 2)} → ${nf(d.p_high * 100, 2)}%</span></div>`; }).join('')}</div>
-<div class="lbl" style="margin-top:22px">같은 손님 · 같은 상품, 매장 조건 아홉 가지 <span class="muted" style="text-transform:none;letter-spacing:0">· 방문 1,000회당</span></div>
+<div class="lbl" style="margin-top:22px">Same shopper · same item, nine store conditions <span class="muted" style="text-transform:none;letter-spacing:0">· per 1,000 visits</span></div>
 <div class="pg-grid"><span></span>${D.map(d => `<span>${PG_D[d]}</span>`).join('')}${M.map(m => `<span>${PG_M[m]}</span>` + D.map(d => {
       const x = r.all_conditions.find(y => y.display === d && y.mailer === m);
       return `<button type="button" class="pg-cell${d === i.display && m === i.mailer ? ' on' : ''}" data-cell="${d}:${m}" style="background:rgba(15,118,110,${(.06 + .5 * x.p / gmax).toFixed(3)})"><b>${nf(x.p * 1000, 2)}</b><span class="muted" style="font-size:11px">×${nf(x.lift, 2)}</span></button>`; }).join('')).join('')}</div>`;
@@ -642,7 +662,7 @@ VIEWS.try.after = (el, params, cleanups) => {
     text = (text || '').trim(); if (!text || busy) return;
     busy = true; sendB.disabled = true; ta.value = '';
     bubble('user', esc(text)); history.push({ role: 'user', text });
-    const ai = bubble('ai', '<div class="typing" aria-label="생각하는 중"><i></i><i></i><i></i></div>');
+    const ai = bubble('ai', '<div class="typing" aria-label="Thinking"><i></i><i></i><i></i></div>');
     try {
       const r = await api('decide/chat', { history });
       history.push({ role: 'assistant', text: r.reply });
@@ -658,7 +678,7 @@ VIEWS.try.after = (el, params, cleanups) => {
   for (const t of PG.turns) { bubble('user', esc(t.user)); history.push({ role: 'user', text: t.user }, { role: 'assistant', text: t.reply }); answer(bubble('ai', ''), t); }
 };
 
-// 최종 배치 (3D)
+// final layout (3D)
 function stat(v, l, sub) { return `<div style="display:flex;flex-direction:column;gap:8px;padding:16px 0;border-top:1px solid var(--border)"><span class="lbl">${l}</span><span class="stat">${v}</span><span class="muted" style="font-size:12px">${sub}</span></div>`; }
 VIEWS.layout = async (root, params) => {
   const P = projSpace(); VIEWS.layout._P = P;
@@ -668,32 +688,32 @@ VIEWS.layout = async (root, params) => {
     const name = p => gridLabels(p).join(' + '), fxOf = p => ({ front: P.plans.A_front_endcap.fx, other: P.plans.C_other_display.fx }[p.display] || null);
     VIEWS.layout._fx = Object.fromEntries(g.plans.map(p => [p.id, fxOf(p)]));
     VIEWS.layout._best = best.id;
-    root.innerHTML = `<div class="hdr"><h1 class="ptitle">최종 배치 · ${esc(P.spaceTitle)}</h1></div>
+    root.innerHTML = `<div class="hdr"><h1 class="ptitle">Final layout · ${esc(P.spaceTitle)}</h1></div>
 <section class="fit-screen"><div class="fit-stage" style="position:relative;overflow:hidden;border:1px solid var(--border);background:var(--card)"><div data-slot="pstage" style="width:100%;height:100%"></div>
-<div style="position:absolute;left:16px;top:16px"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">제안: ${esc(name(best))}</span></div></div>
-<aside class="fit-side"><div><div class="lbl">${esc(P.title.length > 60 ? P.title.slice(0, 60) + '…' : P.title)}</div><h2 class="display" style="margin-top:8px;font-size:22px;line-height:1.35">제안: ${esc(name(best))}. 판매가 지금의 ${nf(best.lift, 1)}배.</h2></div>
-<div class="stats4">${stat(`×${nf(best.lift, 1)}`, '지금 그대로 대비', `방문 1,000회당 ${nf(base.per_1000)} → ${nf(best.per_1000)}`)}${stat(`+${nf(best.per_1000 - base.per_1000)}`, '방문 1,000회당 추가 판매', MODEL_NOTE)}</div>
-<div class="tbl fit-list"><div class="th" style="grid-template-columns:minmax(0,1fr) 70px"><span>안</span><span class="r">1,000회당</span></div>${ranked.map(p => `<button type="button" class="tr list-btn" data-plan="${p.id}" style="display:grid;grid-template-columns:minmax(0,1fr) 70px;gap:10px;align-items:center;padding:12px 14px;border-top:1px solid rgba(216,221,223,.7);width:100%"><span style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="sq" style="background:${COL[GRID_ZONE[p.display]]};width:8px;height:8px"></span>${esc(name(p))}${p.id === best.id ? ' <span class="tag tag-ok">최선</span>' : ''}</span><span class="num r" style="font-size:12px">${nf(p.per_1000)}</span></button>`).join('')}</div>
+<div style="position:absolute;left:16px;top:16px"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">Proposed: ${esc(name(best))}</span></div></div>
+<aside class="fit-side"><div><div class="lbl">${esc(P.title.length > 60 ? P.title.slice(0, 60) + '…' : P.title)}</div><h2 class="display" style="margin-top:8px;font-size:22px;line-height:1.35">Proposed: ${esc(name(best))}. Sales at ${nf(best.lift, 1)}× today.</h2></div>
+<div class="stats4">${stat(`×${nf(best.lift, 1)}`, 'vs as it is', `Per 1,000 visits ${nf(base.per_1000)} → ${nf(best.per_1000)}`)}${stat(`+${nf(best.per_1000 - base.per_1000)}`, 'Extra sales per 1,000 visits', MODEL_NOTE)}</div>
+<div class="tbl fit-list"><div class="th" style="grid-template-columns:minmax(0,1fr) 70px"><span>Plan</span><span class="r">Per 1,000</span></div>${ranked.map(p => `<button type="button" class="tr list-btn" data-plan="${p.id}" style="display:grid;grid-template-columns:minmax(0,1fr) 70px;gap:10px;align-items:center;padding:12px 14px;border-top:1px solid rgba(216,221,223,.7);width:100%"><span style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="sq" style="background:${COL[GRID_ZONE[p.display]]};width:8px;height:8px"></span>${esc(name(p))}${p.id === best.id ? ' <span class="tag tag-ok">Best</span>' : ''}</span><span class="num r" style="font-size:12px">${nf(p.per_1000)}</span></button>`).join('')}</div>
 </aside></section>`;
     return;
   }
   const stores = await api('stores');
   const sid = params.store || store.get('store', stores[0].store_id);
   const L = await api(`layout?store=${sid}`);
-  const cur = L.plans.current, nxt = L.plans.proposed, V = L.validation, LB = c => c === 'none' ? '선반' : LBL[c];
+  const cur = L.plans.current, nxt = L.plans.proposed, V = L.validation, LB = c => c === 'none' ? 'Shelf' : LBL[c];
   const moved = L.products.filter(p => p.moved).sort((a, b) => b.gain - a.gain);
-  set(root, 'title', `최종 배치 · Store ${sid} · 시리얼 ${L.products.length}개`); set(root, 'asOf', `${L.as_of}주 배치`);
+  set(root, 'title', `Final layout · Store ${sid} · ${L.products.length} cereals`); set(root, 'asOf', `Layout as of week ${L.as_of}`);
   K(root, 'store').innerHTML = stores.map(s => `<option value="${s.store_id}" ${s.store_id === sid ? 'selected' : ''}>Store ${s.store_id}</option>`).join('');
-  set(root, 'chip1', `제안 배치 · ${L.as_of}주까지 보고 결정 · ${L.weeks.join('–')}주 시뮬레이션`);
-  set(root, 'chip2', `자리 · 앞쪽 엔드캡 ${L.capacity.A_front_endcap} · 기타 진열 ${L.capacity.C_other_display}`);
-  set(root, 'lbl', `${L.weeks.join('–')}주에 실제로 온 손님 ${n0(L.visits)}회 방문으로 시뮬레이션`);
-  set(root, 'h2', `상품 ${moved.length}개를 옮기면, 판매 방문이 ${nf(cur.expected_units, 1)}에서 ${nf(nxt.expected_units, 1)}로.`);
-  slot(root, 'stats').innerHTML = stat(`×${nf(nxt.lift)}`, `지금(${L.as_of}주) 배치 대비`, `판매 방문 ${nf(cur.expected_units, 1)} → ${nf(nxt.expected_units, 1)}`)
-    + stat(`${nxt.extra_revenue >= 0 ? '+' : '-'}$${nf(Math.abs(nxt.extra_revenue))}`, '6주 기대 매출 차이', '할인 전 가격 기준')
-    + stat(`${Math.round(nxt.share_of_draws_above_baseline * 100)}%`, '지금보다 더 팔릴 확률', '같은 손님으로 200번 다시 돌려 본 결과')
-    + stat(`${V.actual} / ${nf(V.expected, 1)}`, '이 매장 실제 판매 / 모델', '지금 배치 그대로 6주');
-  slot(root, 'tags').innerHTML = `<span class="tag tag-ok">엔드캡 효과 · 시뮬레이터가 실제 범위 안</span><span class="tag ${V.in_band ? 'tag-ok' : 'tag-no'}">이 매장 6주 판매 ${V.actual}건 · ${V.in_band ? '범위 안' : '범위 밖'}</span>`;
-  slot(root, 'moves').innerHTML = moved.map(p => `<button type="button" class="tr list-btn" data-id="${p.id}" style="display:grid;grid-template-columns:26px minmax(0,1fr) 64px;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid rgba(216,221,223,.7);width:100%"><span class="num" style="font-size:11px;text-align:center;border-radius:2px;background:${COL[p.next]};color:${p.next === 'A_front_endcap' ? '#fff' : '#000'};padding:1px 0">${p.n}</span><span style="min-width:0"><span style="display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)} ${esc(p.size)}</span><span class="muted" style="display:block;font-size:11px;margin-top:2px">${LB(p.now)} → <b style="color:#000;font-weight:500">${LB(p.next)}</b></span></span><span class="num r" style="font-size:12px">${p.gain ? '+$' + nf(p.gain) : '자리 양보'}</span></button>`).join('');
+  set(root, 'chip1', `Proposed layout · decided on data through week ${L.as_of} · simulated over weeks ${L.weeks.join('–')}`);
+  set(root, 'chip2', `Slots · front endcap ${L.capacity.A_front_endcap} · secondary display ${L.capacity.C_other_display}`);
+  set(root, 'lbl', `Simulated on ${n0(L.visits)} real shopper visits in weeks ${L.weeks.join('–')}`);
+  set(root, 'h2', `Move ${moved.length} products and sales visits go from ${nf(cur.expected_units, 1)} to ${nf(nxt.expected_units, 1)}.`);
+  slot(root, 'stats').innerHTML = stat(`×${nf(nxt.lift)}`, `vs the current layout (week ${L.as_of})`, `Sales visits ${nf(cur.expected_units, 1)} → ${nf(nxt.expected_units, 1)}`)
+    + stat(`${nxt.extra_revenue >= 0 ? '+' : '-'}$${nf(Math.abs(nxt.extra_revenue))}`, 'Expected 6-week revenue difference', 'At pre-discount prices')
+    + stat(`${Math.round(nxt.share_of_draws_above_baseline * 100)}%`, 'Chance it outsells today', 'From 200 reruns with the same shoppers')
+    + stat(`${V.actual} / ${nf(V.expected, 1)}`, 'This store\'s actual sales / model', 'Current layout, 6 weeks');
+  slot(root, 'tags').innerHTML = `<span class="tag tag-ok">Endcap effect · simulator within the actual range</span><span class="tag ${V.in_band ? 'tag-ok' : 'tag-no'}">This store's 6-week sales: ${V.actual} · ${V.in_band ? 'in range' : 'out of range'}</span>`;
+  slot(root, 'moves').innerHTML = moved.map(p => `<button type="button" class="tr list-btn" data-id="${p.id}" style="display:grid;grid-template-columns:26px minmax(0,1fr) 64px;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid rgba(216,221,223,.7);width:100%"><span class="num" style="font-size:11px;text-align:center;border-radius:2px;background:${COL[p.next]};color:${p.next === 'A_front_endcap' ? '#fff' : '#000'};padding:1px 0">${p.n}</span><span style="min-width:0"><span style="display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)} ${esc(p.size)}</span><span class="muted" style="display:block;font-size:11px;margin-top:2px">${LB(p.now)} → <b style="color:#000;font-weight:500">${LB(p.next)}</b></span></span><span class="num r" style="font-size:12px">${p.gain ? '+$' + nf(p.gain) : 'Gives up its spot'}</span></button>`).join('');
   VIEWS.layout._L = L;
 };
 VIEWS.layout.after = (el, params, cleanups) => {
@@ -718,45 +738,46 @@ VIEWS.layout.after = (el, params, cleanups) => {
   const t = setTimeout(() => setSt('next'), 900); cleanups.push(() => clearTimeout(t));
 };
 
-// S7 리포트
+// S7 report
 VIEWS.report = async (root) => {
   const [r, last] = await Promise.all([api('report'), api('run/latest')]);
   const N = r.numbers, eff = r.effects;
   const extra = N.per_1000_with - N.per_1000_without, usd = extra * N.median_shelf_price_usd;
-  set(root, 'title', '리포트');
-  set(root, 'lead', `엔드캡에 두면 평소보다 약 ${nf(eff.A_front_endcap.simulated.calibrated, 1)}배 팔린다고 봅니다. 실제로 엔드캡이었던 매장들에서 잰 효과(${nf(eff.A_front_endcap.actual.lift, 1)}배) 범위 안이고, 실제보다 약간 낮게 보는 편이라 보수적인 추정입니다.`);
-  set(root, 'per1000', `${nf(N.per_1000_without)} → ${nf(N.per_1000_with)}개`);
-  set(root, 'usd', `$${nf(usd, 1)}`); set(root, 'usdSub', `추가 ${nf(extra, 1)}개 × 중간 가격 $${nf(N.median_shelf_price_usd)} · 패널 가구 기준`);
+  set(root, 'title', 'Report');
+  set(root, 'lead', `On the endcap it should sell about ${nf(eff.A_front_endcap.simulated.calibrated, 1)}× more than usual. That is within the effect measured in stores where it actually sat on the endcap (${nf(eff.A_front_endcap.actual.lift, 1)}×), and it reads a little low, so the estimate is conservative.`);
+  set(root, 'per1000', `${nf(N.per_1000_without)} → ${nf(N.per_1000_with)}`);
+  set(root, 'usd', `$${nf(usd, 1)}`); set(root, 'usdSub', `${nf(extra, 1)} more × median price $${nf(N.median_shelf_price_usd)} · panel households`);
   const p = store.get('partner', {}), weeks = +p.weeks || 0, visits = +p.visits || 0;
   const card = (label, val, sub) => `<article class="d3 grad ink"><div class="mono" style="font-size:9px;letter-spacing:1.3px;text-transform:uppercase;color:rgba(255,255,255,.45)">${label}</div><div class="mono" style="margin-top:22px;font-size:28px;line-height:1;letter-spacing:-.04em">${val}</div><div style="margin-top:18px;padding-top:12px;border-top:1px solid rgba(255,255,255,.12);font-size:12px;line-height:1.5;color:rgba(255,255,255,.62)">${sub}</div></article>`;
-  slot(root, 'partner').innerHTML = weeks && visits ? card('매장 실험 대신 지금 결정하면', `$${n0(weeks * visits / 1000 * usd)}`, `실험 ${weeks}주 × 주당 방문 ${n0(visits)} × 1,000회당 $${nf(usd, 1)} · 그 기간 엔드캡을 안 썼다면 놓쳤을 추가 매출`)
-    : card('매장 실험 대신 지금 결정하면', '—', '<a href="#brief" style="color:#fff">결정 브리프</a>에서 실험 기간과 주당 방문 수를 넣으면 계산합니다');
-  slot(root, 'segments').innerHTML = N.segments.map((s, i) => `<div class="tr" style="grid-template-columns:minmax(0,1fr) 90px 120px;${i === 1 ? 'background:#fff;' : ''}"><span class="" style="min-width:0">${esc(s.segment)}</span><span class="r" style="min-width:0"><span class="num" style="font-size:12px">${nf(s.lift, 1)}배</span></span><span class="r" style="min-width:0"><span class="num" style="font-size:12px">+${nf(s.extra_per_1000, 1)}</span></span></div>`).join('');
-  set(root, 'share', `${Math.round((N.segments.find(s => s.segment.includes('없는'))?.share_of_extra || 0) * 100)}%`);
+  slot(root, 'partner').innerHTML = weeks && visits ? card('Decide now instead of testing in store', `$${n0(weeks * visits / 1000 * usd)}`, `${weeks}-week test × ${n0(visits)} visits a week × $${nf(usd, 1)} per 1,000 · the extra revenue lost by leaving the endcap unused for that time`)
+    : card('Decide now instead of testing in store', '—', 'Enter the test length and weekly visits in the <a href="#brief" style="color:#fff">decision brief</a> to calculate');
+  slot(root, 'segments').innerHTML = N.segments.map((s, i) => `<div class="tr" style="grid-template-columns:minmax(0,1fr) 90px 120px;${i === 1 ? 'background:#fff;' : ''}"><span class="" style="min-width:0">${esc(s.segment)}</span><span class="r" style="min-width:0"><span class="num" style="font-size:12px">${nf(s.lift, 1)}×</span></span><span class="r" style="min-width:0"><span class="num" style="font-size:12px">+${nf(s.extra_per_1000, 1)}</span></span></div>`).join('');
+  set(root, 'share', `${Math.round((N.segments[1]?.share_of_extra || 0) * 100)}%`);
 };
 function relabelText(root, map) {          // swap the example's plan names for the project's, in every text node
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); const nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
-  for (const n of nodes) { let t = n.nodeValue; for (const [a, b] of map) t = t.split(a).join(b); if (t !== n.nodeValue) n.nodeValue = t; }
+  const rx = map.map(([a, b]) => [new RegExp(a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), b]);   // English capitalises at sentence starts
+  for (const n of nodes) { let t = n.nodeValue; for (const [a, b] of rx) t = t.replace(a, () => b); if (t !== n.nodeValue) n.nodeValue = t; }
 }
 VIEWS.report.after = (el) => {
   const P = projSpace();
-  const ok = store.get('approved'); if (ok) slot(el, 'approve').innerHTML = `<span class="tag tag-ok" style="height:32px;padding:0 12px">승인됨 · ${esc(ok)}</span> <button type="button" class="btn btn-ghost btn-sm" data-act="undo">취소</button>`;
+  const ok = store.get('approved'); if (ok) slot(el, 'approve').innerHTML = `<span class="tag tag-ok" style="height:32px;padding:0 12px">Approved · ${esc(ok)}</span> <button type="button" class="btn btn-ghost btn-sm" data-act="undo">Undo</button>`;
   if (P) {
     const h2 = $('h2.display', el); if (h2) h2.innerHTML = `${esc(P.spaceTitle)}, ${esc(P.plans.A_front_endcap.label)}.`;
-    relabelText(el, [['다음 주 콜드 시리얼', P.spaceTitle], ['앞쪽 엔드캡', P.plans.A_front_endcap.label], ['기타 진열', P.plans.C_other_display.label], ['평소대로', P.plans.none.label], ['전단', P.plans.B_mailer_only.label]]);
-    const lead = K(el, 'lead'); if (lead) lead.textContent = `${P.plans.A_front_endcap.label}에 두면 지금보다 판매가 늘 것으로 봅니다. ${MODEL_NOTE} — 이 공간의 기록이 오면 다시 보정합니다.`;
+    relabelText(el, [['Cold cereal next week', P.spaceTitle], ['front endcap', P.plans.A_front_endcap.label], ['secondary display', P.plans.C_other_display.label], ['as usual', P.plans.none.label], ['flyer', P.plans.B_mailer_only.label]]);
+    const lead = K(el, 'lead'); if (lead) lead.textContent = `${P.plans.A_front_endcap.label}: expected to sell more than today. ${MODEL_NOTE} — recalibrated once this space's records arrive.`;
   }
-  const a = $('[data-act="approve"]', el); if (a) a.onclick = () => { store.set('approved', new Date().toLocaleString('ko-KR')); render(); };
+  const a = $('[data-act="approve"]', el); if (a) a.onclick = () => { store.set('approved', new Date().toLocaleString('en-US')); render(); };
   const u = $('[data-act="undo"]', el); if (u) u.onclick = () => { store.set('approved', null); render(); };
   $('[data-act="pdf"]', el).onclick = () => print();
-  $('[data-act="share"]', el).onclick = async (e) => { try { await navigator.clipboard.writeText(location.href); e.currentTarget.lastChild.textContent = ' 복사됨'; } catch { prompt('링크', location.href); } };
+  $('[data-act="share"]', el).onclick = async (e) => { try { await navigator.clipboard.writeText(location.href); e.currentTarget.lastChild.textContent = ' Copied'; } catch { prompt('Link', location.href); } };
 };
 
-// S8 매장 연결
+// S8 connect records
 VIEWS.connect = async (root) => {
   const P = projSpace(), pr = store.get('project');
-  set(root, 'mapName', P ? P.spaceTitle : `${pr?.kind === 'mart' ? '마트' : '매장'} · Store ${store.get('store', '367')}`);
-  if (P) { const s = $('[data-act="sample"]', root); if (s) s.textContent = '샘플 기록으로 계속 (마트 데이터)'; }
+  set(root, 'mapName', P ? P.spaceTitle : `${pr?.kind === 'mart' ? 'Grocery store · ' : ''}Store ${store.get('store', '367')}`);
+  if (P) { const s = $('[data-act="sample"]', root); if (s) s.textContent = 'Continue with sample records (grocery data)'; }
   VIEWS.connect._P = P; VIEWS.connect._d = P ? null : await storeData();
 };
 VIEWS.connect.after = (el) => {
@@ -765,19 +786,19 @@ VIEWS.connect.after = (el) => {
   let map = P ? mountSpace(host, { glb: P.glb, space: P.space, ops: P.ops, people: P.people }, { maxPeople: 40 })
     : stage3d(host, { aisles: VIEWS.connect._d.aisles, products: VIEWS.connect._d.products }, { shoppers: 12, weeks: VIEWS.connect._d.L.weeks.join('–') });
   cleanups.push(() => map.dispose());
-  const mapRows = m => m.columns.map(c => `<div class="tr" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr) 140px;"><span class="" style="min-width:0"><span class="num" style="font-size:12px;">${esc(c.column)}</span></span><span class="" style="min-width:0"><span class="mono" style="font-size:12px">${esc(c.endpoint || '—')}</span></span><span class="r" style="min-width:0">${c.field ? `<span class="tag tag-ok">연결됨${c.field === 'household_id' ? ' · 비식별' : ''}</span>` : '<span class="tag" style="background:rgba(0,0,0,.06)">쓰지 않음</span>'}</span></div>`).join('')
-    + (files.placements ? '' : `<div class="tr" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr) 140px;"><span class="" style="min-width:0"><span class="num" style="font-size:12px;color:rgba(77,83,83,.6)">(없음)</span></span><span class="" style="min-width:0"><span class="mono" style="font-size:12px">GET /exposure/display</span></span><span class="r" style="min-width:0"><span class="tag" style="background:#f6ebd3;color:#6b4a00">진열 일정표 필요</span></span></div>`);
+  const mapRows = m => m.columns.map(c => `<div class="tr" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr) 140px;"><span class="" style="min-width:0"><span class="num" style="font-size:12px;">${esc(c.column)}</span></span><span class="" style="min-width:0"><span class="mono" style="font-size:12px">${esc(c.endpoint || '—')}</span></span><span class="r" style="min-width:0">${c.field ? `<span class="tag tag-ok">Connected${c.field === 'household_id' ? ' · de-identified' : ''}</span>` : '<span class="tag" style="background:rgba(0,0,0,.06)">Not used</span>'}</span></div>`).join('')
+    + (files.placements ? '' : `<div class="tr" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr) 140px;"><span class="" style="min-width:0"><span class="num" style="font-size:12px;color:rgba(77,83,83,.6)">(none)</span></span><span class="" style="min-width:0"><span class="mono" style="font-size:12px">GET /exposure/display</span></span><span class="r" style="min-width:0"><span class="tag" style="background:#f6ebd3;color:#6b4a00">Display schedule needed</span></span></div>`);
   async function send(name) {
-    if (!files.transactions) { job.style.display = 'block'; job.innerHTML = errBox('영수증 CSV가 필요합니다. 파일 이름에 transactions 또는 receipt가 없으면 첫 번째 파일을 영수증으로 씁니다.'); return; }
-    job.style.display = 'block'; job.innerHTML = '<div class="loading"><span class="spin"></span> 올리는 중</div>';
+    if (!files.transactions) { job.style.display = 'block'; job.innerHTML = errBox('A receipts CSV is required. Any file whose name does not mention placements, promos, displays or products is read as receipts.'); return; }
+    job.style.display = 'block'; job.innerHTML = '<div class="loading"><span class="spin"></span> Uploading</div>';
     try {
       let j = await api('connect', files);
-      set(el, 'mapTitle', `자동 매핑 · ${name}`);
+      set(el, 'mapTitle', `Auto-mapping · ${name}`);
       for (;;) {
-        const m = j.mapping; set(el, 'mapCount', `${m.columns.length}개 열 중 <b style="color:#000">${m.columns.filter(c => c.field).length}</b>개 연결`, true); slot(el, 'map').innerHTML = mapRows(m);
+        const m = j.mapping; set(el, 'mapCount', `<b style="color:#000">${m.columns.filter(c => c.field).length}</b> of ${m.columns.length} columns connected`, true); slot(el, 'map').innerHTML = mapRows(m);
         const busy = j.status === 'running' || j.status === 'mapping';
-        job.innerHTML = `<div class="card cn-job">${busy ? '<span class="spin"></span>' : j.status === 'done' ? '<span class="tag tag-ok">완료</span>' : `<span class="tag tag-no">${esc(j.status)}</span>`}<span style="min-width:0">${j.error ? `<span class="err">${esc(j.error)}</span>` : busy ? `<b style="font-weight:500">보정하는 중</b> <span class="mono muted" style="font-size:11px">${esc((j.log || []).slice(-1)[0] || '시작하는 중')}</span>` : `SimOff-1을 이 기록의 손님으로 보정했습니다. 다음 단계에서 안을 비교합니다.`}</span></div>`;
-        set(el, 'mapState', busy ? '보정 중' : j.status === 'done' ? 'SimOff-1 · 이 기록으로 보정됨' : '기록 연결 전');
+        job.innerHTML = `<div class="card cn-job">${busy ? '<span class="spin"></span>' : j.status === 'done' ? '<span class="tag tag-ok">Done</span>' : `<span class="tag tag-no">${esc(j.status)}</span>`}<span style="min-width:0">${j.error ? `<span class="err">${esc(j.error)}</span>` : busy ? `<b style="font-weight:500">Calibrating</b> <span class="mono muted" style="font-size:11px">${esc((j.log || []).slice(-1)[0] || 'Starting')}</span>` : `SimOff-1 is now calibrated to the shoppers in these records. The next step compares the plans.`}</span></div>`;
+        set(el, 'mapState', busy ? 'Calibrating' : j.status === 'done' ? 'SimOff-1 · calibrated on these records' : 'Records not connected');
         if (!busy) break;
         await new Promise(r => setTimeout(r, 2000)); j = await api(`job?id=${j.id}`);
       }
@@ -785,7 +806,7 @@ VIEWS.connect.after = (el) => {
         const L = j.layout; map.dispose();
         map = stage3d(host, { aisles: L.aisles, products: L.products }, { shoppers: 12, weeks: L.weeks.join('–') });
         setTimeout(() => map.go('next'), 800);
-        set(el, 'mapState', `앞으로 4주 제안 배치 · 판매 방문 ${nf(L.plans.current.expected_units, 1)} → ${nf(L.plans.proposed.expected_units, 1)}`);
+        set(el, 'mapState', `Proposed layout for the next 4 weeks · sales visits ${nf(L.plans.current.expected_units, 1)} → ${nf(L.plans.proposed.expected_units, 1)}`);
       }
     } catch (e) { job.innerHTML = errBox(e); }
   }
@@ -804,7 +825,7 @@ VIEWS.connect.after = (el) => {
   drop.ondragleave = () => drop.classList.remove('over');
   drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); take(e.dataTransfer.files); };
   $('[data-act="sample"]', el).onclick = async () => {
-    job.style.display = 'block'; job.innerHTML = '<div class="loading"><span class="spin"></span> 예시 POS 파일 만드는 중</div>';
+    job.style.display = 'block'; job.innerHTML = '<div class="loading"><span class="spin"></span> Building sample POS files</div>';
     const s = await api('sample?store=367'); files = { transactions: s.transactions, products: s.products, placements: s.placements };
     set(el, 'files', 'store_367_pos.csv · products.csv · placements.csv'); send('store_367_pos.csv');
   };

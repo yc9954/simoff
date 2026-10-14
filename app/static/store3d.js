@@ -123,13 +123,13 @@ export function mountStore(el, data, opts = {}) {
     box([b - a, .08, .08], [(a + b) / 2, 2.5, D / 2 - .05], '#b4bec0', { m: { metalness: .6, roughness: .3 }, cast: false });
   }
   box([ENTRY[1] - ENTRY[0], .02, 2.2], [(ENTRY[0] + ENTRY[1]) / 2, .012, D / 2 - 1.2], '#7d8587', { cast: false });   // entrance mat
-  sign('입구', null, 1.6, .5, [(ENTRY[0] + ENTRY[1]) / 2, 2.95, D / 2 - .05], 0, '#2e6f8e', '#ffffff');
+  sign('Entrance', null, 1.6, .5, [(ENTRY[0] + ENTRY[1]) / 2, 2.95, D / 2 - .05], 0, '#2e6f8e', '#ffffff');
 
   // weekly flyer stand by the entrance: the mailer reaches people here and at home
   const FLY = [-10.4, D / 2 - 2.6];
   box([.9, 1.2, .5], [FLY[0], .6, FLY[1]], '#e9ecea', { round: .03 });
   for (let i = 0; i < 3; i++) { const f = box([.26, .36, .02], [FLY[0] - .28 + i * .28, 1.05, FLY[1] + .26], '#FCBB00', { cast: false }); f.rotation.x = -.25; }
-  sign('이번 주 전단', null, 1.1, .3, [FLY[0], 1.5, FLY[1] + .27], 0, '#FCBB00', '#16191a');
+  sign('This week’s flyer', null, 1.1, .3, [FLY[0], 1.5, FLY[1] + .27], 0, '#FCBB00', '#16191a');
 
   // back wall: glass-door coolers
   const coolerN = 13, coolerW = (W - 4) / coolerN;
@@ -209,7 +209,7 @@ export function mountStore(el, data, opts = {}) {
     else gondola(x, up, i === home);
     // aisle header sign: department, aisle number, share of this store's sales
     for (const s of [-1, 1]) box([.03, .9, .03], [x + s * .9, 3.05, ZF - .3], '#9aa6a8', { cast: false });
-    sign(`${i + 1}  ${a.name}`, `매출 ${Math.round(a.share * 100)}%`, 2.4, .62, [x, 2.55, ZF - .3], 0, a.home ? '#2e6f8e' : '#ffffff', a.home ? '#ffffff' : '#16191a');
+    sign(`${i + 1}  ${a.name}`, `${Math.round(a.share * 100)}% of sales`, 2.4, .62, [x, 2.55, ZF - .3], 0, a.home ? '#2e6f8e' : '#ffffff', a.home ? '#ffffff' : '#16191a');
   });
   if (goods.length) {
     const inst = new THREE.InstancedMesh(new RoundedBoxGeometry(1, 1, 1, 1, .08), new THREE.MeshStandardMaterial({ roughness: .55 }), goods.length);
@@ -225,7 +225,7 @@ export function mountStore(el, data, opts = {}) {
     box([2.5, .78, 1.5], [x, .39, TZ], '#c9a77c', { round: .04 });
     box([2.6, .05, 1.6], [x, .8, TZ], '#e9dcc6', { cast: false });
   }
-  sign('매장 앞 · 보조 진열', null, 3.2, .5, [(TX0 + TX1) / 2, 2.4, TZ - .9], 0, '#ffffff', '#16191a');
+  sign('Store front · secondary display', null, 3.2, .5, [(TX0 + TX1) / 2, 2.4, TZ - .9], 0, '#ffffff', '#16191a');
   for (const s of [-1, 1]) box([.03, .7, .03], [(TX0 + TX1) / 2 + s * 1.4, 2.95, TZ - .9], '#9aa6a8', { cast: false });
   const lanes = [3, 6.4, 9.8, 13.2], CZ = 9.6;
   const terminals = [];
