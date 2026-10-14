@@ -60,6 +60,10 @@ export function mountStore(el, data, opts = {}) {
     plan: { target: new THREE.Vector3(0, 0, 0), dir: new THREE.Vector3(0, 1, .02), zoom: .95 },
     card: { target: new THREE.Vector3(-4, 0, 2), dir: new THREE.Vector3(-.78, 1.0, 1.0), zoom: 1.25 },
   };
+  if (opts.zoom) { VIEWS.store.zoom = opts.zoom; controls.minZoom = Math.min(controls.minZoom, opts.zoom * .8); }   // a fresh store starts pulled back
+  // a freshly built store turns slowly on its vertical axis until the person grabs it
+  controls.autoRotate = !!opts.spin && !matchMedia('(prefers-reduced-motion: reduce)').matches; controls.autoRotateSpeed = 1.6;
+  controls.addEventListener('start', () => { controls.autoRotate = false; });
   let view = VIEWS[opts.view || 'store'];
   const placeCamera = (v) => { controls.target.copy(v.target); camera.position.copy(v.target).addScaledVector(v.dir.clone().normalize(), 60); camera.zoom = v.zoom; camera.updateProjectionMatrix(); };
   placeCamera(view);

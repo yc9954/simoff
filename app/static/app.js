@@ -290,7 +290,7 @@ VIEWS.start.after = (el, params, cleanups) => {
 <div class="world-cols"><div><div class="lbl">Decision to test · cold cereal next week</div><div class="plan-chips">${art.plans.map(p => `<span class="plan-chip"><i style="background:${COL[p.id]}"></i>${esc(p.label)}</span>`).join('')}</div></div>
 <div style="display:flex;align-items:flex-end;justify-content:flex-end"><a class="btn btn-mono" href="#connect">Next: Connect records →</a></div></div></div>`);
       const host = $$('[data-slot="space"]', body).at(-1);
-      storeData().then(d => { s3 = stage3d(host, { aisles: d.aisles, products: d.products }, { state: 'now', shoppers: 24, weeks: d.L.weeks.join('–') }); s3.__host = host; });
+      storeData().then(d => { s3 = stage3d(host, { aisles: d.aisles, products: d.products }, { state: 'now', shoppers: 24, weeks: d.L.weeks.join('–'), spin: true, zoom: .62 }); s3.__host = host; });
     }
     $$('[data-pick]', body).forEach(b => b.onclick = () => !b.classList.contains('on') && send(`Please rebuild it on the ${b.dataset.label} map (${b.dataset.pick}).`));
   }
