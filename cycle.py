@@ -47,6 +47,17 @@ def stage_data(a, out):
     return t, p, pl, info, split, rows, products
 
 
+def engine_for(info, rows, out):
+    """dunnhumby: the evaluation's own table and fitted model (data/), so the cycle, validate.py and the app
+    all score with one model. The rebuilt table has the same rows in a different order, and the booster's
+    early stopping would otherwise fit a slightly different model from it."""
+    if info['name'] == 'dunnhumby' and (HERE / 'data' / 'rows.parquet').exists():
+        ref, products = load(HERE / 'data')
+        if len(ref) == len(rows) and int(ref.y.sum()) == int(rows.y.sum()):
+            return ref, products, train_engines(ref)['calibrated']
+    return rows, None, train_engines(rows, cache=out / 'data' / 'engines.pkl')['calibrated']
+
+
 def pick_store(rows, pl, weeks):
     has = set(pl.store_id.unique())
     v = rows[rows.week.between(*weeks) & rows.store_id.isin(has)].drop_duplicates('basket_id').store_id.value_counts()
@@ -109,7 +120,8 @@ def main():
 
     # ---- data
     t, p, pl, info, split, rows, products = stage_data(a, out)
-    engine = train_engines(rows, cache=out / 'data' / 'engines.pkl')['calibrated']
+    rows, ref_products, engine = engine_for(info, rows, out)
+    products = ref_products if ref_products is not None else products
     backtest = info['builtin']
     as_of = split['calib'][1] if backtest else int(rows.week.max())
     horizon = tuple(split['test']) if backtest else (as_of + 1, as_of + a.weeks)
@@ -185,7 +197,7 @@ def main():
     for x in ledger['plans']:
         tt, v = x['totals'], x['vs_baseline']
         L.append(f"| {x['label']} | {tt['expected_units']:.1f} | {tt['mc_p05']:.0f}–{tt['mc_p95']:.0f} | ${tt['expected_revenue']:,.2f} | "
-                 f"×{v['lift']:.2f} ({v['extra_units']:+.1f}, ${v['extra_revenue']:+,.2f}) | {v['share_of_draws_above_baseline'] * 100:.0f}% |")
+                 f"×{v['lift']:.2f} ({v['extra_units']:+.1f}, ${v['extra_revenue']:+,.2f}) | {v['share_of_draws_above_baseline'] * 100:.1f}% |")
     if val:
         st = val['store_total']
         L += ['', '## ③ 검증 · 이 매장, 본 적 없는 주', '',
@@ -206,13 +218,16 @@ def main():
     pr_, cu = by['proposed'], by['current']
     L += ['', f"제안 vs {as_of}주 배치 고정: 기대 {cu['totals']['expected_units']:.1f} → {pr_['totals']['expected_units']:.1f} 판매 방문 "
           f"(×{pr_['vs_baseline']['lift']:.2f}), 매출 ${pr_['vs_baseline']['extra_revenue']:+,.2f}, "
-          f"추첨 {a.draws}번 중 {pr_['vs_baseline']['share_of_draws_above_baseline'] * 100:.0f}%에서 기준선보다 많음.", '',
+          f"추첨 {a.draws}번 중 {pr_['vs_baseline']['share_of_draws_above_baseline'] * 100:.1f}%에서 기준선보다 많음.", '',
           '## 읽을 때 주의', '',
           '- 판매 단위는 "그 상품을 산 방문 수"다. 수량이 아니다.',
           '- 제안 배치의 효과는 시뮬레이션 값이다. 실제로 그 배치를 한 적이 없으니 실제 판매와 직접 비교할 수 없고, 근거는 ③과 전체 검증의 효과 크기 비교뿐이다.',
-          '- 백테스트에서 최적화는 48–53주에 실제로 온 방문(누가 언제 왔는지)을 쓴다. 구매 결과(y)는 보지 않지만, 47주 시점에 이 방문 목록을 알 수는 없다.',
-          '- 90% 범위는 손님 운만 담는다. 모델 오차는 ③과 `VALIDATION.md`의 실제 비교로만 확인한다.',
-          '- 전체 검증에서 모델은 총량을 약 10% 낮게 보고(684 vs 617), 엔드캡이었던 방문의 판매를 낮게 봤다(133 vs 80). 엔드캡 효과 크기(3.66배, 실제 3.18배)는 실제 범위 안이다.',
+          *(["- 백테스트에서 최적화는 시험 주에 실제로 온 방문(누가 언제 왔는지)을 쓴다. 구매 결과(y)는 보지 않지만, 결정 시점에 이 방문 목록을 알 수는 없다.",
+             '- 90% 범위는 손님 운만 담는다. 모델 오차는 ③과 `VALIDATION.md`의 실제 비교로만 확인한다.',
+             '- 전체 검증에서 모델은 총량을 약 10% 낮게 보고(684 vs 617), 엔드캡이었던 방문의 판매를 낮게 봤다(133 vs 80). 엔드캡 효과 크기(3.66배, 실제 3.18배)는 실제 범위 안이다.']
+            if backtest else
+            ['- 앞으로의 방문은 가구마다 과거 주당 방문 수로 Poisson 추첨한 것이다. 90% 범위는 손님 운만 담는다.',
+             '- 이 매장 데이터로 학습한 모델의 검증은 아직 없다. dunnhumby 테스트셋 검증 숫자를 이 매장에 옮겨 쓰면 안 된다.']),
           '- 맵 좌표는 템플릿이다. 데이터에 도면이 없다. 구역·자리 수·현재 위치만 데이터.',
           '- 진열 코드는 앞쪽 엔드캡(3)만 따로 보고, 나머지 진열은 모델에서 "기타 진열" 하나로 묶인다.']
     (out / 'REPORT.md').write_text('\n'.join(L) + '\n')

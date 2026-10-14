@@ -1,0 +1,60 @@
+/* Obolus kit, as the storyboard uses it (fonts load from Google Fonts / jsDelivr in index.html) */
+body{margin:0}
+.ob{--bg:#fff;--fg:#000;--card:#f2f5f6;--muted-2:#edf0f2;--border:#d8dddf;--mfg:#4d5353;--primary:#171717;--sidebar:#eaecee;--sb-border:#dcdfe1;--red:#e40014;--real:#000;--ours:#0f766e;--jev:#6d5bd0;--persona:#f99c00;
+background:var(--bg);color:var(--fg);font-family:"Instrument Sans","Pretendard","GeistSans",system-ui,sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:-.003em;word-break:keep-all;overflow-wrap:break-word;box-sizing:border-box}
+.ob *{box-sizing:border-box;border-color:var(--border)}
+.ob h1,.ob h2,.ob h3,.ob p{margin:0}
+.mono{font-family:"GeistMono","Pretendard",ui-monospace,monospace}
+.lbl{font-family:"GeistMono","Pretendard",ui-monospace,monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--mfg)}
+.lbl15{letter-spacing:1.5px}
+.num{font-family:"GeistMono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.stat{font-family:"Host Grotesk","Pretendard",sans-serif;font-weight:500;font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
+.display{font-weight:600;letter-spacing:-.018em;line-height:1.28;text-wrap:balance}
+.d44{font-size:44px}.d32{font-size:32px}.d29{font-size:29px;font-weight:500}
+.ptitle{font-size:16px;font-weight:500}
+.lead{font-size:17px;line-height:32px;color:var(--mfg);text-wrap:pretty}
+.body{font-size:15px;line-height:28px;color:rgba(0,0,0,.9);text-wrap:pretty}
+.muted{color:var(--mfg)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:6px}
+.well{background:rgba(0,0,0,.03);border:1px solid var(--border);border-radius:6px}
+.rule{border-top:1px solid var(--border)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:2px;font-family:inherit;font-weight:500;font-size:14px;line-height:1;white-space:nowrap;border:1px solid transparent;cursor:pointer;text-decoration:none}
+.btn-mono{background:var(--fg);color:#fff}
+.btn-muted{background:var(--muted-2);color:var(--fg)}
+.btn-outline{background:transparent;color:var(--fg);border-color:rgba(0,0,0,.12)}
+.btn-ghost{background:transparent;color:var(--mfg)}
+.btn-sm{height:32px;padding:0 12px;font-size:13px}
+.chip{display:inline-flex;align-items:center;height:28px;padding:0 12px;border:1px solid var(--border);border-radius:999px;font-family:"GeistMono","Pretendard",monospace;font-size:11px;letter-spacing:.5px;color:var(--mfg);background:#fff}
+.chip.on{border-color:var(--primary);background:var(--muted-2);color:var(--fg)}
+.badge{display:inline-flex;align-items:center;padding:0 4px;border-radius:2px;background:rgba(0,0,0,.1);font-family:"GeistMono",monospace;font-size:10px;font-weight:500;line-height:16px;color:var(--fg)}
+.sq{display:inline-block;width:8px;height:8px;border-radius:1px;flex:none}
+.tag{display:inline-flex;align-items:center;padding:1px 6px;border-radius:2px;font-family:"GeistMono","Pretendard",monospace;font-size:10px;letter-spacing:.5px}
+.tag-ok{background:rgba(15,118,110,.1);color:#0f766e}.tag-no{background:rgba(228,0,20,.08);color:#b00010}.tag-ai{background:rgba(109,91,208,.1);color:#5a48c0}
+.sw{width:32px;height:18px;border-radius:999px;background:#e5e5e5;position:relative;flex:none}.sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff}.sw.on{background:var(--primary)}.sw.on::after{left:16px}
+.ico{width:15px;height:15px;flex:none;opacity:.7}
+.spec{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding-bottom:10px;border-bottom:1px solid var(--primary);margin-bottom:20px}
+.spec b{font-size:15px;font-weight:600}
+.tabs{display:flex;gap:4px;align-items:center}
+.tab{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 12px;border-radius:2px;font-family:"GeistMono","Pretendard",monospace;font-size:12px;letter-spacing:.5px;color:var(--mfg)}
+.tab.on{background:#171717;color:#fff}
+.tab .badge{background:rgba(0,0,0,.08);color:inherit}.tab.on .badge{background:rgba(255,255,255,.15);color:#fff}
+.tbl{overflow:hidden;border:1px solid var(--border);border-radius:6px;background:var(--card)}
+.tbl .th{display:grid;gap:12px;padding:10px 16px;background:var(--muted-2);border-bottom:1px solid var(--border);font-family:"GeistMono","Pretendard",monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--mfg)}
+.tbl .tr{display:grid;gap:12px;align-items:center;padding:12px 16px;font-size:14px;border-top:1px solid rgba(216,221,223,.7)}
+.tbl .th+.tr{border-top:0}
+.r{text-align:right;justify-self:end}
+.bar{height:4px;border-radius:999px;background:rgba(0,0,0,.1);overflow:hidden}.bar>i{display:block;height:100%;border-radius:999px}
+.shell{display:flex;align-items:stretch;min-height:900px}
+.main{flex:1;min-width:0;padding:24px;display:flex;flex-direction:column;gap:32px}
+.hdr{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;min-height:36px}
+.hstat{display:flex;flex-wrap:wrap;gap:18px;font-size:12px;color:var(--mfg)}.hstat b{font-family:"GeistMono",monospace;font-weight:500;color:#000}
+.quote{border-left:2px solid #866ff2;padding-left:20px}
+.grid-auto{display:grid;gap:16px}
+.acc{position:relative;border-color:rgba(216,221,223,.6)}
+.acc::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;background:linear-gradient(to bottom,var(--card-accent,transparent),transparent 72%);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#fff 0 0) content-box exclude,linear-gradient(#fff 0 0);pointer-events:none;z-index:2}
+.wash{background:linear-gradient(to bottom,color-mix(in oklab,var(--card-accent) 9%,var(--card)) 0%,var(--card) 58%)}
+.wash-w{background:linear-gradient(to bottom,color-mix(in oklab,var(--card-accent) 8%,#fff) 0%,#fff 58%)}
+.glass{background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(12px) saturate(1.4);backdrop-filter:blur(12px) saturate(1.4);border:1px solid rgba(255,255,255,.7);box-shadow:0 1px 2px rgba(20,20,25,.06),0 8px 24px rgba(20,20,25,.08)}
+.glass-dark{background:rgba(28,28,29,.7);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid #262626}
+.glass-step{background:rgba(255,255,255,.055);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.1)}
+.fx{position:absolute;inset:0}

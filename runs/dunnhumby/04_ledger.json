@@ -8,22 +8,22 @@
  "plans": {
   "actual": {
    "label": "실제 진열 그대로",
-   "expected_units": 11.832735594426905,
+   "expected_units": 11.863357550767596,
    "mc_p05": 7.0,
-   "mc_p95": 17.0,
-   "expected_revenue": 41.6455735068284,
+   "mc_p95": 18.0,
+   "expected_revenue": 41.95909723893659,
    "baseline": "current",
-   "lift": 0.878065761842093,
-   "extra_units": -1.6431748767922727,
-   "extra_revenue": -2.255532014362501,
-   "share_of_draws_above_baseline": 0.145
+   "lift": 0.8864655793996241,
+   "extra_units": -1.5194040887788418,
+   "extra_revenue": -1.972625839904886,
+   "share_of_draws_above_baseline": 0.115
   },
   "current": {
    "label": "47주 배치 고정",
-   "expected_units": 13.475910471219178,
+   "expected_units": 13.382761639546437,
    "mc_p05": 8.0,
-   "mc_p95": 20.049999999999983,
-   "expected_revenue": 43.9011055211909,
+   "mc_p95": 20.0,
+   "expected_revenue": 43.93172307884148,
    "baseline": "current",
    "lift": 1.0,
    "extra_units": 0.0,
@@ -32,34 +32,27 @@
   },
   "proposed": {
    "label": "제안 배치",
-   "expected_units": 19.696508174037596,
-   "mc_p05": 13.0,
-   "mc_p95": 26.0,
-   "expected_revenue": 72.97833144744808,
+   "expected_units": 19.5449573005715,
+   "mc_p05": 12.950000000000001,
+   "mc_p95": 27.0,
+   "expected_revenue": 72.12233892596467,
    "baseline": "current",
-   "lift": 1.4616087140163105,
-   "extra_units": 6.220597702818418,
-   "extra_revenue": 29.077225926257185,
-   "share_of_draws_above_baseline": 0.97
+   "lift": 1.4604577012576836,
+   "extra_units": 6.162195661025063,
+   "extra_revenue": 28.19061584712319,
+   "share_of_draws_above_baseline": 0.985
   }
  },
  "moves": [
   {
    "product_id": "1071342",
    "from": "none",
-   "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
-  },
-  {
-   "product_id": "829001",
-   "from": "none",
    "to": "A_front_endcap",
    "from_label": "평소대로",
    "to_label": "앞쪽 엔드캡"
   },
   {
-   "product_id": "1135222",
+   "product_id": "1027068",
    "from": "none",
    "to": "C_other_display",
    "from_label": "평소대로",
@@ -73,35 +66,7 @@
    "to_label": "기타 진열"
   },
   {
-   "product_id": "837751",
-   "from": "none",
-   "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
-  },
-  {
-   "product_id": "1027068",
-   "from": "none",
-   "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
-  },
-  {
-   "product_id": "1060408",
-   "from": "none",
-   "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
-  },
-  {
-   "product_id": "1046587",
-   "from": "none",
-   "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
-  },
-  {
-   "product_id": "1133254",
+   "product_id": "1135222",
    "from": "none",
    "to": "C_other_display",
    "from_label": "평소대로",
@@ -115,11 +80,32 @@
    "to_label": "기타 진열"
   },
   {
-   "product_id": "1054262",
-   "from": "C_other_display",
-   "to": "none",
-   "from_label": "기타 진열",
-   "to_label": "평소대로"
+   "product_id": "1133254",
+   "from": "none",
+   "to": "C_other_display",
+   "from_label": "평소대로",
+   "to_label": "기타 진열"
+  },
+  {
+   "product_id": "1121384",
+   "from": "none",
+   "to": "C_other_display",
+   "from_label": "평소대로",
+   "to_label": "기타 진열"
+  },
+  {
+   "product_id": "905636",
+   "from": "none",
+   "to": "C_other_display",
+   "from_label": "평소대로",
+   "to_label": "기타 진열"
+  },
+  {
+   "product_id": "1060408",
+   "from": "none",
+   "to": "C_other_display",
+   "from_label": "평소대로",
+   "to_label": "기타 진열"
   },
   {
    "product_id": "1122568",

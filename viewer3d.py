@@ -168,7 +168,7 @@ $('kpi').innerHTML = [
   [`${fmt(cur.expected_units)} → ${fmt(nxt.expected_units)}`, '기대 판매 방문'],
   [`×${nxt.lift.toFixed(2)}`, `${D.asOf}주 배치 고정 대비`],
   [`+$${fmt(nxt.extra_revenue, 2)}`, '기대 매출 차이'],
-  [`${Math.round(nxt.share_of_draws_above_baseline * 100)}%`, '추첨 중 기준선보다 많음'],
+  [`${(nxt.share_of_draws_above_baseline * 100).toFixed(1)}%`, '추첨 중 기준선보다 많음'],
 ].map(([v, l]) => `<div><span class="v">${v}</span><span class="l">${l}</span></div>`).join('');
 const V = D.validation;
 $('kpi-note').innerHTML = `90% 범위(손님 운) ${fmt(cur.mc_p05, 0)}–${fmt(cur.mc_p95, 0)} → ${fmt(nxt.mc_p05, 0)}–${fmt(nxt.mc_p95, 0)}. 제안 배치의 효과는 시뮬레이션 값입니다.` +

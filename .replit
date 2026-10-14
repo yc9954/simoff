@@ -1,0 +1,12 @@
+# For a Repl made from this folder alone. Importing the whole repo: set the run command to
+#   cd sim && pip install -r requirements.txt && python app/server.py
+run = "pip install -q -r requirements.txt && python app/server.py"
+modules = ["python-3.12"]
+
+[[ports]]
+localPort = 8790
+externalPort = 80
+
+[deployment]
+run = ["sh", "-c", "pip install -q -r requirements.txt && python app/server.py"]
+deploymentTarget = "cloudrun"

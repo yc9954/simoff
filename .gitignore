@@ -1,4 +1,6 @@
 data/engines.pkl
 runs/*/data/
 runs/*/02_ledger.json
+runs/upload_*/
+app/cache/
 __pycache__/
