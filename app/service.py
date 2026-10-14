@@ -320,6 +320,64 @@ def run_plans(engine_ids=('calibrated', 'no_promo', 'avg_lift'), draws=50, seed=
     return out
 
 
+# ---------------------------------------------------------------- one model, nine plans
+# The store conditions the decision model knows are two axes, and the data holds every one of their 3 x 3 combinations:
+# where it sits in the store (regular shelf / in-store display / front endcap) and the flyer (none / inside page / front page).
+GRID_DISPLAY = [('shelf', '평소 선반', {'front_endcap': 0, 'other_display': 0}), ('other', '매장 안 보조 진열', {'front_endcap': 0, 'other_display': 1}),
+                ('front', '입구 엔드캡', {'front_endcap': 1, 'other_display': 0})]
+GRID_MAILER = [('none', '전단 없음', {'mailer': 0, 'mailer_front': 0}), ('inner', '전단 안쪽 면', {'mailer': 1, 'mailer_front': 0}),
+               ('front', '전단 1면', {'mailer': 1, 'mailer_front': 1})]
+# what the stored (non-live) engines were asked: four single conditions
+_STORED_CELL = {('shelf', 'none'): 'none', ('front', 'none'): 'A_front_endcap', ('other', 'none'): 'C_other_display', ('shelf', 'inner'): 'B_mailer_only'}
+
+
+def run_grid(model='simoff_retail', draws=50, seed=42):
+    """The chosen decision model on every held-out visit under each of the nine plans, same customers and same luck."""
+    s = state()
+    te = s['test']
+    keys = te.basket_id.astype(str) + ':' + te.product_id.astype(str)
+    h0 = pd.util.hash_pandas_object(keys, index=False).to_numpy(np.uint64)
+    U = [_mix(h0, seed + d) for d in range(draws)]
+    model = model if model in ('simoff_retail', 'jev_raw', 'persona') else 'simoff_retail'
+    out = {'id': uuid.uuid4().hex[:8], 'model': model, 'weeks': list(TEST), 'decisions': int(len(te)), 'seed': seed, 'plans': []}
+    if model == 'simoff_retail':
+        e, memo = s['engines']['calibrated'], s.setdefault('grid_pred', {})
+        for d, dl, dflags in GRID_DISPLAY:
+            for m, ml, mflags in GRID_MAILER:
+                k = (d, m)
+                if k not in memo:
+                    X = te.copy()
+                    for c, v in {**dflags, **mflags}.items():
+                        X[c] = v
+                    memo[k] = e.predict(X)
+                P = memo[k]
+                tot = np.array([(u < P).sum() for u in U])
+                out['plans'].append({'id': f'{d}_{m}', 'display': d, 'mailer': m, 'display_label': dl, 'mailer_label': ml,
+                                     'per_1000': float(P.mean() * 1000), 'expected_units': float(P.sum()),
+                                     'mc_p05': float(np.percentile(tot, 5)), 'mc_p95': float(np.percentile(tot, 95))})
+    else:
+        src = (json.loads((EVAL / 'jev_calib_results.json').read_text())['engines']['jev_raw']['by_condition'] if model == 'jev_raw'
+               else json.loads((EVAL / 'persona_results.json').read_text())['engines']['basic']['mean_p_by_condition'])
+        for d, dl, _ in GRID_DISPLAY:
+            for m, ml, _ in GRID_MAILER:
+                c = _STORED_CELL.get((d, m))
+                out['plans'].append({'id': f'{d}_{m}', 'display': d, 'mailer': m, 'display_label': dl, 'mailer_label': ml,
+                                     'per_1000': src[c] * 1000 if c else None})
+    base = next(p for p in out['plans'] if p['id'] == 'shelf_none')['per_1000']
+    for p in out['plans']:
+        p['lift'] = p['per_1000'] / base if p['per_1000'] is not None and base else None
+    scored = [p for p in out['plans'] if p['per_1000'] is not None]
+    out['best'] = max(scored, key=lambda p: p['per_1000'])['id']
+    (CACHE / f"grid_{model}.json").write_text(json.dumps(out, ensure_ascii=False))
+    return out
+
+
+def latest_grid(model='simoff_retail'):
+    model = model if model in ('simoff_retail', 'jev_raw', 'persona') else 'simoff_retail'
+    f = CACHE / f'grid_{model}.json'
+    return json.loads(f.read_text()) if f.exists() else run_grid(model)
+
+
 def _mix(h, seed):
     """splitmix64 of (key hash, seed) -> uniform in [0, 1). Hash the keys once, then each draw is a few vector ops."""
     with np.errstate(over='ignore'):

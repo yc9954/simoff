@@ -63,9 +63,9 @@ async function fillShots(root, opts = {}) {
   const cards = imgs.map(i => {
     const c = document.createElement('canvas');
     c.className = i.className; c.setAttribute('style', i.getAttribute('style') || ''); c.setAttribute('role', 'img'); c.setAttribute('aria-label', i.alt || '');
-    c.style.width = '100%'; c.dataset.key = `${i.dataset.engine || 'calibrated'}:${i.dataset.shot}`; i.replaceWith(c);
-    const k = i.dataset.shot, eng = i.dataset.engine || 'calibrated', plan = k === 'report' ? 'A_front_endcap' : k;
-    const base = { canvas: c, plan, group: `${eng}:${plan}`, lift: liftOf(eng, plan) };
+    c.style.width = '100%'; c.dataset.key = i.dataset.group || `${i.dataset.engine || 'calibrated'}:${i.dataset.shot}`; i.replaceWith(c);
+    const k = i.dataset.shot, eng = i.dataset.engine || 'calibrated', plan = i.dataset.plan || (k === 'report' ? 'A_front_endcap' : k);
+    const base = { canvas: c, plan, group: i.dataset.group || `${eng}:${plan}`, lift: i.dataset.lift ? +i.dataset.lift : liftOf(eng, plan) };
     return k === 'report' ? { ...base, highlight: 'A_front_endcap', view: 'cereal', state: 'next' } : { ...base, highlight: k, view: 'card', state: 'now' };
   });
   const P = projSpace();
@@ -77,8 +77,7 @@ async function fillShots(root, opts = {}) {
   const mine = live; cleanups.push(() => { mine.dispose(); if (live === mine) live = null; });
 }
 
-// the project the chat started; every step after it shows the same context and the way forward
-const FLOW = [['start', '공간 세우기'], ['connect', '기록 연결'], ['plans', '시험할 안'], ['run', '실행'], ['layout', '최종 배치'], ['report', '리포트']];
+// the project the chat started; every step after it reads it
 function setProject(p) { store.set('project', { ...p, at: Date.now() }); }
 // a space project: the space the chat built, carried through every step; the numbers come from SimOff-1, whose four
 // store conditions are mapped onto this space (entrance spot, inner spot, flyer/coupon, as it is)
@@ -99,12 +98,15 @@ function makeProject(r, business) {
              none: { label: '지금 그대로', desc: '비교 기준', fx: null } } };
 }
 const MODEL_NOTE = 'SimOff-1 · 마트 데이터로 추정';
-function flowBar(view) {
-  const i = FLOW.findIndex(f => f[0] === view); if (i <= 0) return '';
-  const p = store.get('project'), next = FLOW[i + 1];
-  const what = p ? `${esc(p.title.length > 38 ? p.title.slice(0, 38) + '…' : p.title)} · ${esc(p.kind === 'space' ? p.spaceTitle : `Store ${p.store}`)}` : '샘플 프로젝트 · 마트 · Store 367';
-  return `<div class="flow-bar"><span><span class="lbl">프로젝트</span> ${what}</span>${next ? `<a class="btn btn-mono btn-sm" href="#${next[0]}">다음: ${next[1]} →</a>` : '<a class="btn btn-outline btn-sm" href="#start">새 공간 세우기</a>'}</div>`;
-}
+// the close of every step: one line on what this step settled, and the way to the next
+const STEP_FOOT = {
+  connect: ['Calibrated to People, not to Answers.', '답이 맞을 확률이 아니라, 이 공간의 손님이 실제로 그 행동을 할 확률. 사람이 오가고 고르는 곳이라면 같은 방식으로 보정합니다.', '#plans', '다음: 시험할 안'],
+  plans: ['아홉 가지 안, 같은 손님.', '모든 안을 같은 방문, 같은 손님으로 비교합니다. 달라지는 건 안 하나뿐입니다.', '#run?go=1', '실행하기'],
+  run: ['가장 잘 팔린 안이 강조됩니다.', '다시 실행하면 손님의 운만 바꿔 한 번 더 돌립니다. 순서가 바뀌지 않으면 그 안이 답입니다.', '#layout', '다음: 최종 배치'],
+  layout: ['문 열기 전에 고른 배치.', '실제로 해 보기 전, 시뮬레이션이 고른 배치입니다. 리포트에서 근거와 함께 정리합니다.', '#report', '다음: 리포트'],
+  report: ['결정을 내릴 차례.', '승인하면 이 배치로 진행합니다. 다른 공간이나 결정은 새로 세우면 됩니다.', '#start', '새 공간 세우기', `<span data-slot="approve"><button type="button" class="btn btn-mono" data-act="approve">이 안 승인</button></span>`],
+};
+const stepFoot = view => { const f = STEP_FOOT[view]; return f ? `<div class="step-foot"><p><b>${f[0]}</b> ${f[1]}</p><span class="step-acts">${f[4] || ''}<a class="btn ${f[4] ? 'btn-outline' : 'btn-mono'}" href="${f[2]}">${f[3]} ${arrowSvg}</a></span></div>` : ''; };
 
 // Obolus card colour field + texture, ported from obolus/src/lib/cardGradient.ts (same schemes, positions, angles and
 // ribbons; FNV-1a seeds, so the same card always gets the same colours and neighbours rarely repeat)
@@ -165,7 +167,8 @@ async function render() {
     const root = document.createElement('div'); root.style.display = 'contents'; root.innerHTML = html;
     await VIEWS[view](root, params, cleanups);
     el.replaceChildren(...root.childNodes);
-    el.insertAdjacentHTML('afterbegin', flowBar(view));
+    el.insertAdjacentHTML('beforeend', stepFoot(view));
+    el.classList.toggle('stepv', view !== 'start');   // a step page: one screen, the way on always in view
     VIEWS[view].after?.(el, params, cleanups);
     paintGrads(el); fillShots(el, VIEWS[view].live || {}).catch(() => {});
   } catch (e) { el.innerHTML = errBox(e); }
@@ -442,97 +445,82 @@ VIEWS.engines.after = (el) => {
 
 // S4 결정 안
 VIEWS.plans = async (root) => {
-  const P = projSpace();
-  if (P) {
-    root.innerHTML = `<div class="hdr"><h1 class="ptitle">시험할 안 · ${esc(P.spaceTitle)}</h1><a class="btn btn-mono" href="#run?go=1">4개 안 실행 →</a></div>
-<p class="body muted" style="margin-top:-8px;max-width:760px">${esc(P.title)}. 이 공간에서 비교할 네 가지 안입니다. 숫자는 ${MODEL_NOTE}.</p>
-<div class="plan-grid">${PLANS.map(c => `<article class="card plan-card"><img data-shot="${c}" alt="${esc(P.plans[c].label)} 3D 장면" style="display:block;width:100%;height:170px;background:#eceeed"><div style="padding:14px 16px"><div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500"><span class="sq" style="background:${COL[c]};width:9px;height:9px"></span>${esc(P.plans[c].label)}</div><div class="muted" style="font-size:13px;margin-top:6px">${esc(P.plans[c].desc)}</div></div></article>`).join('')}</div>`;
-    return;
-  }
-  const [plans, last] = await Promise.all([api('plans'), api('run/latest')]);
-  set(root, 'total', n0(plans.reduce((a, p) => a + p.evidence_rows, 0)));
-  plans.forEach(p => set(root, `ev:${p.id}`, n0(p.evidence_rows)));
-  set(root, 'runLabel', (last?.engines?.length || 5) === 5 ? '4개 안 × 엔진 3 + 비교 기준 2 실행' : `4개 안 × ${last.engines.length}개 엔진 실행`);
+  const P = projSpace(), g = await api(`grid/latest?model=${currentModel()}`);
+  root.innerHTML = `<div class="hdr"><h1 class="ptitle">시험할 안 · ${esc(P ? P.spaceTitle : '다음 주 콜드 시리얼 · Store 367')}</h1></div>
+<p class="body muted" style="margin-top:-8px;max-width:820px">어디에 둘지 세 가지와 전단 세 가지를 곱한 아홉 가지 안입니다. 모두 같은 손님, 같은 방문으로 ${esc(MODEL_TITLE[currentModel()] || 'SimOff-1')} 하나가 시험합니다.</p>
+${gridHTML(g, false)}`;
 };
 
-// S5 실행
-// what each engine is, in words a store manager reads (the technical note stays in the API and the CSV)
-const ENG_PLAIN = { calibrated: '이 매장들의 실제 영수증으로 학습한 결정 모델 — 우리 엔진', jev_calibrated: '외부 결정 모델(Jev)에 이 매장 기록으로 보정만 얹은 것',
-  persona: '언어 모델이 손님 역할로 답한 것 — 비교용', no_promo: '진열 효과가 없다고 보는 기준', avg_lift: '전체 평균 효과만 곱하는 기준' };
-function runCards(r) {
-  const order = ['calibrated', 'jev_calibrated', 'persona', 'no_promo', 'avg_lift'];
-  const engines = [...r.engines].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
-  const base = e => ['no_promo', 'avg_lift'].includes(e.id);
-  const section = e => {
-    const [sq, acc] = ENG[e.id] || ['#000', '#000'];
-    const cards = PLANS.map(c => {
-      const p = e.plans.find(x => x.id === c), a = r.actual_per_1000[c], k = p.ratio_to_actual, sel = false;
-      const ok = k != null && k <= 3;
-      return `<article class="card acc run-card ${sel ? 'wash-w' : 'wash'}" data-card="${e.id}:${c}" style="overflow:hidden;--card-accent:${acc};${sel ? 'border-color:#171717;box-shadow:0 0 0 1px #171717' : ''}">${base(e) ? '' : `<img data-shot="${c}" data-engine="${e.id}" alt="${esc(e.label)} · ${planName(c)} 3D 장면" style="display:block;width:100%;height:118px;object-fit:cover;border-bottom:1px solid var(--border);background:#eceeed">`}
-<div style="padding:12px 14px 14px"><div style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="sq" style="background:${COL[c]};width:8px;height:8px"></span>${esc(planName(c))}</div><div style="margin-top:10px;display:flex;align-items:baseline;justify-content:space-between"><span class="stat" style="font-size:24px">${p.per_1000 >= 100 ? n0(p.per_1000) : nf(p.per_1000)}</span>${projSpace() ? '' : `<span class="num muted" style="font-size:11px">실제 ${nf(a)}</span>`}</div>
-<div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:6px"><span class="lbl" style="text-transform:none;white-space:nowrap">평소 대비 ${nf(p.lift, 1)}배</span>${ok ? '' : `<span class="tag tag-no" style="white-space:nowrap">실제의 ${n0(k)}배</span>`}</div></div></article>`;
-    }).join('');
-    return `<section><div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--border)"><span style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:500"><span class="sq" style="background:${sq};width:10px;height:10px"></span>${esc(e.label)}</span><span class="muted" style="font-size:13px">${ENG_PLAIN[e.id] || esc(e.note)}</span></div><div style="margin-top:14px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">${cards}</div></section>`;
-  };
-  const main = engines.filter(e => !base(e)), rest = engines.filter(base);
-  return main.map(section).join('') + (rest.length ? `<details class="card" style="padding:12px 16px"><summary style="cursor:pointer;font-size:14px">비교 기준 ${rest.length}개 · ${rest.map(e => esc(e.label)).join(' · ')} <span class="mono muted" style="font-size:11px;margin-left:8px">진열 효과를 빼거나 평균으로 둔 경우</span></summary><div style="display:flex;flex-direction:column;gap:24px;margin-top:16px">${rest.map(section).join('')}</div></details>` : '');
-}
-function fillRun(root, r) {
-  set(root, 'title', '실행 결과');
+// one model, nine plans: where it sits (shelf / in-store display / front endcap) x the flyer (none / inside / front page)
+const GRID_ZONE = { shelf: 'none', other: 'C_other_display', front: 'A_front_endcap' };
+const currentModel = () => { const m = store.get('decisionModel', 'simoff_retail'); return ['simoff_retail', 'jev_raw', 'persona'].includes(m) ? m : 'simoff_retail'; };
+const MODEL_TITLE = { simoff_retail: 'SimOff-1', jev_raw: 'Jev', persona: '언어 모델 페르소나' };
+function gridLabels(p) {
   const P = projSpace();
-  set(root, 'intro', P ? `${P.spaceTitle}에서 네 가지 안을 같은 손님, 같은 방문으로 비교했습니다. 숫자는 방문 1,000회당 판매 · ${MODEL_NOTE}.`
-    : `숫자는 방문 1,000회당 판매입니다. 카드 오른쪽 '실제'는 모델이 학습에 쓰지 않은 ${r.weeks.join('–')}주에 실제로 팔린 값입니다. 네 가지 안은 같은 손님, 같은 방문으로 비교했습니다.`);
+  const d = P ? { shelf: P.plans.none.label, other: P.plans.C_other_display.label, front: P.plans.A_front_endcap.label }[p.display] : p.display_label;
+  const m = P ? { none: '홍보 없음', inner: '전단 · 쿠폰 안내', front: '전단 1면' }[p.mailer] : p.mailer_label;
+  return [d, m];
+}
+function crowdPlan(p) { return p.display === 'front' ? 'A_front_endcap' : p.display === 'other' ? 'C_other_display' : p.mailer !== 'none' ? 'B_mailer_only' : 'none'; }
+function gridCard(p, g, withNumbers) {
+  const [d, m] = gridLabels(p), num = p.per_1000;
+  const v = withNumbers ? [`<span class="stat" style="font-size:20px">${num == null ? '—' : num >= 100 ? n0(num) : nf(num)}</span>`, `<span class="lbl" style="text-transform:none">${p.lift == null ? '평가 없음' : `지금 대비 ${nf(p.lift, 1)}배`}</span>`] : ['', ''];
+  return `<article class="card run-card grid-card" data-card="${p.id}">
+<img class="g9-shot" data-shot="${GRID_ZONE[p.display]}" data-plan="${crowdPlan(p)}" data-group="g:${p.id}" data-lift="${p.lift ?? 1}" alt="${esc(d)} · ${esc(m)} 3D 장면" style="display:block;width:100%;background:#eceeed">
+<div class="g9-txt"><div class="g9-l"><span style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;min-width:0"><span class="sq" style="background:${COL[GRID_ZONE[p.display]]};width:8px;height:8px;flex:none"></span>${esc(d)}</span>${v[0]}</div>
+<div class="g9-l muted" style="font-size:12px"><span style="display:flex;align-items:center;gap:6px;min-width:0">${p.mailer !== 'none' ? `<span class="sq" style="background:${COL.B_mailer_only};width:7px;height:7px;flex:none"></span>` : ''}${esc(m)}</span>${v[1]}</div></div></article>`;
+}
+function gridHTML(g, withNumbers) {
+  return `<div class="grid9${withNumbers ? '' : ' nonum'}"><span></span>${['shelf', 'other', 'front'].map(d => `<span class="grid9-h">${esc(gridLabels({ display: d, mailer: 'none', display_label: g.plans.find(p => p.display === d).display_label, mailer_label: '' })[0])}</span>`).join('')}
+${['none', 'inner', 'front'].map(m => `<span class="grid9-r">${esc(gridLabels({ display: 'shelf', mailer: m, display_label: '', mailer_label: g.plans.find(p => p.mailer === m).mailer_label })[1])}</span>${['shelf', 'other', 'front'].map(d => gridCard(g.plans.find(p => p.display === d && p.mailer === m), g, withNumbers)).join('')}`).join('')}</div>`;
+}
+function markBestGrid(root, g) {
+  $$('.grid-card', root).forEach(c => { const on = c.dataset.card === g.best; c.classList.toggle('best', on); c.classList.toggle('dim', !on); $('.best-badge', c)?.remove(); if (on) c.insertAdjacentHTML('afterbegin', '<span class="best-badge">최선</span>'); });
+}
+
+// S5 실행
+VIEWS.run = async (root) => {
+  const g = await api(`grid/latest?model=${currentModel()}`); VIEWS.run._g = g;
+  set(root, 'title', '실행 결과');
+  set(root, 'intro', `${MODEL_TITLE[g.model] || g.model} 하나로 아홉 가지 안을 같은 손님, 같은 방문(${n0(g.decisions)}개 결정)에 돌렸습니다. 숫자는 방문 1,000회당 판매.`);
   const meta = K(root, 'decisions')?.closest('.card'); if (meta) meta.remove();
-  slot(root, 'engines').innerHTML = runCards(r);
-}
-// the best plan of each engine: outlined and badged; the rest step back
-function markBest(root, r) {
-  for (const e of r.engines) {
-    const best = [...e.plans].sort((x, y) => y.per_1000 - x.per_1000)[0]?.id;
-    $$(`[data-card^="${e.id}:"]`, root).forEach(c => {
-      const on = c.dataset.card === `${e.id}:${best}`;
-      c.classList.toggle('best', on); c.classList.toggle('dim', !on);
-      $('.best-badge', c)?.remove();
-      if (on) c.insertAdjacentHTML('afterbegin', '<span class="best-badge">최선</span>');
-    });
-  }
-}
-VIEWS.run = async (root) => { const r = await api('run/latest') || await api('run', { draws: 100, seed: 42 }); fillRun(root, r); markBest(root, r); VIEWS.run._r = r; };
+  slot(root, 'engines').innerHTML = gridHTML(g, true); markBestGrid(root, g);
+};
 VIEWS.run.live = { paused: true };     // the result is in: the cards settle, then hold still
 VIEWS.run.after = (el, params) => {
   const gauge = slot(el, 'gauge'), bar = $('.gauge-bar i', gauge), txt = $('.gauge-txt', gauge);
   const rerun = async () => {
     const b = $('[data-act="rerun"]', el); if (b.disabled) return; b.disabled = true; b.textContent = '실행 중';
     $$('.run-card', el).forEach(c => { c.classList.remove('best', 'dim'); $('.best-badge', c)?.remove(); });
-    gauge.hidden = false; bar.style.width = '0%';
+    const intro = K(el, 'intro'); gauge.hidden = false; if (intro) intro.hidden = true; bar.style.width = '0%';
     live?.run();
     const t0 = performance.now(), MIN = 4800; let res = null, err = null, done = false;
-    api('run', { draws: 100, seed: Math.floor(Math.random() * 1e6) }).then(r => { res = r; }).catch(e => { err = e; }).finally(() => { done = true; });
+    api('grid', { model: currentModel(), seed: Math.floor(Math.random() * 1e6) }).then(r => { res = r; }).catch(e => { err = e; }).finally(() => { done = true; });
     await new Promise(resolve => {
       const tick = () => {
         const t = performance.now() - t0;
         const p = done && (err || t >= MIN) ? 1 : done ? Math.max(.9, t / MIN) : Math.min(.9, 1 - Math.exp(-t / 2200));
         bar.style.width = `${(p * 100).toFixed(1)}%`;
-        txt.textContent = p >= 1 ? '완료' : `시뮬레이션 중 · 손님 ${n0(438325 * p)} 결정 / 438,325 × 안 4개`;
-        if (p >= 1) return resolve(); requestAnimationFrame(tick);
+        txt.textContent = p >= 1 ? '완료' : `시뮬레이션 중 · ${n0(438325 * p)} / 438,325 결정 × 안 9개`;
+        if (p >= 1) return resolve(); setTimeout(tick, 40);   // a timer, not rAF: the gauge must finish even in a background tab
       };
       tick();
     });
     live?.stop();
     if (res) {
       const keep = new Map($$('canvas[data-key]', el).map(c => [c.dataset.key, c]));
-      VIEWS.run._r = res; fillRun(el, res);
-      $$('img[data-shot]', el).forEach(i => { const c = keep.get(`${i.dataset.engine}:${i.dataset.shot}`); if (c) i.replaceWith(c); });
-      markBest(el, res);
+      VIEWS.run._g = res; slot(el, 'engines').innerHTML = gridHTML(res, true);
+      $$('img[data-shot]', el).forEach(i => { const c = keep.get(i.dataset.group); if (c) i.replaceWith(c); });
+      markBestGrid(el, res);
     } else if (err) slot(el, 'engines').insertAdjacentHTML('afterbegin', errBox(err));
-    setTimeout(() => { gauge.hidden = true; }, 900);
+    setTimeout(() => { gauge.hidden = true; const i = K(el, 'intro'); if (i) i.hidden = false; }, 900);
     b.disabled = false; b.textContent = '다시 실행';
   };
   $('[data-act="rerun"]', el).onclick = rerun;
   $('[data-act="csv"]', el).onclick = () => {
-    const r = VIEWS.run._r, rows = [['run', 'engine', 'plan', 'per_1000', 'lift', 'actual_per_1000', 'ratio_to_actual', 'mc_p05', 'mc_p95']];
-    r.engines.forEach(e => e.plans.forEach(p => rows.push([r.id, e.id, p.id, p.per_1000, p.lift, r.actual_per_1000[p.id], p.ratio_to_actual, p.mc_p05 ?? '', p.mc_p95 ?? ''])));
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows.map(x => x.join(',')).join('\n')], { type: 'text/csv' })); a.download = `run_${r.id}.csv`; a.click();
+    const g = VIEWS.run._g, rows = [['model', 'plan', 'display', 'flyer', 'per_1000', 'lift']];
+    g.plans.forEach(p => rows.push([g.model, p.id, ...gridLabels(p), p.per_1000 ?? '', p.lift ?? '']));
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows.map(x => x.join(',')).join('\n')], { type: 'text/csv' })); a.download = `simoff_${g.model}_${g.id}.csv`; a.click();
   };
   if (params.go) { history.replaceState(null, '', '#run'); setTimeout(rerun, 1200); }
 };
@@ -540,20 +528,30 @@ VIEWS.run.after = (el, params) => {
 // S6 검증
 VIEWS.verify = async (root) => {
   const v = await api('validation');
-  const pe = v.persona.engines, je = v.jev.engines, me = v.model_eval;
-  set(root, 'decisions', n0(me.n_test_rows)); set(root, 'buys', n0(me.n_test_buys));
-  set(root, 'c1', `${v.persona.actual_buys_for_pairs}건`);
-  set(root, 'c1s', `보정 모델 ${nf(pe.calibrated.predicted_buys_on_real_test_visits)} · Jev 그대로 ${n0(pe.jev_state.predicted_buys_on_real_test_visits)} · 페르소나 ${n0(pe.basic.predicted_buys_on_real_test_visits)}`);
-  const actualNone = v.persona.actual_rate_by_condition_all_test.none;
-  set(root, 'c2', pct(pe.calibrated.mean_p_by_condition.none)); set(root, 'c2s', `실제 ${pct(actualNone)} · ${nf(pe.calibrated.level_vs_actual_none)}배`);
-  set(root, 'c3', pct(je.jev_calibrated.mean_p)); set(root, 'c3s', `실제 ${pct(me.engines.calibrated.actual_rate)} · 그대로 쓰면 ${pct(je.jev_raw.mean_p)}`);
-  set(root, 'c4', pct(pe.basic.mean_p_by_condition.none)); set(root, 'c4s', `실제의 ${n0(pe.basic.level_vs_actual_none)}배`);
-  set(root, 'strip', `실제 ${v.persona.actual_buys_for_pairs} · 우리 ${nf(pe.calibrated.predicted_buys_on_real_test_visits)} · Jev ${n0(pe.jev_state.predicted_buys_on_real_test_visits)} · 페르소나 ${n0(pe.basic.predicted_buys_on_real_test_visits)}`);
-  const L = v.persona.actual_lift_pooled;
-  set(root, 'effA', `${nf(L.A_front_endcap.actual)} <span class="muted">(${nf(L.A_front_endcap.ci95[0])}–${nf(L.A_front_endcap.ci95[1])})</span>`, true);
-  set(root, 'effC', `${nf(L.C_other_display.actual)} <span class="muted">(${nf(L.C_other_display.ci95[0])}–${nf(L.C_other_display.ci95[1])})</span>`, true);
-  [[je.gbdt_calibrated.auc, 1], [je.jev_calibrated.auc, 2], [je.no_promo.auc, 3]].forEach(([a, i]) => { set(root, `auc${i}`, nf(a, 3)); K(root, `aucBar${i}`).style.width = `${((a - .5) * 200).toFixed(0)}%`; });
-  set(root, 'ece', nf(me.engines.calibrated.ece, 5));
+  const pe = v.persona.engines, me = v.model_eval, act = v.persona.actual_rate_by_condition_all_test, L = v.persona.actual_lift_pooled.A_front_endcap;
+  // keep the calibration chart from the board, on a plain card
+  const chart = $$('.card', root).find(c => c.textContent.includes('보정 곡선'));
+  if (chart) { chart.className = 'card'; chart.style.removeProperty('--card-accent'); $('.lbl', chart).textContent = 'SimOff-1이 말한 확률 vs 실제 비율';
+    const cap = [...chart.querySelectorAll('p, div')].reverse().find(e => e.textContent.includes('점선')); if (cap) cap.innerHTML = '모델이 "1%"라고 하면 실제로도 1%쯤 샀다는 뜻입니다. 점이 점선에 붙을수록 믿을 만한 확률입니다.'; }
+  const M = [{ name: 'SimOff-1', c: '#0F766E', p: pe.calibrated, auc: me.engines.calibrated.auc },
+             { name: 'Jev', c: '#6D5BD0', p: pe.jev_state, auc: v.jev.engines.jev_raw.auc },
+             { name: '언어 모델 페르소나', c: '#F99C00', p: pe.basic, auc: null }];
+  const real = act.none, inBand = x => x >= L.ci95[0] && x <= L.ci95[1];
+  const verdict = (ok, txt) => `<span class="tag ${ok ? 'tag-ok' : 'tag-no'}">${txt}</span>`;
+  const row = (m, val, v2) => `<div class="vq-row"><span class="vq-m"><span class="sq" style="background:${m.c};width:8px;height:8px"></span>${m.name}</span><span class="vq-v">${val}</span>${v2}</div>`;
+  const q = (n, title, sub, realTxt, rows) => `<article class="card vq"><div class="lbl">질문 ${n}</div><h3>${title}</h3><p class="muted">${sub}</p><div class="vq-real"><span>실제</span><b>${realTxt}</b></div>${rows}</article>`;
+  root.innerHTML = `<div class="hdr"><h1 class="ptitle">모델 검증</h1></div>
+<section><h2 class="display" style="font-size:24px;max-width:820px">결정 모델이 본 적 없는 6주의 실제 구매로 시험했습니다.</h2>
+<p class="body muted" style="margin-top:6px;max-width:860px">미국 식료품 체인 2,469가구의 기록 중 마지막 6주(방문 × 상품 ${n0(me.n_test_rows)}건, 실제 구매 ${n0(me.n_test_buys)}건)는 학습에 쓰지 않고 정답으로만 남겼습니다. 세 모델에 같은 질문을 했습니다.</p></section>
+<section class="vq-grid">
+${q(1, '몇 명이 살지 맞히나', '평소 진열일 때 한 번 들른 손님이 그 상품을 살 확률', pct(real), M.map(m => { const r = m.p.mean_p_by_condition.none / real; return row(m, pct(m.p.mean_p_by_condition.none), r < 1.5 && r > 1 / 1.5 ? verdict(true, '거의 맞음') : verdict(false, `${n0(r)}배 부풀림`)); }).join(''))}
+${q(2, '진열하면 얼마나 더 팔릴지 맞히나', '입구 엔드캡에 두면 평소보다 몇 배', `${nf(L.actual, 1)}배 <span class="muted" style="font-weight:400">(${nf(L.ci95[0], 1)}–${nf(L.ci95[1], 1)})</span>`, M.map(m => row(m, `${nf(m.p.lift_A_endcap, 1)}배`, inBand(m.p.lift_A_endcap) ? verdict(true, '범위 안') : verdict(false, '작게 봄'))).join(''))}
+${q(3, '누가 살지 먼저 짚나', '살 손님을 안 살 손님보다 높게 놓는 정도 (0.5 = 찍기, 1 = 완벽)', '—', M.map(m => row(m, m.auc == null ? '측정 안 함' : nf(m.auc, 2), m.auc == null ? '' : `<span class="vq-bar"><i style="width:${Math.max(0, (m.auc - .5) * 200).toFixed(0)}%;background:${m.c}"></i></span>`)).join(''))}
+</section>
+<section class="vq-bottom"><div data-slot="chart"></div>
+<div><div class="lbl">정리</div><ul class="vq-list"><li><b>SimOff-1</b> 은 실제 구매 수준과 진열 효과를 모두 실제 범위 안에서 맞혔습니다.</li><li><b>Jev</b> 는 누가 살지 순위는 꽤 짚지만, 구매 확률을 수십 배 부풀리고 진열 효과를 작게 봅니다.</li><li><b>언어 모델 페르소나</b> 는 그럴듯하게 답하지만 구매를 약 200배 부풀리고, 진열이 달라져도 답이 거의 같습니다.</li></ul></div>
+<div><div class="lbl">아직 판정하지 못한 것</div><ul class="vq-list muted"><li>전단 효과 — 같은 주에 전단을 안 한 매장이 없어 비교할 수 없음</li><li>할인 — 사지 않은 방문의 가격이 기록에 없음</li></ul></div></section>`;
+  if (chart) slot(root, 'chart').replaceWith(chart);
 };
 
 // 최종 배치 (3D)
@@ -561,15 +559,17 @@ function stat(v, l, sub) { return `<div style="display:flex;flex-direction:colum
 VIEWS.layout = async (root, params) => {
   const P = projSpace(); VIEWS.layout._P = P;
   if (P) {
-    const r = await api('run/latest'), eng = r.engines.find(e => e.id === 'calibrated');
-    const ranked = [...eng.plans].sort((a, b) => b.per_1000 - a.per_1000), best = ranked[0], base = eng.plans.find(p => p.id === 'none');
+    const g = await api(`grid/latest?model=${currentModel()}`);
+    const ranked = g.plans.filter(p => p.per_1000 != null).sort((a, b) => b.per_1000 - a.per_1000), best = ranked[0], base = g.plans.find(p => p.id === 'shelf_none');
+    const name = p => gridLabels(p).join(' + '), fxOf = p => ({ front: P.plans.A_front_endcap.fx, other: P.plans.C_other_display.fx }[p.display] || null);
+    VIEWS.layout._fx = Object.fromEntries(g.plans.map(p => [p.id, fxOf(p)]));
     VIEWS.layout._best = best.id;
     root.innerHTML = `<div class="hdr"><h1 class="ptitle">최종 배치 · ${esc(P.spaceTitle)}</h1></div>
 <section class="fit-screen"><div class="fit-stage" style="position:relative;overflow:hidden;border:1px solid var(--border);background:var(--card)"><div data-slot="pstage" style="width:100%;height:100%"></div>
-<div style="position:absolute;left:16px;top:16px"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">제안: ${esc(P.plans[best.id].label)}</span></div></div>
-<aside class="fit-side"><div><div class="lbl">${esc(P.title.length > 60 ? P.title.slice(0, 60) + '…' : P.title)}</div><h2 class="display" style="margin-top:8px;font-size:22px;line-height:1.35">제안: ${esc(P.plans[best.id].label)}. 판매가 지금의 ${nf(best.lift, 1)}배.</h2></div>
+<div style="position:absolute;left:16px;top:16px"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">제안: ${esc(name(best))}</span></div></div>
+<aside class="fit-side"><div><div class="lbl">${esc(P.title.length > 60 ? P.title.slice(0, 60) + '…' : P.title)}</div><h2 class="display" style="margin-top:8px;font-size:22px;line-height:1.35">제안: ${esc(name(best))}. 판매가 지금의 ${nf(best.lift, 1)}배.</h2></div>
 <div class="stats4">${stat(`×${nf(best.lift, 1)}`, '지금 그대로 대비', `방문 1,000회당 ${nf(base.per_1000)} → ${nf(best.per_1000)}`)}${stat(`+${nf(best.per_1000 - base.per_1000)}`, '방문 1,000회당 추가 판매', MODEL_NOTE)}</div>
-<div class="tbl fit-list"><div class="th" style="grid-template-columns:minmax(0,1fr) 70px"><span>안</span><span class="r">1,000회당</span></div>${ranked.map(p => `<button type="button" class="tr list-btn" data-plan="${p.id}" style="display:grid;grid-template-columns:minmax(0,1fr) 70px;gap:10px;align-items:center;padding:12px 14px;border-top:1px solid rgba(216,221,223,.7);width:100%"><span style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="sq" style="background:${COL[p.id]};width:8px;height:8px"></span>${esc(P.plans[p.id].label)}${p.id === best.id ? ' <span class="tag tag-ok">최선</span>' : ''}</span><span class="num r" style="font-size:12px">${nf(p.per_1000)}</span></button>`).join('')}</div>
+<div class="tbl fit-list"><div class="th" style="grid-template-columns:minmax(0,1fr) 70px"><span>안</span><span class="r">1,000회당</span></div>${ranked.map(p => `<button type="button" class="tr list-btn" data-plan="${p.id}" style="display:grid;grid-template-columns:minmax(0,1fr) 70px;gap:10px;align-items:center;padding:12px 14px;border-top:1px solid rgba(216,221,223,.7);width:100%"><span style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="sq" style="background:${COL[GRID_ZONE[p.display]]};width:8px;height:8px"></span>${esc(name(p))}${p.id === best.id ? ' <span class="tag tag-ok">최선</span>' : ''}</span><span class="num r" style="font-size:12px">${nf(p.per_1000)}</span></button>`).join('')}</div>
 </aside></section>`;
     return;
   }
@@ -597,7 +597,7 @@ VIEWS.layout.after = (el, params, cleanups) => {
   if (P) {
     const s = mountSpace(slot(el, 'pstage'), { glb: P.glb, space: P.space, ops: P.ops, people: P.people }, { maxPeople: 40 });
     cleanups.push(() => s.dispose());
-    const show = id => { s.setHighlight(P.plans[id]?.fx); $$('[data-plan]', el).forEach(b => b.classList.toggle('on', b.dataset.plan === id)); };
+    const show = id => { s.setHighlight(VIEWS.layout._fx[id]); $$('[data-plan]', el).forEach(b => b.classList.toggle('on', b.dataset.plan === id)); };
     s.ready().then(() => show(VIEWS.layout._best));
     $$('[data-plan]', el).forEach(b => b.onclick = () => show(b.dataset.plan));
     return;
@@ -629,7 +629,6 @@ VIEWS.report = async (root) => {
     : card('매장 실험 대신 지금 결정하면', '—', '<a href="#brief" style="color:#fff">결정 브리프</a>에서 실험 기간과 주당 방문 수를 넣으면 계산합니다');
   slot(root, 'segments').innerHTML = N.segments.map((s, i) => `<div class="tr" style="grid-template-columns:minmax(0,1fr) 90px 120px;${i === 1 ? 'background:#fff;' : ''}"><span class="" style="min-width:0">${esc(s.segment)}</span><span class="r" style="min-width:0"><span class="num" style="font-size:12px">${nf(s.lift, 1)}배</span></span><span class="r" style="min-width:0"><span class="num" style="font-size:12px">+${nf(s.extra_per_1000, 1)}</span></span></div>`).join('');
   set(root, 'share', `${Math.round((N.segments.find(s => s.segment.includes('없는'))?.share_of_extra || 0) * 100)}%`);
-  const ok = store.get('approved'); if (ok) slot(root, 'approve').innerHTML = `<span class="tag tag-ok" style="height:32px;padding:0 12px">승인됨 · ${esc(ok)}</span> <button type="button" class="btn btn-ghost btn-sm" data-act="undo">취소</button>`;
 };
 function relabelText(root, map) {          // swap the example's plan names for the project's, in every text node
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); const nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
@@ -637,8 +636,9 @@ function relabelText(root, map) {          // swap the example's plan names for 
 }
 VIEWS.report.after = (el) => {
   const P = projSpace();
+  const ok = store.get('approved'); if (ok) slot(el, 'approve').innerHTML = `<span class="tag tag-ok" style="height:32px;padding:0 12px">승인됨 · ${esc(ok)}</span> <button type="button" class="btn btn-ghost btn-sm" data-act="undo">취소</button>`;
   if (P) {
-    const h2 = $('h2.display', el); if (h2) h2.innerHTML = `${esc(P.spaceTitle)},<br>${esc(P.plans.A_front_endcap.label)}.`;
+    const h2 = $('h2.display', el); if (h2) h2.innerHTML = `${esc(P.spaceTitle)}, ${esc(P.plans.A_front_endcap.label)}.`;
     relabelText(el, [['다음 주 콜드 시리얼', P.spaceTitle], ['앞쪽 엔드캡', P.plans.A_front_endcap.label], ['기타 진열', P.plans.C_other_display.label], ['평소대로', P.plans.none.label], ['전단', P.plans.B_mailer_only.label]]);
     const lead = K(el, 'lead'); if (lead) lead.textContent = `${P.plans.A_front_endcap.label}에 두면 지금보다 판매가 늘 것으로 봅니다. ${MODEL_NOTE} — 이 공간의 기록이 오면 다시 보정합니다.`;
   }

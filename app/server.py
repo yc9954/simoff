@@ -18,6 +18,7 @@ Routes (all GET unless noted):
   /api/report                      S7
   POST /api/connect {transactions, products?, placements?}   S8 CSV text -> full cycle in the background
   /api/job?id=                     S8 progress
+  POST /api/grid {model, seed} · /api/grid/latest?model=   the chosen model on all nine plans (display x flyer)
   /api/models                      the decision models a person can pick, with their training data and sources
   POST /api/chat {history, files?, model?}  시작: Claude talks, decides, and builds the space with tools (rules without a key)
   /api/spaces                      the 27 archetype spaces (consumer-jev) the world builder recommends from
@@ -122,6 +123,8 @@ class Handler(SimpleHTTPRequestHandler):
             ('GET', '/api/sample'): lambda: S.sample_files(q.get('store', '367')),
             ('GET', '/api/spaces'): world.catalog,
             ('POST', '/api/chat'): lambda: chat.chat(body.get('history') or [], body.get('files') or [], body.get('model')),
+            ('POST', '/api/grid'): lambda: S.run_grid(body.get('model') or 'simoff_retail', seed=int(body.get('seed', 42))),
+            ('GET', '/api/grid/latest'): lambda: S.latest_grid(q.get('model') or 'simoff_retail'),
             ('GET', '/api/models'): lambda: {'models': decision_models.MODELS, 'default': decision_models.DEFAULT},
             ('POST', '/api/agent'): lambda: world.run_agent(body.get('description', ''), body.get('category'), body.get('area'),
                                                             body.get('files') or [], body.get('pick')),

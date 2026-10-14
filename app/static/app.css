@@ -160,7 +160,7 @@ img[data-shot]:not([src]) { color: transparent; background: linear-gradient(100d
 /* gradient surfaces are square-cornered, everywhere */
 .grad, .grad::before, .grad::after, .au.grad .au-ring, .gcard.grad { border-radius: 0 !important; }
 /* 최종 배치: the whole decision on one screen — 3D left, the summary and the list right */
-.fit-screen { display: grid; grid-template-columns: minmax(0,1fr) 380px; gap: 20px; height: calc(100vh - 192px); min-height: 480px; }
+.fit-screen { display: grid; grid-template-columns: minmax(0,1fr) 380px; gap: 20px; height: calc(100vh - 230px); min-height: 440px; }
 .fit-stage { min-height: 0; }
 .fit-side { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
 .fit-list { flex: 1; min-height: 120px; overflow: auto; }
@@ -218,8 +218,6 @@ img[data-shot]:not([src]) { color: transparent; background: linear-gradient(100d
 @media (max-width: 760px) { .nav-sep, .flow-track { display: none; } .flow { flex-direction: row; flex-wrap: wrap; } }
 @media (prefers-reduced-motion: reduce) { .flow-track i, .nav-n { transition: none; } }
 /* one project through the flow */
-.flow-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; margin-bottom: -12px; border: 1px solid var(--border); background: var(--card); font-size: 13px; }
-.flow-bar .lbl { margin-right: 6px; }
 .plan-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .plan-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border: 1px solid var(--border); background: #fff; font-size: 13px; }
 .plan-chip i { width: 9px; height: 9px; display: inline-block; }
@@ -228,3 +226,61 @@ img[data-shot]:not([src]) { color: transparent; background: linear-gradient(100d
 .plan-card { overflow: hidden; padding: 0; }
 @media (max-width: 1100px) { .plan-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
 @media (max-width: 760px) { .plan-grid { grid-template-columns: 1fr; } }
+/* every step ends the same way: what it settled, and the next step */
+.step-foot { padding-top: 24px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 24px; }
+.step-foot p { max-width: 720px; font-size: 15px; line-height: 28px; color: var(--mfg); margin: 0; }
+.step-foot b { color: #000; font-weight: 600; }
+.step-foot .btn { height: 44px; padding: 0 20px; }
+/* landing: how it works, below the hero until the conversation starts */
+.landing-info { padding: 8px 4px 0; }
+.chatting .landing-info { display: none; }
+.how { margin-top: 24px; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 28px; }
+.how > div { display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 1px solid var(--border); }
+.how-ic { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); background: #fff; }
+.how b { font-size: 16px; font-weight: 600; margin-top: 6px; }
+.how p { margin: 0; font-size: 14px; line-height: 1.7; color: var(--mfg); }
+@media (max-width: 1100px) { .how { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 760px) { .how { grid-template-columns: 1fr; } }
+/* nine plans: display across, flyer down */
+.grid9 { display: grid; grid-template-columns: 96px repeat(3, minmax(0,1fr)); gap: 12px; align-items: stretch; }
+.grid9-h { font-size: 12px; font-weight: 600; padding: 0 2px 2px; align-self: end; }
+.grid9-r { font-size: 12px; font-weight: 600; color: var(--mfg); align-self: center; }
+@media (max-width: 760px) { .grid9 { grid-template-columns: 1fr; } .grid9-h, .grid9 > span:first-child { display: none; } }
+/* 모델 검증: three questions, one model per row */
+.vq-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+.vq { padding: 14px 18px; display: flex; flex-direction: column; }
+.vq h3 { margin: 8px 0 0; font-size: 18px; font-weight: 600; }
+.vq > p { margin: 6px 0 0; font-size: 13px; line-height: 1.6; min-height: 42px; }
+.vq-real { display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; padding: 8px 0; border-top: 1px solid #171717; border-bottom: 1px solid var(--border); }
+.vq-real span { font-size: 13px; } .vq-real b { font-size: 20px; font-weight: 600; }
+.vq-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.vq-m { display: flex; align-items: center; gap: 8px; }
+.vq-v { font-family: "GeistMono", monospace; font-size: 13px; }
+.vq-bar { width: 70px; height: 6px; background: rgba(0,0,0,.07); } .vq-bar i { display: block; height: 100%; }
+.vq-bottom { display: grid; grid-template-columns: minmax(380px, 430px) minmax(0,1.3fr) minmax(0,1fr); gap: 28px; align-items: start; }
+.vq-bottom > .card { padding: 14px 16px !important; display: grid; grid-template-columns: auto minmax(0,1fr); gap: 0 16px; align-items: end; }
+.vq-bottom > .card > .lbl { grid-column: 1 / -1; }
+.vq-bottom > .card > p { grid-column: 2; grid-row: 2 / 4; align-self: center; margin: 0 !important; font-size: 12px !important; line-height: 1.6; }
+.main.stepv:not(:has(> .step-foot)) { padding-bottom: 20px; }
+.vq-bottom > .card > div[style*="width:260px"] { zoom: .7; grid-column: 1; margin-left: 0 !important; margin-right: 0 !important; }
+.vq-bottom > .card > div[style*="height:260px"] { margin-top: 16px !important; }
+.vq-list { margin: 10px 0 0; padding-left: 18px; font-size: 14px; line-height: 1.8; }
+@media (max-width: 1100px) { .vq-grid, .vq-bottom { grid-template-columns: 1fr; } }
+/* step pages fit one screen: tighter rhythm, the footer pinned to the bottom edge so the next step is always in view */
+.main.stepv { min-height: 100vh; gap: 18px; padding-bottom: 0; }
+.main.stepv > .step-foot { margin-top: auto; position: sticky; bottom: 0; z-index: 6; background: var(--bg); padding: 12px 0 16px; gap: 16px; }
+.step-foot p { font-size: 14px; line-height: 22px; }
+.step-acts { display: flex; gap: 8px; align-items: center; }
+.step-foot .btn { height: 40px; }
+@media (min-width: 1101px) { .main.stepv .fit-screen { height: calc(100vh - 186px); } }
+.main.stepv .d3 { padding: 16px 18px; }
+.main.stepv .d3 > .mono[style*="margin-top:22px"] { margin-top: 14px !important; }
+.main.stepv .d3 > div[style*="margin-top:18px"] { margin-top: 12px !important; padding-top: 10px !important; }
+/* nine plans: the 3D shot takes what the screen has left after the text, three rows of it */
+.g9-shot { height: clamp(56px, calc((100vh - 430px) / 3), 180px); }
+.grid9.nonum .g9-shot { height: clamp(56px, calc((100vh - 415px) / 3), 190px); }
+.g9-txt { padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 3px; }
+.g9-l { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; min-width: 0; }
+.grid9 { gap: 10px; }
+.main.stepv .tbl .th { padding: 8px 16px; }
+.main.stepv .tbl .tr { padding: 8px 16px; }
