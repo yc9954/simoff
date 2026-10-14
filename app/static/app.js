@@ -1,6 +1,7 @@
 // Offline API screens. Each screen is the storyboard board's own markup (screens/<id>.html);
 // this file fills its data-k / data-slot / data-shot hooks from the API and wires the controls.
 import { mountStore, snapshots } from './store3d.js';
+import { mountSpace } from './space3d.js';
 
 // ---------------------------------------------------------------- helpers
 const $ = (s, el = document) => el.querySelector(s);
@@ -60,9 +61,9 @@ async function fillShots(root) {
 // ---------------------------------------------------------------- shell
 let cleanups = [];
 async function render() {
-  const [id, qs] = (location.hash.slice(1) || 'brief').split('?');
+  const [id, qs] = (location.hash.slice(1) || 'start').split('?');
   const params = Object.fromEntries(new URLSearchParams(qs || ''));
-  const view = VIEWS[id] ? id : 'brief';
+  const view = VIEWS[id] ? id : 'start';
   $$('.nav-a').forEach(a => a.dataset.id === view ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
   cleanups.forEach(f => { try { f(); } catch {} }); cleanups = []; hideTip();
   const el = $('#view');
@@ -93,6 +94,92 @@ async function boot() {
 
 // ---------------------------------------------------------------- screens
 const VIEWS = {};
+
+// 시작 · any offline business -> a recommended 3D space, a few edits, people, and the decisions it can test
+const EXAMPLES = [
+  ['카페', '성수동에 30평 카페를 열어요. 주말 줄이 걱정이고 좌석을 늘리고 싶어요.'],
+  ['편의점 신제품', '동네 편의점이에요. 신제품: 제로콜라 를 입구 쪽에 진열하면 더 팔릴까요?'],
+  ['굿즈 팝업', '캐릭터 굿즈 팝업스토어 200㎡를 2주 열어요. 포토존과 계산 대기 줄이 걱정이에요.'],
+  ['야외 축제', '야외 푸드 페스티벌을 열어요. 푸드 텐트와 무대 사이 동선이 궁금해요.'],
+  ['드럭스토어', '드럭스토어에서 신제품: 선크림 행사 진열 위치를 정하려고 해요.'],
+];
+const OPS_TXT = { duplicate: '추가', relabel: '행사 자리', stations: '계산 자리', remove: '뺌' };
+VIEWS.start = async (root) => {
+  const cats = await api('spaces');
+  VIEWS.start._cats = cats;
+  const s = store.get('startForm', {});
+  K(root, 'desc').value = s.desc || ''; K(root, 'area').value = s.area || '';
+  const COMMON = ['arch_cafe', 'arch_cvs', 'arch_supermarket', 'arch_drugstore', 'arch_store', 'arch_restaurant', 'arch_popup_goods', 'arch_popup_experience', 'arch_exhibition_hall', 'arch_festival', 'arch_event_hall', 'arch_market'];
+  const chip = c => `<button type="button" class="chip${s.cat === c.id ? ' on' : ''}" data-cat="${c.id}" title="${esc(c.title)}">${esc(c.label)}</button>`;
+  const rest = cats.filter(c => !COMMON.includes(c.id));
+  slot(root, 'cats').innerHTML = COMMON.map(id => cats.find(c => c.id === id)).filter(Boolean).map(chip).join('')
+    + `<span data-more hidden>${rest.map(chip).join('')}</span><button type="button" class="chip" data-act="more" style="border-style:dashed">+ ${rest.length}개 더</button>`;
+  if (rest.some(c => c.id === s.cat)) { $('[data-more]', root).hidden = false; $('[data-act="more"]', root).remove(); }
+  slot(root, 'examples').innerHTML = EXAMPLES.map(([t], i) => `<button type="button" class="chip" data-ex="${i}">${esc(t)}</button>`).join('');
+};
+VIEWS.start.after = (el, params, cleanups) => {
+  let cat = store.get('startForm', {}).cat || null, files = [];
+  const save = () => store.set('startForm', { desc: K(el, 'desc').value, area: K(el, 'area').value, cat });
+  $$('[data-cat]', el).forEach(b => b.onclick = () => { cat = cat === b.dataset.cat ? null : b.dataset.cat; $$('[data-cat]', el).forEach(x => x.classList.toggle('on', x.dataset.cat === cat)); save(); });
+  $$('[data-ex]', el).forEach(b => b.onclick = () => { K(el, 'desc').value = EXAMPLES[+b.dataset.ex][1]; cat = null; $$('[data-cat]', el).forEach(x => x.classList.remove('on')); save(); build(); });
+  K(el, 'desc').oninput = save; K(el, 'area').oninput = save;
+  const more = $('[data-act="more"]', el); if (more) more.onclick = () => { $('[data-more]', el).hidden = false; more.remove(); };
+  K(el, 'files').onchange = e => { files = [...e.target.files].map(f => f.name); set(el, 'fileNote', files.length ? `${files.join(' · ')} · 결정 단계에서 이 기록으로 보정합니다` : '없으면 공간과 흐름부터 봅니다.'); };
+  const box = slot(el, 'agent');
+  let s3 = null;
+  cleanups.push(() => s3?.dispose());
+  async function build(pick) {
+    const desc = K(el, 'desc').value.trim();
+    if (!desc && !cat) { K(el, 'desc').focus(); K(el, 'desc').placeholder = '한 줄이면 됩니다 — 업종과 걱정되는 것을 적어 주세요'; return; }
+    box.style.display = 'block';
+    box.innerHTML = `<div class="card" style="padding:20px"><div class="lbl">02 · 에이전트</div><ol data-slot="steps" style="list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:2px"></ol></div>`;
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const titles = ['업종 이해', '맵 추천', '맵 맞추기', '사람 배치', '시험할 결정'];
+    const list = slot(box, 'steps');
+    list.innerHTML = titles.map((t, i) => `<li class="ag-step" data-i="${i}"><span class="ag-dot"><span class="spin"></span></span><span class="ag-n mono">${String(i + 1).padStart(2, '0')}</span><b>${t}</b><span class="ag-d muted">대기</span></li>`).join('');
+    let r;
+    try {
+      r = await api('agent', { description: desc, category: cat ? VIEWS.start._cats.find(c => c.id === cat)?.label : null, area: +K(el, 'area').value || null, files, pick });
+    } catch (e) { box.insertAdjacentHTML('beforeend', errBox(e)); return; }
+    for (let i = 0; i < titles.length; i++) {            // reveal the steps in order; the times are the agent's own
+      const li = $(`[data-i="${i}"]`, list), st = r.steps[i];
+      await new Promise(res => setTimeout(res, 260));
+      if (!st) { li.classList.add('ag-skip'); $('.ag-dot', li).innerHTML = '–'; $('.ag-d', li).textContent = '앞 단계에서 멈춤'; continue; }
+      li.classList.add(st.ask ? 'ag-ask' : 'ag-done'); $('.ag-dot', li).innerHTML = st.ask ? '?' : '✓';
+      $('.ag-d', li).textContent = `${st.detail} · ${st.ms}ms`;
+    }
+    if (!r.space) {                                       // the agent could not tell the business: ask, do not guess
+      box.insertAdjacentHTML('beforeend', `<div class="card" style="margin-top:12px;padding:16px;border-color:#3B73FF"><b>어떤 업종인지 위 칩에서 하나 골라 주세요.</b> <span class="muted">설명에서 업종을 찾지 못해 맵을 고르지 않았습니다.</span></div>`);
+      return;
+    }
+    renderWorld(r);
+  }
+  function renderWorld(r) {
+    const [u, rec, ad, pl, dc] = r.steps.map(x => x);
+    const recs = rec.recommendations, chosen = rec.chosen;
+    const U = u.understanding;
+    box.insertAdjacentHTML('beforeend', `
+<div class="card" style="margin-top:12px;padding:20px"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:baseline"><div class="lbl">맵 추천 · 27개 원형 중</div><span class="muted" style="font-size:12px">${U.read_by === 'rules' ? '설명을 규칙으로 읽었습니다' : esc(U.read_by) + '이(가) 설명을 읽었습니다'}${U.llm_failed?.length ? ` (언어 모델 실패: ${esc(U.llm_failed.join(', '))})` : ''}</span></div>
+<div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">${recs.map((c, i) => `
+<button type="button" class="rec card${c.id === chosen ? ' on' : ''}" data-pick="${c.id}"><img src="${c.thumb}" alt="${esc(c.title)} 3D 모형" loading="lazy"><span style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="font-weight:600">${i + 1}. ${esc(c.label)}</b><span class="mono muted" style="font-size:11px">${Math.round(c.area_m2).toLocaleString()}㎡${c.floors > 1 ? ` · ${c.floors}층` : ''}${c.outdoor ? ' · 야외' : ''}</span></span><span class="muted" style="font-size:12px;line-height:1.5">${esc(c.title)}</span><span style="display:flex;flex-wrap:wrap;gap:4px">${c.why.map(w => `<span class="tag" style="background:rgba(0,0,0,.05)">${esc(w)}</span>`).join('')}</span>${c.id === chosen ? '<span class="tag tag-ok" style="align-self:flex-start">이 맵으로 세움</span>' : '<span class="mono muted" style="font-size:11px">이 맵으로 바꾸기 →</span>'}</button>`).join('')}</div></div>
+
+<div class="card" style="margin-top:12px;overflow:hidden"><div style="position:relative"><div data-slot="space" style="height:560px;background:#e9ecec"></div>
+<div style="position:absolute;left:14px;top:14px;display:flex;flex-wrap:wrap;gap:8px;max-width:calc(100% - 28px)"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">${esc(r.space.title)}</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">손님 ${pl.people.count}명 · 걷는 모습은 표현</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">에이전트 수정 ${ad.ops.length}</span></div></div>
+<div style="padding:16px 20px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px">
+<div><div class="lbl">맵 맞추기 · 에이전트가 바꾼 것</div>${ad.ops.length ? ad.ops.map(o => `<button type="button" class="list-btn" data-focus="${o.op === 'duplicate' ? o.id : o.id}" style="display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border);width:100%;text-align:left"><span class="tag ${o.op === 'relabel' ? '' : 'tag-ok'}" style="${o.op === 'relabel' ? 'background:#e3ebfe;color:#1d4ed8' : ''};flex:none">${OPS_TXT[o.op] || o.op}</span><span style="font-size:13px;line-height:1.55">${esc(o.why)}</span></button>`).join('') : '<p class="muted" style="font-size:13px;margin-top:10px">요청에 맞춰 바꿀 것이 없어 원형 그대로 두었습니다.</p>'}
+${ad.skipped.map(o => `<div style="display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border)"><span class="tag" style="background:#f6ebd3;color:#6b4a00;flex:none">못 바꿈</span><span style="font-size:13px;line-height:1.55">${esc(o.why)} — ${esc(o.reason)}</span></div>`).join('')}
+${ad.note ? `<p class="muted" style="font-size:12px;line-height:1.6;margin-top:8px">${esc(ad.note)}</p>` : ''}<p class="mono muted" style="font-size:10px;letter-spacing:.4px;margin-top:8px">통로 ${r.space.aisle_min_std ?? .8}m 이상 · 집기 겹침 없음 · 출입문 앞 비움을 지킨 수정만 적용</p></div>
+<div><div class="lbl">03 · 이 공간에서 시험할 결정</div>${dc.decisions.map(d => `<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="font-size:15px;font-weight:500;line-height:1.5">${esc(d.q)}</div><div class="muted" style="font-size:12px;margin-top:4px">지표: ${esc(d.metric)} · 필요한 기록: ${esc(d.needs)}</div><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">${dc.calibrated ? `<a class="btn btn-mono btn-sm" href="#connect">올린 기록으로 보정하기 →</a>` : '<span class="tag" style="background:rgba(0,0,0,.05)">기록이 오면 숫자를 냅니다</span>'}${d.example ? `<a class="btn btn-outline btn-sm" href="${d.example}">보정된 예시로 보기 →</a>` : ''}</div></div>`).join('')}
+<p class="muted" style="font-size:12px;line-height:1.6;margin-top:8px">숫자는 이 공간의 실제 기록으로 보정된 모델만 냅니다. 비슷한 업종의 일반론이나 언어 모델의 짐작으로는 내지 않습니다.</p></div>
+</div></div>`);
+    $$('[data-pick]', box).forEach(b => b.onclick = () => b.dataset.pick !== chosen && build(b.dataset.pick));
+    s3?.dispose();
+    s3 = mountSpace(slot(box, 'space'), { glb: r.glb, space: r.space, ops: ad.ops, people: pl.people }, { maxPeople: 40 });
+    $$('[data-focus]', box).forEach(b => b.onclick = () => { const on = !b.classList.contains('on'); $$('[data-focus]', box).forEach(x => x.classList.remove('on')); b.classList.toggle('on', on); s3.focus(on ? b.dataset.focus : null); });
+  }
+  $('[data-act="build"]', el).onclick = () => build();
+  if (params.go) build();
+};
 
 // S0 결정 브리프
 VIEWS.brief = async (root) => {

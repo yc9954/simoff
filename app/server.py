@@ -18,6 +18,8 @@ Routes (all GET unless noted):
   /api/report                      S7
   POST /api/connect {transactions, products?, placements?}   S8 CSV text -> full cycle in the background
   /api/job?id=                     S8 progress
+  /api/spaces                      the 27 archetype spaces (consumer-jev) the world builder recommends from
+  POST /api/agent {description, category?, area?, files?, pick?}   시작: business in -> map, edits, people, decisions
 """
 import json
 import math
@@ -32,6 +34,7 @@ from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import service  # noqa: E402
+import world  # noqa: E402
 
 STATIC = Path(__file__).resolve().parent / 'static'
 
@@ -103,6 +106,9 @@ class Handler(SimpleHTTPRequestHandler):
             ('POST', '/api/connect'): lambda: S.connect({k: (body.get(k) or '').encode() or None for k in ['transactions', 'products', 'placements']}),
             ('GET', '/api/job'): lambda: S.JOBS[q['id']],
             ('GET', '/api/sample'): lambda: S.sample_files(q.get('store', '367')),
+            ('GET', '/api/spaces'): world.catalog,
+            ('POST', '/api/agent'): lambda: world.run_agent(body.get('description', ''), body.get('category'), body.get('area'),
+                                                            body.get('files') or [], body.get('pick')),
         }
         fn = table.get((method, p))
         if fn is None:

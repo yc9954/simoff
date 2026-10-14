@@ -4,3 +4,6 @@ runs/*/02_ledger.json
 runs/upload_*/
 app/cache/
 __pycache__/
+
+# 3D maps from the private yc9954/consumer-jev repo: fetched locally, never published here (app/fetch_spaces.sh)
+app/static/spaces/
