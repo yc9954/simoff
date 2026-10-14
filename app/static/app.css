@@ -61,17 +61,17 @@ button.tab:hover:not(.on) { background: var(--muted-2); }
   radial-gradient(ellipse at 12% 18%, color-mix(in oklab, #302b75 78%, black) 0%, transparent 76%),
   linear-gradient(140deg, #302b75, #645dde 52%, #66d9c2); }
 /* text on it is ink, except inside a dark glass panel */
-.grad.ink { color: #101114 !important; }
-.grad.ink :not(.glass-dark, .glass-dark *)[style*="color:#fff"] { color: #101114 !important; }
-.grad.ink :not(.glass-dark, .glass-dark *)[style*="color:rgba(255,255,255"] { color: rgba(16,17,20,.62) !important; }
-.grad.ink :not(.glass-dark, .glass-dark *)[style*="solid rgba(255,255,255"] { border-color: rgba(16,17,20,.14) !important; }
-.grad.ink [style*="text-shadow"] { text-shadow: none !important; }
-.grad.ink [style*="color:#a99bf5"] { color: #4b3fc0 !important; }
-.grad.ink [style*="color:#5eead4"] { color: #0F766E !important; }
-.grad.ink .glass-step { background: rgba(255,255,255,.4); border-color: rgba(255,255,255,.7) !important; }
-.grad.ink .glass-step > span:first-child { background: rgba(255,255,255,.6) !important; color: #101114 !important; }
+.grad.ink[data-grad="origin"] { color: #101114 !important; }
+.grad.ink[data-grad="origin"] :not(.glass-dark, .glass-dark *)[style*="color:#fff"] { color: #101114 !important; }
+.grad.ink[data-grad="origin"] :not(.glass-dark, .glass-dark *)[style*="color:rgba(255,255,255"] { color: rgba(16,17,20,.62) !important; }
+.grad.ink[data-grad="origin"] :not(.glass-dark, .glass-dark *)[style*="solid rgba(255,255,255"] { border-color: rgba(16,17,20,.14) !important; }
+.grad.ink[data-grad="origin"] [style*="text-shadow"] { text-shadow: none !important; }
+.grad.ink[data-grad="origin"] [style*="color:#a99bf5"] { color: #4b3fc0 !important; }
+.grad.ink[data-grad="origin"] [style*="color:#5eead4"] { color: #0F766E !important; }
+.grad.ink[data-grad="origin"] .glass-step { background: rgba(255,255,255,.4); border-color: rgba(255,255,255,.7) !important; }
+.grad.ink[data-grad="origin"] .glass-step > span:first-child { background: rgba(255,255,255,.6) !important; color: #101114 !important; }
 .d3.grad { border-color: rgba(255,255,255,.55); box-shadow: 0 3px 10px -4px rgba(48,43,117,.3); }
-.d3.grad::before { background-image: radial-gradient(circle at center, rgba(16,17,20,.5) 0 .75px, transparent .9px); }
+
 .au.grad { box-shadow: 0 28px 80px -34px rgba(48,43,117,.5); }
 /* 시작: agent steps and map recommendations */
 .ag-step { display: grid; grid-template-columns: 22px 26px 104px minmax(0,1fr); gap: 8px; align-items: center; padding: 9px 0; border-top: 1px solid var(--border); font-size: 14px; }
@@ -160,3 +160,14 @@ img[data-shot]:not([src]) { color: transparent; background: linear-gradient(100d
 .chatting .composer > div:nth-child(2) { border-top: 0 !important; padding-top: 0 !important; justify-content: flex-end !important; }
 /* gradient surfaces are square-cornered, everywhere */
 .grad, .grad::before, .grad::after, .au.grad .au-ring, .gcard.grad { border-radius: 0 !important; }
+/* 최종 배치: the whole decision on one screen — 3D left, the summary and the list right */
+.fit-screen { display: grid; grid-template-columns: minmax(0,1fr) 380px; gap: 20px; height: calc(100vh - 116px); min-height: 520px; }
+.fit-stage { min-height: 0; }
+.fit-side { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.fit-list { flex: 1; min-height: 120px; overflow: auto; }
+.stats4 { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; }
+.stats4 > div { padding: 10px 0 !important; gap: 4px !important; }
+.stats4 .stat { font-size: 22px !important; }
+@media (max-width: 1100px) { .fit-screen { grid-template-columns: 1fr; height: auto; } .fit-stage { height: 62vh; } .fit-list { max-height: 50vh; } }
+.grad:not([data-grad="origin"]) { color: #fff; text-shadow: 0 1px 12px rgba(10,12,30,.22); }
+.grad:not([data-grad="origin"]) [style*="color:rgba(255,255,255,.45)"], .grad:not([data-grad="origin"]) [style*="color:rgba(255,255,255,.5)"] { color: rgba(255,255,255,.78) !important; }

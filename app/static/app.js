@@ -57,12 +57,16 @@ async function fillShots(root) {
   const imgs = $$('img[data-shot]', root); if (!imgs.length) return;
   const d = await storeData();
   live?.dispose();
+  // each card's crowd stops at its plan's display as often as that engine's lift for the plan says
+  const run = await api('run/latest').catch(() => null);
+  const liftOf = (eng, plan) => run?.engines?.find(e => e.id === eng)?.plans?.find(p => p.id === plan)?.lift ?? { A_front_endcap: 3, C_other_display: 2.5, B_mailer_only: 1.8 }[plan] ?? 1;
   const cards = imgs.map(i => {
     const c = document.createElement('canvas');
     c.className = i.className; c.setAttribute('style', i.getAttribute('style') || ''); c.setAttribute('role', 'img'); c.setAttribute('aria-label', i.alt || '');
     c.style.width = '100%'; i.replaceWith(c);
-    const k = i.dataset.shot;
-    return k === 'report' ? { canvas: c, highlight: 'A_front_endcap', view: 'cereal', state: 'next' } : { canvas: c, highlight: k, view: 'card', state: 'now' };
+    const k = i.dataset.shot, eng = i.dataset.engine || 'calibrated', plan = k === 'report' ? 'A_front_endcap' : k;
+    const base = { canvas: c, plan, group: `${eng}:${plan}`, lift: liftOf(eng, plan) };
+    return k === 'report' ? { ...base, highlight: 'A_front_endcap', view: 'cereal', state: 'next' } : { ...base, highlight: k, view: 'card', state: 'now' };
   });
   live = liveCards(d, cards);
   const mine = live; cleanups.push(() => { mine.dispose(); if (live === mine) live = null; });
@@ -96,11 +100,12 @@ function cardTexture(seed) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" preserveAspectRatio="xMidYMid slice"><defs><filter id="flow" x="-45%" y="-45%" width="190%" height="190%"><feTurbulence type="fractalNoise" baseFrequency=".003 .008" numOctaves="2" seed="${gpick(k, 'texture-noise', 97) + 1}" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="13" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="22"/></filter><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".72" numOctaves="3" seed="${gpick(k, 'grain', 97) + 1}"/><feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 .08 0"/></filter></defs><g transform="${tf}" fill="none" stroke="#f5ffff" stroke-linecap="round" opacity=".72" filter="url(#flow)">${G_RIBBONS[v]}</g><rect width="100%" height="100%" filter="url(#grain)" opacity=".12"/></svg>`;
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
-// every .grad gets its own field: seeded by its label (data-seed wins), deep where only an icon sits on it, soft under text
+// every .grad gets its own field, seeded by its label (data-seed wins), at Obolus's deep strength under white text
 function paintGrads(root) {
   $$('.grad', root).forEach((e, i) => {
+    if (e.dataset.grad === 'origin') { e.style.background = ''; return; }   // keeps the .grad class colour: the first endpoint card's mint · lavender
     const seed = e.dataset.seed || (e.querySelector('.mono, .lbl, h1, h2, b, [data-k]')?.textContent || e.textContent || '').replace(/[\d.,$%×→\s—-]+/g, ' ').trim().slice(0, 40) || String(i);
-    e.style.background = `linear-gradient(rgba(0,0,0,.03), rgba(0,0,0,.03)), ${cardTexture(seed)} center / cover no-repeat, ${cardGradient(seed, !e.classList.contains('ink'))}`;
+    e.style.background = `linear-gradient(rgba(0,0,0,.03), rgba(0,0,0,.03)), ${cardTexture(seed)} center / cover no-repeat, ${cardGradient(seed, true)}`;
   });
 }
 
@@ -126,15 +131,7 @@ async function render() {
 }
 addEventListener('hashchange', render);
 
-async function boot() {
-  try {
-    const [c, v, h] = await Promise.all([api('catalog'), api('validation'), api('health')]);
-    const g = k => $(`[data-g="${k}"]`) || {};
-    g('hh').textContent = n0(c.households); g('st').textContent = n0(c.stores);
-    const poll = async () => { const s = await api('health'); $('[data-g="status"]').textContent = s.loaded ? `준비됨${s.llm ? ` · 에이전트 ${s.model}` : ' · 에이전트 규칙'}` : '모델 불러오는 중'; if (!s.loaded) setTimeout(poll, 1500); };
-    poll();
-  } catch { $('[data-g="status"]').textContent = '서버에 연결하지 못했습니다'; }
-}
+async function boot() {}
 
 // ---------------------------------------------------------------- screens
 const VIEWS = {};
@@ -395,7 +392,7 @@ function runCards(r) {
     const cards = PLANS.map(c => {
       const p = e.plans.find(x => x.id === c), a = r.actual_per_1000[c], k = p.ratio_to_actual, sel = e.id === 'calibrated' && c === 'A_front_endcap';
       const ok = k != null && k <= 3;
-      return `<article class="card acc ${sel ? 'wash-w' : 'wash'}" style="overflow:hidden;--card-accent:${acc};${sel ? 'border-color:#171717;box-shadow:0 0 0 1px #171717' : ''}">${base(e) ? '' : `<img data-shot="${c}" alt="${esc(e.label)} · ${LBL[c]} 3D 장면" style="display:block;width:100%;height:118px;object-fit:cover;border-bottom:1px solid var(--border);background:#eceeed">`}
+      return `<article class="card acc ${sel ? 'wash-w' : 'wash'}" style="overflow:hidden;--card-accent:${acc};${sel ? 'border-color:#171717;box-shadow:0 0 0 1px #171717' : ''}">${base(e) ? '' : `<img data-shot="${c}" data-engine="${e.id}" alt="${esc(e.label)} · ${LBL[c]} 3D 장면" style="display:block;width:100%;height:118px;object-fit:cover;border-bottom:1px solid var(--border);background:#eceeed">`}
 <div style="padding:12px 14px 14px"><div style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="sq" style="background:${COL[c]};width:8px;height:8px"></span>${LBL[c]}</div><div style="margin-top:10px;display:flex;align-items:baseline;justify-content:space-between"><span class="stat" style="font-size:24px">${p.per_1000 >= 100 ? n0(p.per_1000) : nf(p.per_1000)}</span><span class="num muted" style="font-size:11px">실제 ${nf(a)}</span></div>
 <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:6px"><span class="lbl" style="text-transform:none;white-space:nowrap">평소 대비 ${nf(p.lift, 1)}배</span>${ok ? '' : `<span class="tag tag-no" style="white-space:nowrap">실제의 ${n0(k)}배</span>`}</div></div></article>`;
     }).join('');
@@ -464,7 +461,7 @@ VIEWS.layout = async (root, params) => {
     + stat(`${Math.round(nxt.share_of_draws_above_baseline * 100)}%`, '지금보다 더 팔릴 확률', '같은 손님으로 200번 다시 돌려 본 결과')
     + stat(`${V.actual} / ${nf(V.expected, 1)}`, '이 매장 실제 판매 / 모델', '지금 배치 그대로 6주');
   slot(root, 'tags').innerHTML = `<span class="tag tag-ok">엔드캡 효과 · 시뮬레이터가 실제 범위 안</span><span class="tag ${V.in_band ? 'tag-ok' : 'tag-no'}">이 매장 6주 판매 ${V.actual}건 · ${V.in_band ? '범위 안' : '범위 밖'}</span>`;
-  slot(root, 'moves').innerHTML = moved.map(p => `<button type="button" class="tr list-btn" data-id="${p.id}" style="display:grid;grid-template-columns:28px minmax(0,1fr) 150px 70px;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid rgba(216,221,223,.7);font-size:14px;width:100%"><span class="num" style="font-size:11px;text-align:center;border-radius:2px;background:${COL[p.next] === '#B8BEC2' ? '#B8BEC2' : COL[p.next]};color:${p.next === 'A_front_endcap' ? '#fff' : '#000'};padding:1px 0">${p.n}</span><span style="font-size:13px">${esc(p.name)} ${esc(p.size)}</span><span class="mono muted" style="font-size:11px">${LB(p.now)} → <b style="color:#000;font-weight:500">${LB(p.next)}</b></span><span class="num r" style="font-size:12px">${p.gain ? '+$' + nf(p.gain) : '자리 양보'}</span></button>`).join('');
+  slot(root, 'moves').innerHTML = moved.map(p => `<button type="button" class="tr list-btn" data-id="${p.id}" style="display:grid;grid-template-columns:26px minmax(0,1fr) 64px;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid rgba(216,221,223,.7);width:100%"><span class="num" style="font-size:11px;text-align:center;border-radius:2px;background:${COL[p.next]};color:${p.next === 'A_front_endcap' ? '#fff' : '#000'};padding:1px 0">${p.n}</span><span style="min-width:0"><span style="display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)} ${esc(p.size)}</span><span class="muted" style="display:block;font-size:11px;margin-top:2px">${LB(p.now)} → <b style="color:#000;font-weight:500">${LB(p.next)}</b></span></span><span class="num r" style="font-size:12px">${p.gain ? '+$' + nf(p.gain) : '자리 양보'}</span></button>`).join('');
   VIEWS.layout._L = L;
 };
 VIEWS.layout.after = (el, params, cleanups) => {

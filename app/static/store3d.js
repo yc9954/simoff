@@ -302,28 +302,52 @@ export function mountStore(el, data, opts = {}) {
   // ---------------------------------------------------------------- shoppers (a representation: the data has no paths)
   const shoppers = []; let shopperAsset = null;
   const corridorF = ZF + 1.8, gapX = i => ax(i) + step / 2;
-  function route(k) {
-    const i = Math.floor(rnd(k, 5) * (N - 1)), lane = lanes[Math.floor(rnd(k, 6) * lanes.length)];
-    const x = gapX(i), zIn = ZB + 1 + rnd(k, 7) * (GL - 2);
-    return [[-13.5, D / 2 - .6, 'Walk'], [-13.5, corridorF, 'Walk'], [x, corridorF, 'Walk'], [x, zIn, 'Walk'], [x, zIn, 'Browse', 2.4],
-            [x, corridorF, 'Carry'], [lane - .8, corridorF, 'Carry'], [lane - .8, CZ, 'Carry'], [lane - .8, CZ + .4, 'Pay', 1.8], [lane - .8, D / 2 - 1.2, 'Carry'], [-9.5, D / 2 - 1.2, 'Carry'], [-12.5, D / 2 + .2, 'Carry']];
+  // Each shopper is an agent with its own pace and its own trip. Which displays it stops at is decided per trip:
+  // the chance of stopping at the plan's display grows with that plan's effect (lift) from the decision model, so
+  // an endcap card shows more people at the endcap, a mailer card shows people stopping at the flyer stand, and so on.
+  const J = (v, r = .35) => v + (Math.random() - .5) * 2 * r;
+  const STOP = { A_front_endcap: [ax(home), ZF + .95], C_other_display: null, B_mailer_only: [FLY[0] + .2, FLY[1] - .9] };
+  function route(sh) {
+    const P = [], add = (x, z, a = 'Walk', w = 0) => P.push([x, z, a, w]);
+    const carry = () => (P.length > 4 ? 'Carry' : 'Walk');
+    const pStop = Math.min(.92, .1 * (sh.lift || 1));
+    add(J(-13.5, .4), D / 2 - .6); add(J(-13.2, .5), J(corridorF, .4));
+    if (sh.plan === 'B_mailer_only' && Math.random() < pStop + .1) add(STOP.B_mailer_only[0], STOP.B_mailer_only[1], 'Browse', 1 + Math.random() * 1.5);
+    const visits = 1 + Math.floor(Math.random() * 3);
+    let endcapDone = false;
+    for (let v = 0; v < visits; v++) {
+      const i = Math.random() < .25 + (sh.plan ? .2 : 0) ? home : Math.floor(Math.random() * (N - 1));
+      if (sh.plan === 'A_front_endcap' && !endcapDone && Math.random() < pStop) { endcapDone = true; add(J(STOP.A_front_endcap[0], .3), J(corridorF, .2), carry()); add(J(STOP.A_front_endcap[0], .25), J(STOP.A_front_endcap[1], .12), 'Browse', 1.2 + Math.random() * 2); }
+      const x = J(gapX(i), .12), zIn = ZB + 1 + Math.random() * (GL - 2);
+      add(x, J(corridorF, .3), carry()); add(x, zIn, carry()); add(x, zIn, 'Browse', .8 + Math.random() * 3.2); add(J(x, .1), J(corridorF, .3), carry());
+    }
+    if (sh.plan === 'C_other_display' && Math.random() < pStop) { const tx = TX0 + 1 + Math.random() * (TX1 - TX0 - 2); add(tx, TZ - 1.4, carry()); add(tx, TZ - .95, 'Browse', 1 + Math.random() * 2); }
+    const lane = lanes[Math.floor(Math.random() * lanes.length)];
+    add(lane - .8, J(corridorF, .3), carry()); add(lane - .8, CZ, carry()); add(lane - .8, CZ + .4, 'Pay', 1 + Math.random() * 1.6);
+    add(lane - .8, D / 2 - 1.2, carry()); add(J(-9.5, .6), D / 2 - 1.2, carry()); add(J(-12.5, .4), D / 2 + .2, carry());
+    return P;
   }
+  // groups: one crowd per card (engine x plan) in liveCards, or one crowd for a single stage
+  const GROUPS = opts.groups || [{ key: 'main', plan: opts.plan || null, lift: 1 }];
   function addShoppers(asset, n) {
     const colors = ['#496077', '#954f51', '#657851', '#806488', '#337477', '#9d873e', '#6a6b79'], skins = ['#cfa281', '#b88668', '#d8ae8a', '#b78a70'];
-    for (let k = 0; k < n; k++) {
-      const rootC = cloneSkinned(asset.scene);
-      rootC.traverse(o => { if (!o.isMesh) return; o.castShadow = true; o.material = o.material.clone();
-        if (o.material.name === 'Outerwear') o.material.color.set(colors[k % colors.length]);
-        if (o.material.name === 'Skin') o.material.color.set(skins[k % skins.length]);
-        if (o.material.name === 'Trousers') o.material.color.set(k % 3 === 0 ? '#b9ae97' : '#323d4d'); });
-      const s = .95 + (k % 4) * .03; rootC.scale.setScalar(s);
-      const mixer = new THREE.AnimationMixer(rootC);
-      const acts = Object.fromEntries(asset.animations.map(c => [c.name, mixer.clipAction(c)]));
-      const sh = { root: rootC, mixer, acts, cur: null, path: route(k * 3 + 1), seg: 0, t: rnd(k, 9) * 4, wait: 0, k };
-      // start somewhere along the route so the store is already busy at rest
-      sh.seg = Math.floor(rnd(k, 11) * (sh.path.length - 2));
-      root.add(rootC); shoppers.push(sh); play(sh, 'Walk');
-    }
+    const per = opts.groups ? (opts.perGroup || 7) : n;
+    GROUPS.forEach((g, gi) => {
+      for (let j = 0; j < per; j++) {
+        const k = gi * 31 + j, rootC = cloneSkinned(asset.scene);
+        rootC.traverse(o => { if (!o.isMesh) return; o.castShadow = true; o.material = o.material.clone();
+          if (o.material.name === 'Outerwear') o.material.color.set(colors[(k * 3 + gi) % colors.length]);
+          if (o.material.name === 'Skin') o.material.color.set(skins[k % skins.length]);
+          if (o.material.name === 'Trousers') o.material.color.set(k % 3 === 0 ? '#b9ae97' : '#323d4d'); });
+        rootC.scale.setScalar(.92 + Math.random() * .12);
+        const mixer = new THREE.AnimationMixer(rootC);
+        const acts = Object.fromEntries(asset.animations.map(c => [c.name, mixer.clipAction(c)]));
+        const sh = { root: rootC, mixer, acts, cur: null, seg: 0, t: 0, wait: 0, k, group: g.key, plan: g.plan, lift: g.lift, pace: .75 + Math.random() * .6 };
+        sh.path = route(sh); sh.seg = Math.floor(Math.random() * (sh.path.length - 2));      // already mid-trip at rest
+        rootC.visible = !opts.groups || gi === 0;
+        root.add(rootC); shoppers.push(sh); play(sh, 'Walk');
+      }
+    });
   }
   function play(sh, name, speed = 1) {
     if (sh.cur === name) return; const a = sh.acts[name] || sh.acts.Walk; if (!a) return;
@@ -331,15 +355,16 @@ export function mountStore(el, data, opts = {}) {
   }
   function moveShoppers(dt) {
     for (const sh of shoppers) {
-      const P = sh.path; if (sh.seg >= P.length - 1) { sh.path = route(sh.k * 7 + Math.floor(performance.now() / 1000)); sh.seg = 0; }
+      const d = dt * sh.pace, P = sh.path;
+      if (sh.seg >= P.length - 1) { sh.path = route(sh); sh.seg = 0; sh.t = 0; continue; }
       const a = P[sh.seg], b = P[sh.seg + 1];
-      if (a[3] && sh.wait < a[3]) { sh.wait += dt; play(sh, a[2]); sh.mixer.update(dt); sh.root.position.set(a[0], 0, a[1]); continue; }
+      if (a[3] && sh.wait < a[3]) { sh.wait += d; play(sh, a[2]); sh.mixer.update(d); sh.root.position.set(a[0], 0, a[1]); continue; }
       const dx = b[0] - a[0], dz = b[1] - a[1], len = Math.hypot(dx, dz) || .001;
-      sh.t += dt * 1.15 / len;
+      sh.t += d * 1.15 / len;
       if (sh.t >= 1) { sh.seg++; sh.t = 0; sh.wait = 0; continue; }
       sh.root.position.set(a[0] + dx * sh.t, 0, a[1] + dz * sh.t);
       sh.root.rotation.y = Math.atan2(dx, dz);
-      play(sh, a[2] === 'Browse' || a[2] === 'Pay' ? 'Walk' : a[2]); sh.mixer.update(dt);
+      play(sh, a[2] === 'Browse' || a[2] === 'Pay' ? 'Walk' : a[2]); sh.mixer.update(d);
     }
   }
   loadAssets().then(as => {
@@ -456,6 +481,7 @@ export function mountStore(el, data, opts = {}) {
     advance(now) { update(now); },
     // draw the scene as `card` wants it (highlight, view, plan state) into a 2D canvas; used by liveCards
     drawInto(ctx, w, h, card) {
+      if (opts.groups) shoppers.forEach(sh => { sh.root.visible = sh.group === card.group; });
       setHighlight(card.highlight); if (card.view && VIEWS[card.view] !== view) { view = VIEWS[card.view]; placeCamera(view); }
       if (card.state && card.state !== state) go(card.state, false);
       if (renderer.domElement.width !== w || renderer.domElement.height !== h) { renderer.setPixelRatio(1); renderer.setSize(w, h, false); }
@@ -498,7 +524,8 @@ export function liveCards(data, cards) {
   const host = document.createElement('div');
   host.style.cssText = 'position:fixed;left:-10000px;top:0;width:640px;height:300px';
   document.body.appendChild(host);
-  const s3 = mountStore(host, data, { shoppers: 26, state: 'now', rings: false, manual: true });
+  const groups = [...new Map(cards.map(c => [c.group, { key: c.group, plan: c.plan, lift: c.lift }])).values()];
+  const s3 = mountStore(host, data, { shoppers: 26, state: 'now', rings: false, manual: true, groups, perGroup: groups.length > 6 ? 6 : 9 });
   const dpr = Math.min(devicePixelRatio || 1, 2), seen = new Set();
   const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting ? seen.add(e.target) : seen.delete(e.target)), { rootMargin: '80px' });
   cards.forEach(c => io.observe(c.canvas));
