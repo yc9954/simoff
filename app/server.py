@@ -61,6 +61,12 @@ class Handler(SimpleHTTPRequestHandler):
         if '/api/' in str(args[0] if args else ''):
             sys.stderr.write('%s\n' % (fmt % args))
 
+    def end_headers(self):
+        # static files: revalidate every load (Last-Modified makes it a cheap 304), so an edit is never hidden by the cache
+        if not self.path.startswith('/api/') and not self.path.startswith('/assets/') and not self.path.startswith('/vendor/') and not self.path.startswith('/fonts/'):
+            self.send_header('Cache-Control', 'no-cache')
+        super().end_headers()
+
     def send(self, code, body, ctype='application/json; charset=utf-8'):
         self.send_response(code)
         self.send_header('Content-Type', ctype)

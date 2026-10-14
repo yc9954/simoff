@@ -45,7 +45,9 @@ button.tab:hover:not(.on) { background: var(--muted-2); }
   .main [style*="grid-template-columns:minmax(0,340px)"] { grid-template-columns: 1fr !important; }
   .main [style*="display:grid"] > * { min-width: 0; }
   .main .tbl { overflow-x: auto; }
+  .main .hdr, .main .tabs { flex-wrap: wrap; }
 }
+.tab { white-space: nowrap; }
 /* One gradient for every decorative surface: the endpoints card's (mint · lavender · blue, soft white flow). */
 .grad { background:
   linear-gradient(rgba(0,0,0,.03), rgba(0,0,0,.03)),

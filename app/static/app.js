@@ -29,6 +29,7 @@ const template = id => tplCache[id] ??= fetch(`screens/${id}.html`).then(r => r.
 const K = (root, k) => root.querySelector(`[data-k="${k}"]`);
 function set(root, k, v, html = false) { const e = K(root, k); if (e) html ? e.innerHTML = v : e.textContent = v; return e; }
 const slot = (root, n) => root.querySelector(`[data-slot="${n}"]`);
+const llmWhy = m => /insufficient_quota|credit_balance_exhausted/.test(m) ? 'OpenAI 크레딧이 바닥나 언어 모델을 쓰지 못했습니다' : /429/.test(m) ? 'OpenAI 요청 한도에 걸려(429) 언어 모델을 쓰지 못했습니다' : `언어 모델 호출 실패(${esc(m)})`;
 const errBox = e => `<div class="errbox" role="alert">${esc(e.message || e)}</div>`;
 
 const tip = $('#tip');
@@ -46,6 +47,7 @@ function stage3d(el, data, opts = {}) {
 
 // the store every illustration is drawn from (store 367 unless the person picked another)
 let storeDataP = null;
+function pickStore(id) { store.set('store', id); storeDataP = null; const g = $('[data-g="store"]'); if (g) g.textContent = `store_${id}`; }
 const storeData = () => storeDataP ??= api(`layout?store=${store.get('store', '367')}`).then(L => ({ aisles: L.aisles, products: L.products, L }));
 async function fillShots(root) {
   const imgs = $$('img[data-shot]', root); if (!imgs.length) return;
@@ -99,7 +101,7 @@ VIEWS.brief = async (root) => {
   set(root, 'llm', health.llm ? `예측은 언어 모델이 아니라 보정된 결정 모델이 합니다. 언어 모델(${health.model})은 질문 정리와 설명만 맡습니다.` : '예측은 언어 모델이 아니라 보정된 결정 모델이 합니다. 언어 모델은 질문 정리와 설명만 맡습니다. (OPENAI_API_KEY 없음 · 규칙으로 정리)');
   set(root, 'basis', `${n0(cat.households)}가구 · 1년 · 영수증 ${n0(cat.receipt_lines)}줄 · 진열 기록 ${n0(cat.placement_rows)}줄`);
   const engines = last?.engines?.length || 5;
-  set(root, 'runs', String(4 * engines)); set(root, 'runsSub', `실행 · 안 4 × 엔진 ${engines}`); set(root, 'runN', String(4 * engines));
+  set(root, 'runs', String(4 * engines)); set(root, 'runsSub', engines === 5 ? '실행 · 안 4 × (엔진 3 + 비교 기준 2)' : `실행 · 안 4 × 엔진 ${engines}`); set(root, 'runN', `${4 * engines}개`);
   if (last) set(root, 'decisions', n0(last.decisions));
   const p = store.get('partner', {}); K(root, 'pw').value = p.weeks || ''; K(root, 'pv').value = p.visits || '';
   const spec = store.get('spec'); if (spec) showSpec(root, spec);
@@ -108,7 +110,7 @@ function showSpec(root, s) {
   set(root, 'question', s.question); set(root, 'plans', s.plans.map(p => LBL[p]).join(' · '));
   const ex = slot(root, 'excluded');
   ex.innerHTML = (s.excluded || []).map(x => `<div style="display:grid;grid-template-columns:140px minmax(0,1fr);gap:16px;padding:16px 0;border-top:1px solid var(--border)"><span class="lbl" style="padding-top:4px">제외</span><span style="font-size:16px;color:var(--mfg)">${esc(x)}</span></div>`).join('')
-    + (s.llm_error ? `<div style="padding:8px 0" class="err">언어 모델 호출 실패, 규칙으로 정리했습니다: ${esc(s.llm_error)}</div>` : '')
+    + (s.llm_error ? `<div style="padding:8px 0" class="err">${llmWhy(s.llm_error)}, 규칙으로 정리했습니다.</div>` : '')
     + `<div style="padding:4px 0 0" class="lbl">${s.structured_by === 'rules' ? '규칙으로 정리' : esc(s.structured_by) + '로 정리'}</div>`;
 }
 VIEWS.brief.after = (el) => {
@@ -143,7 +145,8 @@ VIEWS.endpoints.after = (el) => {
       const money = a => a == null ? '' : `  ${a < 0 ? '-' : ''}$${nf(Math.abs(a))}`;
       slot(el, 'log').innerHTML = r.events.map(e => `<div style="${color(e)}">${esc(`${e.m.padEnd(4)} ${e.path.padEnd(18)} ${e.args}${money(e.amount)}${e.item ? '  ' + e.item : ''}${e.note ? '  · ' + e.note : ''}`)}</div>`).join('');
       const d = r.events.find(e => e.path === '/exposure/display' && / loc=3$/.test(e.args));
-      slot(el, 'quote').innerHTML = d ? `<p style="font-size:15px;line-height:1.7">상품 #${esc(d.args.split(' ')[0].split('=')[1])}는 그 주 Store ${esc(r.store_id)}의 <b style="font-weight:600">앞쪽 엔드캡</b>(진열 코드 3)에 있었습니다.</p>`
+      const pid = d && d.args.split(' ')[0].split('=')[1], item = d && r.events.find(e => e.path === '/basket/add' && e.args.startsWith(`product=${pid} `))?.item;
+      slot(el, 'quote').innerHTML = d ? `<p style="font-size:15px;line-height:1.7">그 주 Store ${esc(r.store_id)}의 <b style="font-weight:600">앞쪽 엔드캡</b>(진열 코드 3)에 있던 상품: #${esc(pid)}${item ? ' ' + esc(item) : ''}</p>`
         : `<p style="font-size:15px;line-height:1.7">이 방문의 상품은 그 주 Store ${esc(r.store_id)}에서 앞쪽 엔드캡에 없었습니다.</p>`;
     } catch (e) { slot(el, 'log').innerHTML = errBox(e); }
   };
@@ -191,7 +194,7 @@ VIEWS.world.after = (el, params, cleanups) => {
   const inset = mountStore(slot(el, 'inset'), { aisles: L.aisles, products: L.products.map(p => ({ ...p, next: p.now, moved: false })) }, { shoppers: 4, view: 'cereal', rings: false });
   cleanups.push(() => s3.dispose(), () => inset.dispose());
   $$('[data-view]', el).forEach(b => b.onclick = () => { $$('[data-view]', el).forEach(x => x.classList.toggle('on', x === b)); s3.focus(b.dataset.view); });
-  K(el, 'store').onchange = e => { store.set('store', e.target.value); storeDataP = null; location.hash = `#world?store=${e.target.value}`; };
+  K(el, 'store').onchange = e => { pickStore(e.target.value); location.hash = `#world?store=${e.target.value}`; };
   K(el, 'hhSel').onchange = e => { location.hash = `#world?store=${sid}&hh=${e.target.value}`; };
 };
 
@@ -237,7 +240,7 @@ VIEWS.engines.after = (el) => {
       const ppMap = { '평소': 'none', '앞쪽 엔드캡': 'A_front_endcap', '전단': 'B_mailer_only', '기타 진열': 'C_other_display' };
       $$('[data-pp]', el).forEach(x => x.textContent = pct(e.p[ppMap[x.dataset.pp]]));
       set(el, 'pnote', `방금 ${e.label}에게 다시 물은 답`); b.remove();
-    } catch (err) { b.disabled = false; b.textContent = '다시 묻기'; set(el, 'pnote', `호출 실패: ${err.message}`); }
+    } catch (err) { b.disabled = false; b.textContent = '다시 묻기'; set(el, 'pnote', llmWhy(err.message)); }
   };
 };
 
@@ -246,7 +249,7 @@ VIEWS.plans = async (root) => {
   const [plans, last] = await Promise.all([api('plans'), api('run/latest')]);
   set(root, 'total', n0(plans.reduce((a, p) => a + p.evidence_rows, 0)));
   plans.forEach(p => set(root, `ev:${p.id}`, n0(p.evidence_rows)));
-  set(root, 'runLabel', `4개 안 × ${last?.engines?.length || 5}개 엔진 실행`);
+  set(root, 'runLabel', (last?.engines?.length || 5) === 5 ? '4개 안 × 엔진 3 + 비교 기준 2 실행' : `4개 안 × ${last.engines.length}개 엔진 실행`);
 };
 
 // S5 실행
@@ -317,7 +320,7 @@ VIEWS.layout = async (root, params) => {
   const L = await api(`layout?store=${sid}`);
   const cur = L.plans.current, nxt = L.plans.proposed, V = L.validation, LB = c => c === 'none' ? '선반' : LBL[c];
   const moved = L.products.filter(p => p.moved).sort((a, b) => b.gain - a.gain);
-  set(root, 'title', `최종 배치 · Store ${sid} · 시리얼 ${L.products.length}개`); set(root, 'asOf', String(L.as_of));
+  set(root, 'title', `최종 배치 · Store ${sid} · 시리얼 ${L.products.length}개`); set(root, 'asOf', `${L.as_of}주 배치`);
   K(root, 'store').innerHTML = stores.map(s => `<option value="${s.store_id}" ${s.store_id === sid ? 'selected' : ''}>Store ${s.store_id}</option>`).join('');
   set(root, 'chip1', `제안 배치 · ${L.as_of}주까지 보고 결정 · ${L.weeks.join('–')}주 시뮬레이션`);
   set(root, 'chip2', `자리 · 앞쪽 엔드캡 ${L.capacity.A_front_endcap} · 기타 진열 ${L.capacity.C_other_display}`);
@@ -339,7 +342,7 @@ VIEWS.layout.after = (el, params, cleanups) => {
   $$('[data-st]', el).forEach(b => b.onclick = () => s3.state !== b.dataset.st && setSt(b.dataset.st));
   const cb = $('[data-act="cereal"]', el); let close = false;
   cb.onclick = () => { close = !close; cb.classList.toggle('on', close); s3.focus(close ? 'cereal' : 'store'); };
-  K(el, 'store').onchange = e => { store.set('store', e.target.value); storeDataP = null; location.hash = `#layout?store=${e.target.value}`; };
+  K(el, 'store').onchange = e => { pickStore(e.target.value); location.hash = `#layout?store=${e.target.value}`; };
   $$('.list-btn', el).forEach(b => b.onclick = () => { const on = s3.select(b.dataset.id); $$('.list-btn', el).forEach(x => x.classList.toggle('on', on && x === b)); });
   const t = setTimeout(() => setSt('next'), 900); cleanups.push(() => clearTimeout(t));
 };

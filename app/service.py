@@ -9,6 +9,7 @@ import json
 import os
 import threading
 import time
+import urllib.error
 import urllib.request
 import uuid
 from functools import lru_cache
@@ -397,8 +398,16 @@ def openai_text(prompt, json_mode=False, system=None):
         body['response_format'] = {'type': 'json_object'}
     req = urllib.request.Request(os.environ.get('OPENAI_BASE_URL', 'https://api.openai.com/v1') + '/chat/completions', data=json.dumps(body).encode(),
                                  headers={'Authorization': f"Bearer {os.environ['OPENAI_API_KEY']}", 'Content-Type': 'application/json'})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.loads(r.read())['choices'][0]['message']['content']
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return json.loads(r.read())['choices'][0]['message']['content']
+    except urllib.error.HTTPError as e:
+        # 429 is either a spent quota (insufficient_quota) or a rate limit; only the body says which
+        try:
+            err = json.loads(e.read()).get('error') or {}
+        except Exception:
+            err = {}
+        raise RuntimeError(f"OpenAI HTTP {e.code} {err.get('code') or err.get('type') or ''}: {(err.get('message') or e.reason)[:160]}".strip()) from None
 
 
 def brief(question):
