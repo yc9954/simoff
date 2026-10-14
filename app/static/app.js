@@ -55,15 +55,6 @@ async function fillShots(root) {
   imgs.forEach(i => { if (shots[i.dataset.shot]) i.src = shots[i.dataset.shot]; });
 }
 
-// Obolus shader backgrounds (nebula, vortex) from the storyboard's own bundle
-let fxP = null;
-const fxLib = () => fxP ??= new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'vendor/obolus-fx.js'; s.onload = () => ok(window.ObolusFX); s.onerror = no; document.head.appendChild(s); });
-async function mountFx(root, cleanups) {
-  for (const el of $$('[data-fx]', root)) {
-    try { const fx = await fxLib(); cleanups.push(fx.mount(el, el.dataset.fx, { position: 'absolute', className: 'pointer-events-none' })); } catch {}
-  }
-}
-
 // ---------------------------------------------------------------- shell
 let cleanups = [];
 async function render() {
@@ -81,7 +72,7 @@ async function render() {
     await VIEWS[view](root, params, cleanups);
     el.replaceChildren(...root.childNodes);
     VIEWS[view].after?.(el, params, cleanups);
-    mountFx(el, cleanups); fillShots(el).catch(() => {});
+    fillShots(el).catch(() => {});
   } catch (e) { el.innerHTML = errBox(e); }
 }
 addEventListener('hashchange', render);
@@ -363,7 +354,7 @@ VIEWS.report = async (root) => {
   set(root, 'per1000', `${nf(N.per_1000_without)} → ${nf(N.per_1000_with)}개`);
   set(root, 'usd', `$${nf(usd, 1)}`); set(root, 'usdSub', `추가 ${nf(extra, 1)}개 × 중간 가격 $${nf(N.median_shelf_price_usd)} · 패널 가구 기준`);
   const p = store.get('partner', {}), weeks = +p.weeks || 0, visits = +p.visits || 0;
-  const card = (label, val, sub) => `<article class="d3" style="background:radial-gradient(circle at 82% 8%, color-mix(in srgb, #F99C00 64%, white 8%) 0%, transparent 34%), radial-gradient(circle at 10% 110%, color-mix(in srgb, #F99C00 42%, transparent) 0%, transparent 48%), linear-gradient(145deg, #27272b 0%, #111114 64%, #08080a 100%)"><div aria-hidden="true" style="position:absolute;left:0;right:0;top:0;height:1px;opacity:.8;background:linear-gradient(90deg,transparent,#F99C00,transparent)"></div><div class="mono" style="font-size:9px;letter-spacing:1.3px;text-transform:uppercase;color:rgba(255,255,255,.45)">${label}</div><div class="mono" style="margin-top:22px;font-size:28px;line-height:1;letter-spacing:-.04em">${val}</div><div style="margin-top:18px;padding-top:12px;border-top:1px solid rgba(255,255,255,.12);font-size:12px;line-height:1.5;color:rgba(255,255,255,.62)">${sub}</div></article>`;
+  const card = (label, val, sub) => `<article class="d3 grad ink"><div class="mono" style="font-size:9px;letter-spacing:1.3px;text-transform:uppercase;color:rgba(255,255,255,.45)">${label}</div><div class="mono" style="margin-top:22px;font-size:28px;line-height:1;letter-spacing:-.04em">${val}</div><div style="margin-top:18px;padding-top:12px;border-top:1px solid rgba(255,255,255,.12);font-size:12px;line-height:1.5;color:rgba(255,255,255,.62)">${sub}</div></article>`;
   slot(root, 'partner').innerHTML = weeks && visits ? card('매장 실험 대신 지금 결정하면', `$${n0(weeks * visits / 1000 * usd)}`, `실험 ${weeks}주 × 주당 방문 ${n0(visits)} × 1,000회당 $${nf(usd, 1)} · 그 기간 엔드캡을 안 썼다면 놓쳤을 추가 매출`)
     : card('매장 실험 대신 지금 결정하면', '—', '<a href="#brief" style="color:#fff">결정 브리프</a>에서 실험 기간과 주당 방문 수를 넣으면 계산합니다');
   slot(root, 'segments').innerHTML = N.segments.map((s, i) => `<div class="tr" style="grid-template-columns:minmax(0,1fr) 90px 120px;${i === 1 ? 'background:#fff;' : ''}"><span class="" style="min-width:0">${esc(s.segment)}</span><span class="r" style="min-width:0"><span class="num" style="font-size:12px">${nf(s.lift, 1)}배</span></span><span class="r" style="min-width:0"><span class="num" style="font-size:12px">+${nf(s.extra_per_1000, 1)}</span></span></div>`).join('');

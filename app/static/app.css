@@ -46,6 +46,27 @@ button.tab:hover:not(.on) { background: var(--muted-2); }
   .main [style*="display:grid"] > * { min-width: 0; }
   .main .tbl { overflow-x: auto; }
 }
+/* One gradient for every decorative surface: the endpoints card's (mint · lavender · blue, soft white flow). */
+.grad { background:
+  linear-gradient(rgba(0,0,0,.03), rgba(0,0,0,.03)),
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 450' preserveAspectRatio='xMidYMid slice'%3E%3Cdefs%3E%3Cfilter id='f' x='-45%25' y='-45%25' width='190%25' height='190%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.003 .008' numOctaves='2' seed='71' result='noise'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='noise' scale='13' xChannelSelector='R' yChannelSelector='B'/%3E%3CfeGaussianBlur stdDeviation='22'/%3E%3C/filter%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='3' seed='41'/%3E%3CfeColorMatrix values='1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 .08 0'/%3E%3C/filter%3E%3C/defs%3E%3Cg opacity='.8'%3E%3Cg transform='rotate(-4 300 225)' fill='none' stroke='%23f5ffff' stroke-linecap='round' opacity='.72' filter='url(%23f)'%3E%3Cpath d='M-120 540 C110 80 330 510 735-90' stroke-width='168'/%3E%3Cpath d='M155 550 C300 285 455 315 710 20' stroke-width='62' opacity='.32'/%3E%3C/g%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='.12'/%3E%3C/g%3E%3C/svg%3E") center / cover no-repeat,
+  radial-gradient(ellipse at 12% 18%, color-mix(in oklab, #66d9c2 94%, white) 0%, transparent 72%),
+  radial-gradient(ellipse at 8% 52%, color-mix(in oklab, #645dde 95%, white) 0%, transparent 74%),
+  radial-gradient(ellipse at 12% 18%, color-mix(in oklab, #302b75 78%, black) 0%, transparent 76%),
+  linear-gradient(140deg, #302b75, #645dde 52%, #66d9c2) !important; }
+/* text on it is ink, except inside a dark glass panel */
+.grad.ink { color: #101114 !important; }
+.grad.ink :not(.glass-dark, .glass-dark *)[style*="color:#fff"] { color: #101114 !important; }
+.grad.ink :not(.glass-dark, .glass-dark *)[style*="color:rgba(255,255,255"] { color: rgba(16,17,20,.62) !important; }
+.grad.ink :not(.glass-dark, .glass-dark *)[style*="solid rgba(255,255,255"] { border-color: rgba(16,17,20,.14) !important; }
+.grad.ink [style*="text-shadow"] { text-shadow: none !important; }
+.grad.ink [style*="color:#a99bf5"] { color: #4b3fc0 !important; }
+.grad.ink [style*="color:#5eead4"] { color: #0F766E !important; }
+.grad.ink .glass-step { background: rgba(255,255,255,.4); border-color: rgba(255,255,255,.7) !important; }
+.grad.ink .glass-step > span:first-child { background: rgba(255,255,255,.6) !important; color: #101114 !important; }
+.d3.grad { border-color: rgba(255,255,255,.55); box-shadow: 0 3px 10px -4px rgba(48,43,117,.3); }
+.d3.grad::before { background-image: radial-gradient(circle at center, rgba(16,17,20,.5) 0 .75px, transparent .9px); }
+.au.grad { box-shadow: 0 28px 80px -34px rgba(48,43,117,.5); }
 img[data-shot]:not([src]) { color: transparent; background: linear-gradient(100deg, #eceeed 40%, #f6f7f7 50%, #eceeed 60%) 0 0 / 300% 100% #eceeed !important; animation: shot-wait 1.4s linear infinite; }
 @keyframes shot-wait { to { background-position: -150% 0; } }
 @media (prefers-reduced-motion: reduce) { .spin, img[data-shot] { animation: none; } }
