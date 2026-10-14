@@ -23,7 +23,8 @@ SYSTEM = """너는 오프라인 공간(매장, 팝업, 행사, 전시, 식당 �
 1. 상대의 오프라인 비즈니스를 이해한다: 업종, 대략의 면적, 걱정되거나 바꿔 보고 싶은 것, 기록(영수증·주문·진열 일정) 유무.
 2. 업종을 모르면 한 번에 하나만 짧게 되묻는다. 업종을 알면 되묻지 말고 바로 recommend_spaces 를 부른다.
 3. 추천 중 가장 맞는 맵으로 build_space 를 부른다. 상대가 다른 맵이나 다른 변경을 원하면 다시 부른다.
-4. 결과는 최대 4문장으로 쉽게 설명한다: 왜 이 맵인지, 무엇을 바꿨는지(못 바꾼 것도), 기록이 있으면 무엇을 숫자로 볼 수 있는지 한 문장.
+4. 마트(식료품) 공간이면 실제 매장 데이터로 세워지고, 시험할 결정은 다음 주 시리얼 진열 4안이다. 이 경우 기록이 이미 있으니 "다음 단계인 기록 연결로 이어가면 된다"고 안내한다.
+5. 결과는 최대 4문장으로 쉽게 설명한다: 왜 이 맵인지, 무엇을 바꿨는지(못 바꾼 것도), 기록이 있으면 무엇을 숫자로 볼 수 있는지 한 문장.
 
 규칙
 - 숫자는 도구가 돌려준 것만 말한다. 판매가 몇 % 늘 것 같다는 식의 짐작은 절대 하지 않는다. 결정의 숫자는 그 공간의 기록으로 보정된 모델만 낸다.
@@ -33,6 +34,8 @@ SYSTEM = """너는 오프라인 공간(매장, 팝업, 행사, 전시, 식당 �
 - 화면에 맵 카드, 3D 공간, 바꾼 것 목록, 결정 카드가 함께 보인다. 결정 목록이나 맵 목록을 문장으로 다시 나열하지 않는다. 목록 기호(-)도 쓰지 않는다."""
 
 WANTS = ['checkout', 'seat', 'promo', 'photo', 'order']
+MART_SPACES = {'arch_supermarket'}   # grocery: the one domain with calibrated records in this build
+MART_STORE = '367'
 TOOLS = [
     {'name': 'recommend_spaces',
      'description': '비즈니스 설명으로 27개 원형 공간(카페, 편의점, 마트, 드럭스토어, 팝업, 전시, 축제 등) 중 맞는 3개를 이유와 함께 고른다.',
@@ -74,6 +77,14 @@ def _run_tool(name, inp, files):
         u['wants'] = [w for w in inp.get('wants') or u['wants'] if w in WANTS]
         recs = world.recommend(u)
         return {'recommendations': [{k: r[k] for k in ('id', 'label', 'title', 'area_m2', 'why')} for r in recs]}, {'type': 'recs', 'recs': recs}
+    if name == 'build_space' and inp.get('space_id') in MART_SPACES:
+        # a grocery store is the case we have records for: build the real store from the data, with the decisions the
+        # rest of the flow (records, plans, run, layout, report) works on
+        plans = service.plans()
+        summary = {'space': f'실제 마트 매장 · Store {MART_STORE} (데이터에서 세운 통로 · 진열대 · 엔드캡 · 전단대)',
+                   'decision': '다음 주 콜드 시리얼을 어디에 둘까: ' + ' / '.join(p['label'] for p in plans),
+                   'has_records': True, 'next_step': '기록 연결에서 POS 파일을 올리거나 이 매장의 기록으로 바로 이어간다'}
+        return summary, {'type': 'mart', 'store': MART_STORE, 'plans': plans, 'business': inp.get('business', '')}
     if name == 'build_space':
         sid = inp.get('space_id')
         if sid not in {c['id'] for c in world.catalog()}:
@@ -131,6 +142,10 @@ def _rules_turn(history, files, why=None):
     note = ''
     if not r['space']:
         return {'reply': '어떤 업종인지 알려 주시겠어요? 예: 카페, 편의점, 굿즈 팝업, 야외 축제.' + note, 'artifacts': [], 'by': 'rules'}
+    if r['space']['id'] in MART_SPACES:
+        _, art = _run_tool('build_space', {'space_id': r['space']['id'], 'business': text}, files)
+        return {'reply': f'실제 마트 매장(Store {MART_STORE})으로 세웠습니다. 시험할 결정은 다음 주 시리얼을 앞쪽 엔드캡, 전단, 기타 진열, 평소대로 중 어디에 둘지입니다. 이 매장은 기록이 있으니 기록 연결로 이어가면 됩니다.',
+                'artifacts': [art], 'by': 'rules'}
     st = {s['key']: s for s in r['steps']}
     edits = st['adapt']['ops']
     reply = (f"{st['recommend']['detail'].split('고른 맵: ')[-1]}으로 세웠습니다. "

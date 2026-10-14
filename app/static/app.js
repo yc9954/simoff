@@ -72,6 +72,16 @@ async function fillShots(root, opts = {}) {
   const mine = live; cleanups.push(() => { mine.dispose(); if (live === mine) live = null; });
 }
 
+// the project the chat started; every step after it shows the same context and the way forward
+const FLOW = [['start', '공간 세우기'], ['connect', '기록 연결'], ['plans', '시험할 안'], ['run', '실행'], ['layout', '최종 배치'], ['report', '리포트']];
+function setProject(p) { store.set('project', { ...p, at: Date.now() }); }
+function flowBar(view) {
+  const i = FLOW.findIndex(f => f[0] === view); if (i <= 0) return '';
+  const p = store.get('project'), next = FLOW[i + 1];
+  const what = p ? `${esc(p.title.length > 38 ? p.title.slice(0, 38) + '…' : p.title)} · Store ${esc(p.store)}` : '샘플 프로젝트 · 마트 · Store 367';
+  return `<div class="flow-bar"><span><span class="lbl">프로젝트</span> ${what}</span>${next ? `<a class="btn btn-mono btn-sm" href="#${next[0]}">다음: ${next[1]} →</a>` : '<a class="btn btn-outline btn-sm" href="#start">새 공간 세우기</a>'}</div>`;
+}
+
 // Obolus card colour field + texture, ported from obolus/src/lib/cardGradient.ts (same schemes, positions, angles and
 // ribbons; FNV-1a seeds, so the same card always gets the same colours and neighbours rarely repeat)
 const G_SCHEMES = [['#123a86', '#2778cf', '#35e5df'], ['#07594f', '#1d9b89', '#8ee8d7'], ['#762348', '#ce3f70', '#f29bad'], ['#7c3037', '#df5b50', '#efad71'],
@@ -131,6 +141,7 @@ async function render() {
     const root = document.createElement('div'); root.style.display = 'contents'; root.innerHTML = html;
     await VIEWS[view](root, params, cleanups);
     el.replaceChildren(...root.childNodes);
+    el.insertAdjacentHTML('afterbegin', flowBar(view));
     VIEWS[view].after?.(el, params, cleanups);
     paintGrads(el); fillShots(el, VIEWS[view].live || {}).catch(() => {});
   } catch (e) { el.innerHTML = errBox(e); }
@@ -178,7 +189,7 @@ VIEWS.start.after = (el, params, cleanups) => {
   cleanups.push(() => s3?.dispose());
   // rotating placeholder: one real-sized decision at a time
   let ex = 0; ta.placeholder = EXAMPLES[0];
-  const rot = setInterval(() => { if (!ta.value && document.activeElement !== ta) ta.placeholder = EXAMPLES[ex = (ex + 1) % EXAMPLES.length]; }, 4200);
+  const rot = setInterval(() => { if (!ta.value && document.activeElement !== ta && !el.classList.contains('chatting')) ta.placeholder = EXAMPLES[ex = (ex + 1) % EXAMPLES.length]; }, 4200);
   cleanups.push(() => clearInterval(rot));
   ta.onkeydown = null;
   // decision model picker (like choosing a model in any frontier-model product); each entry shows its training data and source
@@ -219,12 +230,22 @@ VIEWS.start.after = (el, params, cleanups) => {
       const cur = s3;
       $$('[data-focus]', body).forEach(b => b.onclick = () => { if (s3 !== cur) return; const on = !b.classList.contains('on'); $$('[data-focus]', body).forEach(x => x.classList.remove('on')); b.classList.toggle('on', on); cur.focus(on ? b.dataset.focus : null); });
     }
+    if (art.type === 'mart') {
+      freeze();
+      setProject({ title: art.business || '마트', store: art.store, kind: 'mart' });
+      body.insertAdjacentHTML('beforeend', `<div class="art card" style="overflow:hidden;padding:0"><div style="position:relative"><div data-slot="space" class="stage"></div>
+<div style="position:absolute;left:14px;top:14px;display:flex;flex-wrap:wrap;gap:8px"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">Store ${esc(art.store)} · 실제 매장 데이터</span></div></div>
+<div class="world-cols"><div><div class="lbl">시험할 결정 · 다음 주 콜드 시리얼</div><div class="plan-chips">${art.plans.map(p => `<span class="plan-chip"><i style="background:${COL[p.id]}"></i>${esc(p.label)}</span>`).join('')}</div></div>
+<div style="display:flex;align-items:flex-end;justify-content:flex-end"><a class="btn btn-mono" href="#connect">다음: 기록 연결 →</a></div></div></div>`);
+      const host = $$('[data-slot="space"]', body).at(-1);
+      storeData().then(d => { s3 = stage3d(host, { aisles: d.aisles, products: d.products }, { state: 'now', shoppers: 24, weeks: d.L.weeks.join('–') }); s3.__host = host; });
+    }
     $$('[data-pick]', body).forEach(b => b.onclick = () => !b.classList.contains('on') && send(`${b.dataset.label} 맵(${b.dataset.pick})으로 바꿔서 다시 세워 주세요.`));
   }
   async function send(text) {
     text = (text || '').trim(); if (!text || busy) return;
     busy = true;
-    if (!el.classList.contains('chatting')) { el.classList.add('chatting'); thread.style.display = 'flex'; thread.after(composer); }
+    if (!el.classList.contains('chatting')) { el.classList.add('chatting'); thread.style.display = 'flex'; thread.after(composer); ta.placeholder = '이어서 묻거나 바꾸고 싶은 것을 말해 주세요'; }
     history.push({ role: 'user', text });
     bubble('user', esc(text)).scrollIntoView({ behavior: 'smooth', block: 'center' });
     ta.value = '';
@@ -233,7 +254,8 @@ VIEWS.start.after = (el, params, cleanups) => {
       const r = await api('chat', { history, files, model });
       $('.body', ai).innerHTML = rich(r.reply);
       history.push({ role: 'assistant', text: r.reply });
-      for (const a of r.artifacts || []) draw(ai, a);
+      const mart = (r.artifacts || []).some(a => a.type === 'mart');   // the real store replaces the archetype cards
+      for (const a of r.artifacts || []) if (!(mart && a.type === 'recs')) draw(ai, a);
     } catch (e) { $('.body', ai).innerHTML = errBox(e); history.pop(); }
     busy = false; ai.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -579,14 +601,14 @@ VIEWS.connect.after = (el) => {
       for (;;) {
         const m = j.mapping; set(el, 'mapCount', `${m.columns.length}개 열 중 <b style="color:#000">${m.columns.filter(c => c.field).length}</b>개 연결`, true); slot(el, 'map').innerHTML = mapRows(m);
         set(el, 'cardStore', 'STORE · 업로드'); set(el, 'cardSrc', name.toUpperCase().slice(0, 24)); set(el, 'cardVer', j.status === 'done' ? 'CALIBRATED · 이 매장' : '보정 중');
-        job.innerHTML = `<div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px"><div style="display:flex;gap:10px;align-items:center">${j.status === 'running' || j.status === 'mapping' ? '<span class="spin"></span><b style="font-weight:500">결정 표 → 학습 · 보정 → 공간맵 → 앞으로 4주 시뮬레이션 → 최종 배치</b>' : j.status === 'done' ? '<span class="tag tag-ok">완료</span>' : `<span class="tag tag-no">${esc(j.status)}</span>`}</div>${j.error ? `<p class="err">${esc(j.error)}</p>` : ''}<div class="mono muted" style="font-size:11px;white-space:pre-wrap">${esc((j.log || []).join('\n'))}</div></div>`;
+        job.innerHTML = `<div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px"><div style="display:flex;gap:10px;align-items:center">${j.status === 'running' || j.status === 'mapping' ? '<span class="spin"></span><b style="font-weight:500">결정 표 → 학습 · 보정 → 공간맵 → 앞으로 4주 시뮬레이션 → 최종 배치</b>' : j.status === 'done' ? '<span class="tag tag-ok">완료</span>' : `<span class="tag tag-no">${esc(j.status)}</span>`}</div>${j.error ? `<p class="err">${esc(j.error)}</p>` : ''}${j.status === 'done' ? `<div style="font-size:14px">기록을 연결하고 이 매장 손님으로 결정 모델을 보정했습니다. 아래는 다음 4주의 제안 배치입니다.</div>` : `<div class="mono muted" style="font-size:11px">${esc((j.log || []).slice(-1)[0] || '시작하는 중')}</div>`}</div>`;
         if (!['running', 'mapping'].includes(j.status)) break;
         await new Promise(r => setTimeout(r, 2000)); j = await api(`job?id=${j.id}`);
       }
       if (j.layout) {
         const P = j.layout.plans;
-        job.insertAdjacentHTML('beforeend', `<div style="margin-top:16px;position:relative;overflow:hidden;border:1px solid var(--border);border-radius:6px"><div data-slot="ustage" style="height:520px"></div><div style="position:absolute;left:16px;top:16px;display:flex;gap:8px;flex-wrap:wrap"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">이 매장 · 앞으로 ${j.layout.weeks.join('–')}주 · Poisson 방문</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">${esc(P.current.label)} ${nf(P.current.expected_units, 1)} → 제안 ${nf(P.proposed.expected_units, 1)} · ×${nf(P.proposed.lift)}</span></div></div>
-          <details class="card" style="margin-top:12px;padding:12px 16px"><summary style="cursor:pointer">REPORT.md</summary><pre style="white-space:pre-wrap;font-size:12px;line-height:1.6">${esc(j.report)}</pre></details>`);
+        job.insertAdjacentHTML('beforeend', `<div style="margin-top:16px;position:relative;overflow:hidden;border:1px solid var(--border);border-radius:6px"><div data-slot="ustage" style="height:520px"></div><div style="position:absolute;left:16px;top:16px;display:flex;gap:8px;flex-wrap:wrap"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">이 매장 · 앞으로 4주 예측</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">판매 방문 지금 배치 ${nf(P.current.expected_units, 1)} → 제안 ${nf(P.proposed.expected_units, 1)}</span></div></div>
+          <div style="margin-top:12px;display:flex;justify-content:flex-end"><a class="btn btn-mono" href="#plans">다음: 시험할 안 →</a></div>`);
         const s3 = stage3d(slot(job, 'ustage'), { aisles: j.layout.aisles, products: j.layout.products }, { shoppers: 10, weeks: j.layout.weeks.join('–') });
         setTimeout(() => s3.go('next'), 800); cleanups.push(() => s3.dispose());
         set(el, 's1', '연결됨');

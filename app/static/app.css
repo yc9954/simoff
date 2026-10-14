@@ -160,7 +160,7 @@ img[data-shot]:not([src]) { color: transparent; background: linear-gradient(100d
 /* gradient surfaces are square-cornered, everywhere */
 .grad, .grad::before, .grad::after, .au.grad .au-ring, .gcard.grad { border-radius: 0 !important; }
 /* 최종 배치: the whole decision on one screen — 3D left, the summary and the list right */
-.fit-screen { display: grid; grid-template-columns: minmax(0,1fr) 380px; gap: 20px; height: calc(100vh - 116px); min-height: 520px; }
+.fit-screen { display: grid; grid-template-columns: minmax(0,1fr) 380px; gap: 20px; height: calc(100vh - 192px); min-height: 480px; }
 .fit-stage { min-height: 0; }
 .fit-side { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
 .fit-list { flex: 1; min-height: 120px; overflow: auto; }
@@ -217,3 +217,9 @@ img[data-shot]:not([src]) { color: transparent; background: linear-gradient(100d
 .nav-quiet { font-size: 12px; }
 @media (max-width: 760px) { .nav-sep, .flow-track { display: none; } .flow { flex-direction: row; flex-wrap: wrap; } }
 @media (prefers-reduced-motion: reduce) { .flow-track i, .nav-n { transition: none; } }
+/* one project through the flow */
+.flow-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; margin-bottom: -12px; border: 1px solid var(--border); background: var(--card); font-size: 13px; }
+.flow-bar .lbl { margin-right: 6px; }
+.plan-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.plan-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border: 1px solid var(--border); background: #fff; font-size: 13px; }
+.plan-chip i { width: 9px; height: 9px; display: inline-block; }
