@@ -100,12 +100,12 @@ function cardTexture(seed) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" preserveAspectRatio="xMidYMid slice"><defs><filter id="flow" x="-45%" y="-45%" width="190%" height="190%"><feTurbulence type="fractalNoise" baseFrequency=".003 .008" numOctaves="2" seed="${gpick(k, 'texture-noise', 97) + 1}" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="13" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="22"/></filter><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".72" numOctaves="3" seed="${gpick(k, 'grain', 97) + 1}"/><feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 .08 0"/></filter></defs><g transform="${tf}" fill="none" stroke="#f5ffff" stroke-linecap="round" opacity=".72" filter="url(#flow)">${G_RIBBONS[v]}</g><rect width="100%" height="100%" filter="url(#grain)" opacity=".12"/></svg>`;
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
-// every .grad gets its own field, seeded by its label (data-seed wins), at Obolus's deep strength under white text
+// every .grad gets its own field, seeded by its label (data-seed wins): Obolus's soft strength under dark text, deep where only an icon sits
 function paintGrads(root) {
   $$('.grad', root).forEach((e, i) => {
     if (e.dataset.grad === 'origin') { e.style.background = ''; return; }   // keeps the .grad class colour: the first endpoint card's mint · lavender
     const seed = e.dataset.seed || (e.querySelector('.mono, .lbl, h1, h2, b, [data-k]')?.textContent || e.textContent || '').replace(/[\d.,$%×→\s—-]+/g, ' ').trim().slice(0, 40) || String(i);
-    e.style.background = `linear-gradient(rgba(0,0,0,.03), rgba(0,0,0,.03)), ${cardTexture(seed)} center / cover no-repeat, ${cardGradient(seed, true)}`;
+    e.style.background = `linear-gradient(rgba(0,0,0,.03), rgba(0,0,0,.03)), ${cardTexture(seed)} center / cover no-repeat, ${cardGradient(seed, !e.classList.contains('ink'))}`;
   });
 }
 
@@ -116,6 +116,10 @@ async function render() {
   const params = Object.fromEntries(new URLSearchParams(qs || ''));
   const view = VIEWS[id] ? id : 'start';
   $$('.nav-a').forEach(a => a.dataset.id === view ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
+  // the flow track fills from the top to the current step; steps above it read as done
+  const flowSteps = $$('.flow-step'), at = flowSteps.findIndex(a => a.dataset.id === view);
+  flowSteps.forEach((a, i) => a.classList.toggle('done', at >= 0 && i < at));
+  const flow = $('[data-flow]'); if (flow) flow.style.setProperty('--fill', at <= 0 ? '0%' : `${(at / (flowSteps.length - 1)) * 100}%`);
   cleanups.forEach(f => { try { f(); } catch {} }); cleanups = []; hideTip();
   const el = $('#view');
   el.innerHTML = '<div class="loading"><span class="spin"></span> 불러오는 중</div>';
