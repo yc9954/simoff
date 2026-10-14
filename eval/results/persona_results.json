@@ -1,0 +1,139 @@
+{
+ "n_pairs": 80,
+ "answers": {
+  "basic": 312,
+  "history": 320,
+  "jev_state": 320,
+  "jev_text": 320
+ },
+ "engines": {
+  "basic": {
+   "mean_p_by_condition": {
+    "A_front_endcap": 0.31427,
+    "B_mailer_only": 0.28075,
+    "C_other_display": 0.28474,
+    "none": 0.20747
+   },
+   "level_vs_actual_none": 191.89422998322405,
+   "lift_A_endcap": 1.514769168191987,
+   "lift_C_other_display": 1.372467577165564,
+   "lift_B_mailer": 1.3532184258694326,
+   "cv_across_households_none": 0.5530489535981034,
+   "distinct_values_none": 30,
+   "spearman_with_purchase_history": 0.18760619694773015,
+   "spearman_with_calibrated": 0.15893320550536452,
+   "yes_rate_by_condition": {
+    "A_front_endcap": 0.187,
+    "B_mailer_only": 0.1,
+    "C_other_display": 0.141,
+    "none": 0.025
+   },
+   "predicted_buys_on_real_test_visits": 209.01999999999998
+  },
+  "calibrated": {
+   "mean_p_by_condition": {
+    "A_front_endcap": 0.00272,
+    "B_mailer_only": 0.00147,
+    "C_other_display": 0.00269,
+    "none": 0.00091
+   },
+   "level_vs_actual_none": 0.8444939454689135,
+   "lift_A_endcap": 2.981365716482933,
+   "lift_C_other_display": 2.94969108507955,
+   "lift_B_mailer": 1.6070686368547864,
+   "cv_across_households_none": 1.4230309733976334,
+   "distinct_values_none": 11,
+   "spearman_with_purchase_history": 0.26859480412013537,
+   "spearman_with_calibrated": 1.0,
+   "predicted_buys_on_real_test_visits": 0.8749343366638243
+  },
+  "history": {
+   "mean_p_by_condition": {
+    "A_front_endcap": 0.0291,
+    "B_mailer_only": 0.02311,
+    "C_other_display": 0.02338,
+    "none": 0.01511
+   },
+   "level_vs_actual_none": 13.978042861445784,
+   "lift_A_endcap": 1.9255583126550866,
+   "lift_C_other_display": 1.5467328370554176,
+   "lift_B_mailer": 1.5293631100082712,
+   "cv_across_households_none": 0.8422111394924353,
+   "distinct_values_none": 15,
+   "spearman_with_purchase_history": 0.11226864848507738,
+   "spearman_with_calibrated": 0.5889020376048417,
+   "yes_rate_by_condition": {
+    "A_front_endcap": 0.0,
+    "B_mailer_only": 0.0,
+    "C_other_display": 0.0,
+    "none": 0.0
+   },
+   "predicted_buys_on_real_test_visits": 13.330000000000002
+  },
+  "jev_state": {
+   "mean_p_by_condition": {
+    "A_front_endcap": 0.05362,
+    "B_mailer_only": 0.04725,
+    "C_other_display": 0.0535,
+    "none": 0.04275
+   },
+   "level_vs_actual_none": 39.5408656626506,
+   "lift_A_endcap": 1.2543859649122808,
+   "lift_C_other_display": 1.2514619883040938,
+   "lift_B_mailer": 1.105263157894737,
+   "cv_across_households_none": 0.5406059619424203,
+   "distinct_values_none": 6,
+   "spearman_with_purchase_history": 0.3059472898225542,
+   "spearman_with_calibrated": 0.5242520065887614,
+   "predicted_buys_on_real_test_visits": 44.400000000000006
+  },
+  "jev_text": {
+   "mean_p_by_condition": {
+    "A_front_endcap": 0.23725,
+    "B_mailer_only": 0.29362,
+    "C_other_display": 0.27838,
+    "none": 0.27662
+   },
+   "level_vs_actual_none": 255.85946114457835,
+   "lift_A_endcap": 0.8576592860370538,
+   "lift_C_other_display": 1.0063262539539086,
+   "lift_B_mailer": 1.0614550384093988,
+   "cv_across_households_none": 0.5186254153398386,
+   "distinct_values_none": 29,
+   "spearman_with_purchase_history": 0.11289950261521547,
+   "spearman_with_calibrated": 0.08800851709175393,
+   "predicted_buys_on_real_test_visits": 265.06
+  }
+ },
+ "real_test_visits_for_pairs": 1000,
+ "actual_buys_for_pairs": 1,
+ "actual_rate_by_condition_all_test": {
+  "A_front_endcap": 0.00683,
+  "B_mailer_only": 0.0035,
+  "C_other_display": 0.00414,
+  "none": 0.00108
+ },
+ "actual_lift_pooled": {
+  "A_front_endcap": {
+   "actual": 3.9920471992092272,
+   "ci95": [
+    2.4787197243009143,
+    8.562833468534077
+   ]
+  },
+  "B_mailer_only": {
+   "actual": Infinity,
+   "ci95": [
+    NaN,
+    NaN
+   ]
+  },
+  "C_other_display": {
+   "actual": 1.6399667502709327,
+   "ci95": [
+    1.2265985963970945,
+    2.404913456074335
+   ]
+  }
+ }
+}

@@ -1,0 +1,574 @@
+{
+ "weeks": [
+  48,
+  53
+ ],
+ "draws": 200,
+ "decisions": 438325,
+ "visits": 17533,
+ "households": 2123,
+ "stores": 109,
+ "actual_units": 684,
+ "engines": {
+  "calibrated": {
+   "label": "보정 모델",
+   "total": {
+    "actual": 684,
+    "expected": 616.6722491655189,
+    "mc_p05": 580.9,
+    "mc_p95": 657.1999999999999,
+    "actual_in_band": false
+   },
+   "weekly": [
+    {
+     "week": 48,
+     "visits": 3044,
+     "expected_units": 103.7131004042101,
+     "simulated_units": 111,
+     "mc_p05": 86.95,
+     "mc_p95": 118.0,
+     "expected_revenue": 342.1658779679852,
+     "actual_units": 69,
+     "actual_in_band": false
+    },
+    {
+     "week": 49,
+     "visits": 2858,
+     "expected_units": 84.76281612760634,
+     "simulated_units": 80,
+     "mc_p05": 70.0,
+     "mc_p95": 102.0,
+     "expected_revenue": 289.99493158286793,
+     "actual_units": 90,
+     "actual_in_band": true
+    },
+    {
+     "week": 50,
+     "visits": 2887,
+     "expected_units": 112.16052864742214,
+     "simulated_units": 106,
+     "mc_p05": 97.9,
+     "mc_p95": 130.0,
+     "expected_revenue": 402.82886665998853,
+     "actual_units": 166,
+     "actual_in_band": false
+    },
+    {
+     "week": 51,
+     "visits": 2902,
+     "expected_units": 108.47501898689065,
+     "simulated_units": 106,
+     "mc_p05": 92.0,
+     "mc_p95": 128.0,
+     "expected_revenue": 387.7993071240693,
+     "actual_units": 122,
+     "actual_in_band": true
+    },
+    {
+     "week": 52,
+     "visits": 3321,
+     "expected_units": 119.33389182384236,
+     "simulated_units": 112,
+     "mc_p05": 102.0,
+     "mc_p95": 137.0,
+     "expected_revenue": 425.0900720063976,
+     "actual_units": 129,
+     "actual_in_band": true
+    },
+    {
+     "week": 53,
+     "visits": 2521,
+     "expected_units": 88.2268931757714,
+     "simulated_units": 87,
+     "mc_p05": 73.95,
+     "mc_p95": 104.0,
+     "expected_revenue": 307.31393004257643,
+     "actual_units": 108,
+     "actual_in_band": false
+    }
+   ],
+   "weeks_in_band": 3,
+   "by_condition": [
+    {
+     "condition": "none",
+     "label": "평소대로",
+     "decisions": 383847,
+     "actual_units": 415,
+     "expected_units": 447.4618253467247
+    },
+    {
+     "condition": "A_front_endcap",
+     "label": "앞쪽 엔드캡",
+     "decisions": 19483,
+     "actual_units": 133,
+     "expected_units": 80.54076985092742
+    },
+    {
+     "condition": "B_mailer_only",
+     "label": "전단",
+     "decisions": 13721,
+     "actual_units": 48,
+     "expected_units": 20.85164486410588
+    },
+    {
+     "condition": "C_other_display",
+     "label": "기타 진열",
+     "decisions": 21274,
+     "actual_units": 88,
+     "expected_units": 67.81800910376086
+    }
+   ],
+   "stores": {
+    "n": 109,
+    "spearman": 0.7119951373506995,
+    "mean_abs_error_units": 2.4071495009055983
+   },
+   "by_segment": [
+    {
+     "segment": "이 상품을 산 적 있는 가구",
+     "decisions": 20579,
+     "expected_units": 213.09343913615132,
+     "per_1000_decisions": 10.354897669281856,
+     "actual_units": 186
+    },
+    {
+     "segment": "이 상품을 산 적 없는 가구",
+     "decisions": 417746,
+     "expected_units": 403.57881002936756,
+     "per_1000_decisions": 0.9660865933590449,
+     "actual_units": 498
+    },
+    {
+     "segment": "시리얼 자주 삼 (상위 1/3)",
+     "decisions": 146275,
+     "expected_units": 395.4845684395115,
+     "per_1000_decisions": 2.703705817395396,
+     "actual_units": 393
+    },
+    {
+     "segment": "시리얼 드물게 삼 (하위 1/3)",
+     "decisions": 146550,
+     "expected_units": 74.22763652932841,
+     "per_1000_decisions": 0.5065004198521215,
+     "actual_units": 100
+    },
+    {
+     "segment": "할인 민감 (상위 1/3)",
+     "decisions": 146525,
+     "expected_units": 212.58604215380655,
+     "per_1000_decisions": 1.4508516782378882,
+     "actual_units": 263
+    },
+    {
+     "segment": "할인 덜 민감 (하위 1/3)",
+     "decisions": 146200,
+     "expected_units": 177.71231036885487,
+     "per_1000_decisions": 1.2155424785831386,
+     "actual_units": 182
+    }
+   ],
+   "per_decision": {
+    "auc": 0.7805641228863236,
+    "log_loss": 0.010503186332840767
+   }
+  },
+  "no_promo": {
+   "label": "평소대로 예측",
+   "total": {
+    "actual": 684,
+    "expected": 606.4878557810547,
+    "mc_p05": 559.95,
+    "mc_p95": 648.0999999999999,
+    "actual_in_band": false
+   },
+   "weekly": [
+    {
+     "week": 48,
+     "visits": 3044,
+     "expected_units": 105.88820002221263,
+     "simulated_units": 118,
+     "mc_p05": 89.0,
+     "mc_p95": 121.04999999999998,
+     "expected_revenue": 360.50249484268886,
+     "actual_units": 69,
+     "actual_in_band": false
+    },
+    {
+     "week": 49,
+     "visits": 2858,
+     "expected_units": 97.50780689983667,
+     "simulated_units": 98,
+     "mc_p05": 80.0,
+     "mc_p95": 116.04999999999998,
+     "expected_revenue": 331.22036006251057,
+     "actual_units": 90,
+     "actual_in_band": true
+    },
+    {
+     "week": 50,
+     "visits": 2887,
+     "expected_units": 100.4713675204276,
+     "simulated_units": 95,
+     "mc_p05": 85.0,
+     "mc_p95": 114.0,
+     "expected_revenue": 341.0759927755996,
+     "actual_units": 166,
+     "actual_in_band": false
+    },
+    {
+     "week": 51,
+     "visits": 2902,
+     "expected_units": 102.19511053714744,
+     "simulated_units": 112,
+     "mc_p05": 88.0,
+     "mc_p95": 120.04999999999998,
+     "expected_revenue": 347.9483850689869,
+     "actual_units": 122,
+     "actual_in_band": false
+    },
+    {
+     "week": 52,
+     "visits": 3321,
+     "expected_units": 114.65069629107754,
+     "simulated_units": 113,
+     "mc_p05": 97.95,
+     "mc_p95": 132.04999999999998,
+     "expected_revenue": 390.2695369051026,
+     "actual_units": 129,
+     "actual_in_band": true
+    },
+    {
+     "week": 53,
+     "visits": 2521,
+     "expected_units": 85.77467451054333,
+     "simulated_units": 82,
+     "mc_p05": 70.0,
+     "mc_p95": 104.04999999999998,
+     "expected_revenue": 291.3595643967408,
+     "actual_units": 108,
+     "actual_in_band": false
+    }
+   ],
+   "weeks_in_band": 2,
+   "by_condition": [
+    {
+     "condition": "none",
+     "label": "평소대로",
+     "decisions": 383847,
+     "actual_units": 415,
+     "expected_units": 540.6047121173267
+    },
+    {
+     "condition": "A_front_endcap",
+     "label": "앞쪽 엔드캡",
+     "decisions": 19483,
+     "actual_units": 133,
+     "expected_units": 18.656504069559123
+    },
+    {
+     "condition": "B_mailer_only",
+     "label": "전단",
+     "decisions": 13721,
+     "actual_units": 48,
+     "expected_units": 13.780764520126759
+    },
+    {
+     "condition": "C_other_display",
+     "label": "기타 진열",
+     "decisions": 21274,
+     "actual_units": 88,
+     "expected_units": 33.445875074042064
+    }
+   ],
+   "stores": {
+    "n": 109,
+    "spearman": 0.7237369420780884,
+    "mean_abs_error_units": 2.41278654371642
+   },
+   "by_segment": [
+    {
+     "segment": "이 상품을 산 적 있는 가구",
+     "decisions": 20579,
+     "expected_units": 193.90377798358622,
+     "per_1000_decisions": 9.422410126030721,
+     "actual_units": 186
+    },
+    {
+     "segment": "이 상품을 산 적 없는 가구",
+     "decisions": 417746,
+     "expected_units": 412.5840777974684,
+     "per_1000_decisions": 0.9876433952628353,
+     "actual_units": 498
+    },
+    {
+     "segment": "시리얼 자주 삼 (상위 1/3)",
+     "decisions": 146275,
+     "expected_units": 377.1290700050907,
+     "per_1000_decisions": 2.5782195864302904,
+     "actual_units": 393
+    },
+    {
+     "segment": "시리얼 드물게 삼 (하위 1/3)",
+     "decisions": 146550,
+     "expected_units": 79.76176568107765,
+     "per_1000_decisions": 0.5442631571550847,
+     "actual_units": 100
+    },
+    {
+     "segment": "할인 민감 (상위 1/3)",
+     "decisions": 146525,
+     "expected_units": 221.02439345088015,
+     "per_1000_decisions": 1.5084415181769675,
+     "actual_units": 263
+    },
+    {
+     "segment": "할인 덜 민감 (하위 1/3)",
+     "decisions": 146200,
+     "expected_units": 170.68019474623858,
+     "per_1000_decisions": 1.1674431925187319,
+     "actual_units": 182
+    }
+   ],
+   "per_decision": {
+    "auc": 0.6985774549571733,
+    "log_loss": 0.01132268324526183
+   }
+  },
+  "avg_lift": {
+   "label": "평균 효과",
+   "total": {
+    "actual": 684,
+    "expected": 849.3755033810273,
+    "mc_p05": 805.95,
+    "mc_p95": 900.0999999999999,
+    "actual_in_band": false
+   },
+   "weekly": [
+    {
+     "week": 48,
+     "visits": 3044,
+     "expected_units": 142.02451314212993,
+     "simulated_units": 168,
+     "mc_p05": 122.95,
+     "mc_p95": 158.04999999999998,
+     "expected_revenue": 459.8178763478139,
+     "actual_units": 69,
+     "actual_in_band": false
+    },
+    {
+     "week": 49,
+     "visits": 2858,
+     "expected_units": 114.56546629186084,
+     "simulated_units": 117,
+     "mc_p05": 98.0,
+     "mc_p95": 133.0,
+     "expected_revenue": 389.16772618542234,
+     "actual_units": 90,
+     "actual_in_band": false
+    },
+    {
+     "week": 50,
+     "visits": 2887,
+     "expected_units": 149.14747541658548,
+     "simulated_units": 162,
+     "mc_p05": 132.0,
+     "mc_p95": 169.04999999999998,
+     "expected_revenue": 535.3203978825054,
+     "actual_units": 166,
+     "actual_in_band": true
+    },
+    {
+     "week": 51,
+     "visits": 2902,
+     "expected_units": 147.43298357956164,
+     "simulated_units": 138,
+     "mc_p05": 126.9,
+     "mc_p95": 172.04999999999998,
+     "expected_revenue": 528.0055543924029,
+     "actual_units": 122,
+     "actual_in_band": false
+    },
+    {
+     "week": 52,
+     "visits": 3321,
+     "expected_units": 166.0835976741916,
+     "simulated_units": 161,
+     "mc_p05": 141.0,
+     "mc_p95": 184.04999999999998,
+     "expected_revenue": 594.8517485379729,
+     "actual_units": 129,
+     "actual_in_band": false
+    },
+    {
+     "week": 53,
+     "visits": 2521,
+     "expected_units": 130.1214672764659,
+     "simulated_units": 118,
+     "mc_p05": 111.95,
+     "mc_p95": 148.09999999999997,
+     "expected_revenue": 453.53288483589796,
+     "actual_units": 108,
+     "actual_in_band": false
+    }
+   ],
+   "weeks_in_band": 1,
+   "by_condition": [
+    {
+     "condition": "none",
+     "label": "평소대로",
+     "decisions": 383847,
+     "actual_units": 415,
+     "expected_units": 594.84878750458
+    },
+    {
+     "condition": "A_front_endcap",
+     "label": "앞쪽 엔드캡",
+     "decisions": 19483,
+     "actual_units": 133,
+     "expected_units": 117.77880830111975
+    },
+    {
+     "condition": "B_mailer_only",
+     "label": "전단",
+     "decisions": 13721,
+     "actual_units": 48,
+     "expected_units": 31.28530689466752
+    },
+    {
+     "condition": "C_other_display",
+     "label": "기타 진열",
+     "decisions": 21274,
+     "actual_units": 88,
+     "expected_units": 105.46260068066005
+    }
+   ],
+   "stores": {
+    "n": 109,
+    "spearman": 0.5743486344078433,
+    "mean_abs_error_units": 3.128386761096217
+   },
+   "by_segment": [
+    {
+     "segment": "이 상품을 산 적 있는 가구",
+     "decisions": 20579,
+     "expected_units": 41.19345435507171,
+     "per_1000_decisions": 2.001722841492381,
+     "actual_units": 186
+    },
+    {
+     "segment": "이 상품을 산 적 없는 가구",
+     "decisions": 417746,
+     "expected_units": 808.1820490259556,
+     "per_1000_decisions": 1.9346254638607088,
+     "actual_units": 498
+    },
+    {
+     "segment": "시리얼 자주 삼 (상위 1/3)",
+     "decisions": 146275,
+     "expected_units": 282.6436992304137,
+     "per_1000_decisions": 1.9322761868426848,
+     "actual_units": 393
+    },
+    {
+     "segment": "시리얼 드물게 삼 (하위 1/3)",
+     "decisions": 146550,
+     "expected_units": 282.7882001039553,
+     "per_1000_decisions": 1.9296363023128988,
+     "actual_units": 100
+    },
+    {
+     "segment": "할인 민감 (상위 1/3)",
+     "decisions": 146525,
+     "expected_units": 284.8363295556415,
+     "per_1000_decisions": 1.9439435560869578,
+     "actual_units": 263
+    },
+    {
+     "segment": "할인 덜 민감 (하위 1/3)",
+     "decisions": 146200,
+     "expected_units": 281.8965219045297,
+     "per_1000_decisions": 1.9281567845727068,
+     "actual_units": 182
+    }
+   ],
+   "per_decision": {
+    "auc": 0.6547730261328911,
+    "log_loss": 0.011375592581896585
+   }
+  }
+ },
+ "report_reproduction": {
+  "rows": 19483,
+  "report": {
+   "per_1000_without": 0.9414,
+   "per_1000_with": 3.4458
+  },
+  "simulator": {
+   "per_1000_without": 0.9414423984267626,
+   "per_1000_with": 3.4457670342287767,
+   "lift": 3.6600933206184174
+  }
+ },
+ "effects": {
+  "A_front_endcap": {
+   "label": "앞쪽 엔드캡",
+   "actual": {
+    "lift": 3.1767531578706807,
+    "lo": 1.9124949819927022,
+    "hi": 15.700476199589808,
+    "cells": 26,
+    "buys_in_condition": 63
+   },
+   "simulated": {
+    "calibrated": 3.6600933206184174,
+    "no_promo": 1.0,
+    "avg_lift": 5.691579894708213
+   },
+   "in_range": {
+    "calibrated": true,
+    "no_promo": false,
+    "avg_lift": true
+   }
+  },
+  "C_other_display": {
+   "label": "기타 진열",
+   "actual": {
+    "lift": 2.2748226250364576,
+    "lo": 1.5501985270341552,
+    "hi": 3.5990816759876663,
+    "cells": 48,
+    "buys_in_condition": 53
+   },
+   "simulated": {
+    "calibrated": 2.5860051594990967,
+    "no_promo": 1.0,
+    "avg_lift": 3.4054510333416093
+   },
+   "in_range": {
+    "calibrated": true,
+    "no_promo": false,
+    "avg_lift": true
+   }
+  },
+  "B_mailer_only": {
+   "label": "전단",
+   "actual": {
+    "lift": NaN,
+    "lo": NaN,
+    "hi": NaN,
+    "cells": 3,
+    "buys_in_condition": 4
+   },
+   "simulated": {
+    "calibrated": 1.6786181478068802,
+    "no_promo": 1.0,
+    "avg_lift": 1.88596227689815
+   },
+   "in_range": {
+    "calibrated": false,
+    "no_promo": false,
+    "avg_lift": false
+   }
+  }
+ }
+}
