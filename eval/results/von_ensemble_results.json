@@ -1,0 +1,205 @@
+{
+ "rows_test": 438325,
+ "buys_test": 684,
+ "stack": {
+  "intercept": -0.04254540974747225,
+  "w_gbdt": 0.9785266465172355,
+  "w_von": 0.013893365858411895
+ },
+ "engines": {
+  "gbdt": {
+   "auc": 0.7740252728707878,
+   "log_loss": 0.010562577302217567,
+   "ece": 0.0003178292233767055,
+   "expected": 615.8548030494977,
+   "actual": 684,
+   "by_condition": {
+    "A_front_endcap": {
+     "actual": 133,
+     "expected": 78.75724564841323,
+     "rows": 19483
+    },
+    "B_mailer_only": {
+     "actual": 48,
+     "expected": 19.909398490348423,
+     "rows": 13721
+    },
+    "C_other_display": {
+     "actual": 88,
+     "expected": 68.77165609797598,
+     "rows": 21274
+    },
+    "none": {
+     "actual": 415,
+     "expected": 448.4165028127601,
+     "rows": 383847
+    }
+   },
+   "weekly_abs_err": 23.282522908092393,
+   "store_rank_corr": 0.7258574422585594
+  },
+  "von": {
+   "auc": 0.7850761824984298,
+   "log_loss": 0.010616225840090901,
+   "ece": 0.0005260928315488122,
+   "expected": 726.0957763552638,
+   "actual": 684,
+   "by_condition": {
+    "A_front_endcap": {
+     "actual": 133,
+     "expected": 119.32371702496653,
+     "rows": 19483
+    },
+    "B_mailer_only": {
+     "actual": 48,
+     "expected": 32.395064771385265,
+     "rows": 13721
+    },
+    "C_other_display": {
+     "actual": 88,
+     "expected": 85.52014919111247,
+     "rows": 21274
+    },
+    "none": {
+     "actual": 415,
+     "expected": 488.85684536779945,
+     "rows": 383847
+    }
+   },
+   "weekly_abs_err": 18.384974733576534,
+   "store_rank_corr": 0.7080936030274204
+  },
+  "ensemble": {
+   "auc": 0.7854533859102732,
+   "log_loss": 0.010550474350413992,
+   "ece": 0.0003502686082718769,
+   "expected": 613.5199255515937,
+   "actual": 684,
+   "by_condition": {
+    "A_front_endcap": {
+     "actual": 133,
+     "expected": 78.14205860375148,
+     "rows": 19483
+    },
+    "B_mailer_only": {
+     "actual": 48,
+     "expected": 19.933730688904994,
+     "rows": 13721
+    },
+    "C_other_display": {
+     "actual": 88,
+     "expected": 68.2689787145573,
+     "rows": 21274
+    },
+    "none": {
+     "actual": 415,
+     "expected": 447.1751575443799,
+     "rows": 383847
+    }
+   },
+   "weekly_abs_err": 23.542683538577737,
+   "store_rank_corr": 0.7258295409403953
+  },
+  "average": {
+   "auc": 0.7954161032225258,
+   "log_loss": 0.010439525464487776,
+   "ece": 0.00034155828188728814,
+   "expected": 607.7543110373281,
+   "actual": 684,
+   "by_condition": {
+    "A_front_endcap": {
+     "actual": 133,
+     "expected": 86.09087327631946,
+     "rows": 19483
+    },
+    "B_mailer_only": {
+     "actual": 48,
+     "expected": 23.356458413682454,
+     "rows": 13721
+    },
+    "C_other_display": {
+     "actual": 88,
+     "expected": 69.06848992406054,
+     "rows": 21274
+    },
+    "none": {
+     "actual": 415,
+     "expected": 429.2384894232656,
+     "rows": 383847
+    }
+   },
+   "weekly_abs_err": 23.90393879554107,
+   "store_rank_corr": 0.733604708268789
+  },
+  "crossfit": {
+   "auc": 0.7944389544844569,
+   "log_loss": 0.010420218335552064,
+   "ece": 0.000288040972095202,
+   "expected": 701.5311300246831,
+   "actual": 684,
+   "by_condition": {
+    "A_front_endcap": {
+     "actual": 133,
+     "expected": 95.46087877492292,
+     "rows": 19483
+    },
+    "B_mailer_only": {
+     "actual": 48,
+     "expected": 25.868996862543998,
+     "rows": 13721
+    },
+    "C_other_display": {
+     "actual": 88,
+     "expected": 78.47246994359345,
+     "rows": 21274
+    },
+    "none": {
+     "actual": 415,
+     "expected": 501.72878444362277,
+     "rows": 383847
+    }
+   },
+   "weekly_abs_err": 18.721987597099012,
+   "store_rank_corr": 0.7307587738160517
+  }
+ },
+ "effects": {
+  "A_front_endcap": {
+   "gbdt": 4.514886607530619,
+   "von": 5.411041983016436,
+   "ensemble": 4.477843057536311,
+   "average": 4.792415167529262,
+   "crossfit": 4.628972038321451,
+   "actual": {
+    "lift": 3.1767531578706807,
+    "lo": 1.9124949819927022,
+    "hi": 15.700476199589808
+   }
+  },
+  "C_other_display": {
+   "gbdt": 2.697699380564987,
+   "von": 3.2069571469891613,
+   "ensemble": 2.693561773933418,
+   "average": 2.9545190870286846,
+   "crossfit": 2.867366388931445,
+   "actual": {
+    "lift": 2.2748226250364576,
+    "lo": 1.5501985270341552,
+    "hi": 3.5990816759876663
+   }
+  },
+  "B_mailer_only": {
+   "gbdt": 1.4694050468714264,
+   "von": 2.1413307867418108,
+   "ensemble": 1.475463553693351,
+   "average": 1.7839225329742336,
+   "crossfit": 1.743804992871753,
+   "actual": null
+  }
+ },
+ "von_seed_auc": [
+  0.782417685910443,
+  0.7712619796479026,
+  0.7933037313782154
+ ]
+}

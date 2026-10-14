@@ -93,3 +93,15 @@ def metrics(ts, p):
 def actual(ts):
     return {'rate': float(np.average(ts.y, weights=ts.w)),
             'by_condition': ts.groupby('condition').apply(lambda g: round(float(np.average(g.y, weights=g.w)), 6), include_groups=False).to_dict()}
+
+
+def full_rows():
+    """Every row the full-period evaluation needs, in a fixed order: (row index, condition to ask under).
+
+    weeks 45-47 and 48-53 as they really were, then every 48-53 row that had a display or mailer asked again as
+    a regular shelf, which is what the simulator's effect sizes divide by.
+    """
+    ev = rows[rows.split.isin(['calib', 'test'])]
+    cf = rows[(rows.split == 'test') & (rows.condition != 'none')]
+    return pd.DataFrame({'row': np.r_[ev.index.values, cf.index.values],
+                         'cond': np.r_[ev.condition.values, np.full(len(cf), 'none', dtype=object)]})
