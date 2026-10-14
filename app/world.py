@@ -303,15 +303,20 @@ def decisions(s, u, ops):
     return out
 
 
-def run_agent(desc, category=None, area=None, files=None, pick=None):
-    """The whole flow, returned as visible steps. `pick` forces a recommended space (the person chose another card)."""
+def run_agent(desc, category=None, area=None, files=None, pick=None, read=None):
+    """The whole flow, returned as visible steps. `pick` forces a recommended space (the person chose another card).
+    `read` is what a chat model already understood ({wants, product, by}); it replaces the description-reading step."""
     steps, t0 = [], time.time()
 
     def step(key, title, out, detail=''):
         steps.append({'key': key, 'title': title, 'detail': detail, 'ms': int((time.time() - t0) * 1000), **out})
 
     u = understand(desc, category, area, files)
-    if has_llm():
+    if read:
+        u['wants'] = [w for w in read.get('wants') or u['wants'] if w in WANTS]
+        u['product'] = read.get('product') or u['product']
+        u['read_by'] = read.get('by', 'claude')
+    elif has_llm():
         u = understand_llm(u)
     top = u['matches'][0]['id'] if u['matches'] else None
     step('understand', '업종 이해', {'understanding': u},
@@ -341,47 +346,20 @@ def run_agent(desc, category=None, area=None, files=None, pick=None):
 # ---------------------------------------------------------------- optional language model (reads the description only)
 
 def has_llm():
-    return any(os.environ.get(k) for k in ('ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GEMINI_API_KEY'))
-
-
-def _post(url, body, headers):
-    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers={'Content-Type': 'application/json', **headers})
-    with urllib.request.urlopen(req, timeout=40) as r:
-        return json.loads(r.read())
+    return any(os.environ.get(k) for k in ('ANTHROPIC_API_KEY', 'OPENAI_API_KEY'))
 
 
 def llm_json(prompt):
-    """First provider that answers wins; any failure falls through to the next and finally to the rules (None)."""
-    tries = []
-    if os.environ.get('ANTHROPIC_API_KEY'):
-        tries.append(('claude', lambda: _post('https://api.anthropic.com/v1/messages',
-                      {'model': os.environ.get('ANTHROPIC_MODEL', 'claude-sonnet-5-5'), 'max_tokens': 400, 'messages': [{'role': 'user', 'content': prompt}]},
-                      {'x-api-key': os.environ['ANTHROPIC_API_KEY'], 'anthropic-version': '2023-06-01'})['content'][0]['text']))
-    if os.environ.get('OPENAI_API_KEY'):
-        tries.append(('openai', lambda: _post(os.environ.get('OPENAI_BASE_URL', 'https://api.openai.com/v1') + '/chat/completions',
-                      {'model': os.environ.get('OPENAI_MODEL', 'gpt-5-mini'), 'messages': [{'role': 'user', 'content': prompt}], 'response_format': {'type': 'json_object'}},
-                      {'Authorization': f"Bearer {os.environ['OPENAI_API_KEY']}"})['choices'][0]['message']['content']))
-    if os.environ.get('GEMINI_API_KEY'):
-        model = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
-        tries.append(('gemini', lambda: _post(f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
-                      {'contents': [{'parts': [{'text': prompt}]}], 'generationConfig': {'responseMimeType': 'application/json'}},
-                      {'x-goog-api-key': os.environ['GEMINI_API_KEY']})['candidates'][0]['content']['parts'][0]['text']))
-    errors = []
-    for who, call in tries:
-        try:
-            txt = call()
-            m = re.search(r'\{.*\}', txt, re.S)
-            return json.loads(m.group(0) if m else txt), who
-        except urllib.error.HTTPError as e:  # a dead key or a spent quota must not stop the rules path
-            try:
-                err = json.loads(e.read()).get('error') or {}
-            except Exception:  # noqa: BLE001
-                err = {}
-            errors.append(f"{who} {e.code} {err.get('code') or err.get('status') or ''}".strip())
-        except Exception as e:  # noqa: BLE001
-            errors.append(f'{who} {type(e).__name__}')
-    LAST_LLM_ERRORS[:] = errors
-    return None, 'rules'
+    """service.llm_text (Claude first, OpenAI otherwise, usage logged); any failure falls back to the rules (None)."""
+    import service
+    try:
+        txt = service.llm_text(prompt, json_mode=True, purpose='agent')
+        m = re.search(r'\{.*\}', txt, re.S)
+        LAST_LLM_ERRORS[:] = []
+        return json.loads(m.group(0) if m else txt), service.llm_model()
+    except Exception as e:  # noqa: BLE001 — a dead key or a spent quota must not stop the rules path
+        LAST_LLM_ERRORS[:] = [str(e)[:160]]
+        return None, 'rules'
 
 
 LAST_LLM_ERRORS = []

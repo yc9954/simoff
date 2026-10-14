@@ -7,3 +7,4 @@ __pycache__/
 
 # 3D maps from the private yc9954/consumer-jev repo: fetched locally, never published here (app/fetch_spaces.sh)
 app/static/spaces/
+app/.env

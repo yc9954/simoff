@@ -308,7 +308,7 @@ export function mountSpace(el, data, opts = {}) {
   function update(now) {
     const dt = Math.min(.05, (now - last) / 1000); last = now;
     const pulse = .22 + .14 * Math.sin(now / 350); marks.forEach(m => { m.material.opacity = pulse; });
-    if (!reduce) walk(dt);
+    if (!reduce) walk(dt * (opts.speed ?? 6));   // time-lapse, like the store views
     placeTags(); rideCard();
     controls.update(); renderer.render(scene, camera);
   }

@@ -2,10 +2,11 @@
 
 Nothing here is a mock. Calibrated model, 'no promo' model and average-lift baseline run live;
 Jev and the persona engine are the stored answers from the evaluation run (eval/results), because
-Jev has no public key in this build. With OPENAI_API_KEY set, the persona engine can also be
+Jev has no public key in this build. With ANTHROPIC_API_KEY (app/.env) or OPENAI_API_KEY set, the persona engine can also be
 asked live for one household (persona_live), and the brief / report text uses the model.
 """
 import json
+import re
 import os
 import threading
 import time
@@ -266,9 +267,9 @@ def persona_live(hh, product_id):
               '; '.join(f'[{k}] {v}' for k, v in cond.items()) +
               '. For each bracketed case separately, give the probability (0-1) that you put this exact product in your basket on this trip. '
               'Answer only JSON: {"none":p,"A_front_endcap":p,"B_mailer_only":p,"C_other_display":p}')
-    txt = openai_text(prompt, json_mode=True)
+    txt = llm_text(prompt, json_mode=True, purpose='persona')
     p = json.loads(txt)
-    return {'id': 'persona_live', 'label': f'페르소나 · {openai_model()} (지금)', 'note': '같은 질문을 방금 다시 물음', 'live': True,
+    return {'id': 'persona_live', 'label': f'페르소나 · {llm_model()} (지금)', 'note': '같은 질문을 방금 다시 물음', 'live': True,
             'p': {c: float(p[c]) for c in PLANS}}
 
 
@@ -382,49 +383,95 @@ def report():
 
 # ---------------------------------------------------------------- LLM (question structuring, explanations, persona)
 
-def openai_model():
+USAGE_LOG = Path(__file__).resolve().parent / 'cache' / 'llm_usage.jsonl'
+
+
+def llm_model():
+    """The model that answers: Claude when ANTHROPIC_API_KEY is set (app/.env), otherwise OpenAI."""
+    if os.environ.get('ANTHROPIC_API_KEY'):
+        return os.environ.get('ANTHROPIC_MODEL', 'claude-sonnet-5-5')
     return os.environ.get('OPENAI_MODEL', 'gpt-5-mini')
 
 
-def has_openai():
-    return bool(os.environ.get('OPENAI_API_KEY'))
+def has_llm():
+    return bool(os.environ.get('ANTHROPIC_API_KEY') or os.environ.get('OPENAI_API_KEY'))
 
 
-def openai_text(prompt, json_mode=False, system=None):
-    if not has_openai():
-        raise RuntimeError('OPENAI_API_KEY is not set')
-    body = {'model': openai_model(), 'messages': ([{'role': 'system', 'content': system}] if system else []) + [{'role': 'user', 'content': prompt}]}
+def _log_usage(provider, model, purpose, inp, out):
+    """One line per call, so spend can be added up later: app/cache/llm_usage.jsonl."""
+    try:
+        USAGE_LOG.parent.mkdir(exist_ok=True)
+        with open(USAGE_LOG, 'a') as f:
+            f.write(json.dumps({'at': time.strftime('%Y-%m-%d %H:%M:%S'), 'provider': provider, 'model': model, 'purpose': purpose,
+                                'input_tokens': inp, 'output_tokens': out}) + '\n')
+    except OSError:
+        pass
+
+
+def _http_error(who, e):
+    try:
+        err = json.loads(e.read()).get('error') or {}
+    except Exception:
+        err = {}
+    # OpenAI's 429 is either a spent balance or a rate limit; only the body says which
+    return RuntimeError(f"{who} HTTP {e.code} {err.get('code') or err.get('type') or ''}: {(err.get('message') or e.reason)[:160]}".strip())
+
+
+def llm_text(prompt, json_mode=False, system=None, purpose='app'):
+    """Claude first (ANTHROPIC_API_KEY), OpenAI otherwise. json_mode asks for a bare JSON object and returns its text."""
+    if not has_llm():
+        raise RuntimeError('no language model key (ANTHROPIC_API_KEY or OPENAI_API_KEY)')
+    if os.environ.get('ANTHROPIC_API_KEY'):
+        model = llm_model()
+        body = {'model': model, 'max_tokens': 1024,
+                'messages': [{'role': 'user', 'content': prompt + ('\n\nReturn one JSON object only, no prose, no code fence.' if json_mode else '')}]}
+        if system:
+            body['system'] = system
+        req = urllib.request.Request('https://api.anthropic.com/v1/messages', data=json.dumps(body).encode(),
+                                     headers={'x-api-key': os.environ['ANTHROPIC_API_KEY'], 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json'})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                d = json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            raise _http_error('Claude', e) from None
+        u = d.get('usage') or {}
+        _log_usage('anthropic', model, purpose, u.get('input_tokens'), u.get('output_tokens'))
+        txt = ''.join(c.get('text', '') for c in d.get('content', []) if c.get('type') == 'text')
+        if json_mode:
+            m = re.search(r'\{.*\}', txt, re.S)
+            txt = m.group(0) if m else txt
+        return txt
+    model = llm_model()
+    body = {'model': model, 'messages': ([{'role': 'system', 'content': system}] if system else []) + [{'role': 'user', 'content': prompt}]}
     if json_mode:
         body['response_format'] = {'type': 'json_object'}
     req = urllib.request.Request(os.environ.get('OPENAI_BASE_URL', 'https://api.openai.com/v1') + '/chat/completions', data=json.dumps(body).encode(),
                                  headers={'Authorization': f"Bearer {os.environ['OPENAI_API_KEY']}", 'Content-Type': 'application/json'})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
-            return json.loads(r.read())['choices'][0]['message']['content']
+            d = json.loads(r.read())
     except urllib.error.HTTPError as e:
-        # 429 is either a spent quota (insufficient_quota) or a rate limit; only the body says which
-        try:
-            err = json.loads(e.read()).get('error') or {}
-        except Exception:
-            err = {}
-        raise RuntimeError(f"OpenAI HTTP {e.code} {err.get('code') or err.get('type') or ''}: {(err.get('message') or e.reason)[:160]}".strip()) from None
+        raise _http_error('OpenAI', e) from None
+    u = d.get('usage') or {}
+    _log_usage('openai', model, purpose, u.get('prompt_tokens'), u.get('completion_tokens'))
+    return d['choices'][0]['message']['content']
 
 
 def brief(question):
     """Turn one line into a testable decision. The plans can only be conditions the data actually saw."""
     spec = {'question': question, 'category': 'COLD CEREAL', 'plans': PLANS, 'metric': '방문 1,000회당 판매 · 반응한 가구층',
             'weeks': list(TEST), 'structured_by': 'rules'}
-    if has_openai():
+    if has_llm():
         try:
-            txt = openai_text(
+            txt = llm_text(
                 f'Shopper question: "{question}". Available plans (only these were ever observed in the store data): '
                 f'{json.dumps({k: LABEL[k] for k in PLANS}, ensure_ascii=False)}. Return JSON '
                 '{"question": a one-sentence Korean restatement as a measurable decision, "plans": the ids of the plans the question asks about '
                 '(always include "none" as the baseline), "excluded": [Korean notes for anything asked that the data cannot test, e.g. price discounts]}',
-                json_mode=True, system='You turn a store manager\'s question into a testable decision. Never invent plans.')
+                json_mode=True, system='You turn a store manager\'s question into a testable decision. Never invent plans.', purpose='brief')
             j = json.loads(txt)
             spec.update(question=j.get('question') or question, plans=[p for p in j.get('plans', PLANS) if p in PLANS] or PLANS,
-                        excluded=j.get('excluded', []), structured_by=openai_model())
+                        excluded=j.get('excluded', []), structured_by=llm_model())
         except Exception as e:      # the decision still runs; say why the model was not used
             spec['llm_error'] = str(e)[:200]
     if 'none' not in spec['plans']:

@@ -1,6 +1,6 @@
 // Offline API screens. Each screen is the storyboard board's own markup (screens/<id>.html);
 // this file fills its data-k / data-slot / data-shot hooks from the API and wires the controls.
-import { mountStore, snapshots } from './store3d.js';
+import { mountStore, liveCards } from './store3d.js';
 import { mountSpace } from './space3d.js';
 
 // ---------------------------------------------------------------- helpers
@@ -50,12 +50,58 @@ function stage3d(el, data, opts = {}) {
 let storeDataP = null;
 function pickStore(id) { store.set('store', id); storeDataP = null; const g = $('[data-g="store"]'); if (g) g.textContent = `store_${id}`; }
 const storeData = () => storeDataP ??= api(`layout?store=${store.get('store', '367')}`).then(L => ({ aisles: L.aisles, products: L.products, L }));
+// card pictures are live: every <img data-shot> becomes a canvas fed by one shared off-screen store (store3d.liveCards),
+// so the people keep walking in every card while each card keeps its own highlighted zone
+let live = null;
 async function fillShots(root) {
   const imgs = $$('img[data-shot]', root); if (!imgs.length) return;
   const d = await storeData();
-  const keys = [...new Set(imgs.map(i => i.dataset.shot))];
-  const shots = await snapshots(d, keys.map(k => k === 'report' ? { key: k, highlight: 'A_front_endcap', view: 'cereal', state: 'next' } : { key: k, highlight: k, view: 'card' }));
-  imgs.forEach(i => { if (shots[i.dataset.shot]) i.src = shots[i.dataset.shot]; });
+  live?.dispose();
+  const cards = imgs.map(i => {
+    const c = document.createElement('canvas');
+    c.className = i.className; c.setAttribute('style', i.getAttribute('style') || ''); c.setAttribute('role', 'img'); c.setAttribute('aria-label', i.alt || '');
+    c.style.width = '100%'; i.replaceWith(c);
+    const k = i.dataset.shot;
+    return k === 'report' ? { canvas: c, highlight: 'A_front_endcap', view: 'cereal', state: 'next' } : { canvas: c, highlight: k, view: 'card', state: 'now' };
+  });
+  live = liveCards(d, cards);
+  const mine = live; cleanups.push(() => { mine.dispose(); if (live === mine) live = null; });
+}
+
+// Obolus card colour field + texture, ported from obolus/src/lib/cardGradient.ts (same schemes, positions, angles and
+// ribbons; FNV-1a seeds, so the same card always gets the same colours and neighbours rarely repeat)
+const G_SCHEMES = [['#123a86', '#2778cf', '#35e5df'], ['#07594f', '#1d9b89', '#8ee8d7'], ['#762348', '#ce3f70', '#f29bad'], ['#7c3037', '#df5b50', '#efad71'],
+  ['#302b75', '#645dde', '#66d9c2'], ['#0b475a', '#1688ad', '#68e1dd'], ['#542153', '#a63c7b', '#eba0c3'], ['#174340', '#218d78', '#a8e5ca'],
+  ['#26316d', '#536bd0', '#70d2d8'], ['#442654', '#8e4fb4', '#ef92bc'], ['#123f55', '#299eb0', '#b0eee4']];
+const G_POS = [[12, 18], [88, 12], [18, 88], [82, 82], [50, 6], [8, 52], [92, 48], [50, 94], [28, 34], [72, 66]];
+const G_ANG = [105, 120, 135, 150, 160, 115, 140, 170];
+const fnv = t => { let h = 0x811c9dc5; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193); } return h >>> 0; };
+const gpick = (seed, salt, mod) => fnv(`${salt}:${seed}`) % mod;
+function cardGradient(seed, deep) {
+  const k = seed || 'obolus', [sh, mid, li] = G_SCHEMES[gpick(k, 'scheme', G_SCHEMES.length)];
+  const [x1, y1] = G_POS[gpick(k, 'pos1', 10)], [x2, y2] = G_POS[gpick(k, 'pos2', 10)], [x3, y3] = G_POS[gpick(k, 'pos3', 10)], a = G_ANG[gpick(k, 'angle', 8)];
+  const s = deep ? [94, 95, 78, 72, 74, 76] : [66, 72, 54, 68, 70, 72];
+  return `radial-gradient(ellipse at ${x1}% ${y1}%, color-mix(in oklab, ${li} ${s[0]}%, white) 0%, transparent ${s[3]}%), `
+    + `radial-gradient(ellipse at ${x2}% ${y2}%, color-mix(in oklab, ${mid} ${s[1]}%, white) 0%, transparent ${s[4]}%), `
+    + `radial-gradient(ellipse at ${x3}% ${y3}%, color-mix(in oklab, ${sh} ${s[2]}%, black) 0%, transparent ${s[5]}%), linear-gradient(${a}deg, ${sh}, ${mid} 52%, ${li})`;
+}
+const G_RIBBONS = ['<path d="M-120 540 C110 80 330 510 735-90" stroke-width="168"/><path d="M155 550 C300 285 455 315 710 20" stroke-width="62" opacity=".32"/>',
+  '<path d="M-140 25 C160 5 245 390 750 325" stroke-width="178"/><path d="M-80 470 C175 235 420 470 735 195" stroke-width="66" opacity=".3"/>',
+  '<path d="M-130 420 C100 350 145 30 745 110" stroke-width="188"/><path d="M145 550 C245 265 505 245 655-110" stroke-width="66" opacity=".3"/>',
+  '<path d="M365 570 C210 350 505 190 330-120" stroke-width="176"/><path d="M350 440 C535 240 625 270 750 35" stroke-width="64" opacity=".3"/>',
+  '<path d="M-130 360 C90 55 350 405 750 95" stroke-width="170"/><path d="M-100 525 C175 300 420 520 735 290" stroke-width="60" opacity=".28"/>'];
+function cardTexture(seed) {
+  const k = seed || 'obulus', v = gpick(k, 'texture', 5), refl = gpick(k, 'texture-reflect', 2) === 1, rot = [-9, 5, -4, 10][gpick(k, 'texture-rotate', 4)];
+  const tf = `${refl ? 'translate(600 0) scale(-1 1) ' : ''}rotate(${rot} 300 225)`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" preserveAspectRatio="xMidYMid slice"><defs><filter id="flow" x="-45%" y="-45%" width="190%" height="190%"><feTurbulence type="fractalNoise" baseFrequency=".003 .008" numOctaves="2" seed="${gpick(k, 'texture-noise', 97) + 1}" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="13" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="22"/></filter><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".72" numOctaves="3" seed="${gpick(k, 'grain', 97) + 1}"/><feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 .08 0"/></filter></defs><g transform="${tf}" fill="none" stroke="#f5ffff" stroke-linecap="round" opacity=".72" filter="url(#flow)">${G_RIBBONS[v]}</g><rect width="100%" height="100%" filter="url(#grain)" opacity=".12"/></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+}
+// every .grad gets its own field: seeded by its label (data-seed wins), deep where only an icon sits on it, soft under text
+function paintGrads(root) {
+  $$('.grad', root).forEach((e, i) => {
+    const seed = e.dataset.seed || (e.querySelector('.mono, .lbl, h1, h2, b, [data-k]')?.textContent || e.textContent || '').replace(/[\d.,$%×→\s—-]+/g, ' ').trim().slice(0, 40) || String(i);
+    e.style.background = `linear-gradient(rgba(0,0,0,.03), rgba(0,0,0,.03)), ${cardTexture(seed)} center / cover no-repeat, ${cardGradient(seed, !e.classList.contains('ink'))}`;
+  });
 }
 
 // ---------------------------------------------------------------- shell
@@ -75,7 +121,7 @@ async function render() {
     await VIEWS[view](root, params, cleanups);
     el.replaceChildren(...root.childNodes);
     VIEWS[view].after?.(el, params, cleanups);
-    fillShots(el).catch(() => {});
+    paintGrads(el); fillShots(el).catch(() => {});
   } catch (e) { el.innerHTML = errBox(e); }
 }
 addEventListener('hashchange', render);
@@ -83,11 +129,9 @@ addEventListener('hashchange', render);
 async function boot() {
   try {
     const [c, v, h] = await Promise.all([api('catalog'), api('validation'), api('health')]);
-    $('[data-g="hh"]').textContent = n0(c.households); $('[data-g="st"]').textContent = n0(c.stores);
-    $('[data-g="auc"]').textContent = nf(v.jev.engines.gbdt_calibrated.auc, 3);
-    $('[data-g="ep"]').textContent = `엔드포인트 ${c.endpoints.filter(e => e.events != null).length}`;
-    $('[data-g="store"]').textContent = `store_${store.get('store', '367')}`;
-    const poll = async () => { const s = await api('health'); $('[data-g="status"]').textContent = s.loaded ? `dunnhumby · 연결됨${s.llm ? ` · ${s.model}` : ''}` : 'dunnhumby · 모델 불러오는 중'; if (!s.loaded) setTimeout(poll, 1500); };
+    const g = k => $(`[data-g="${k}"]`) || {};
+    g('hh').textContent = n0(c.households); g('st').textContent = n0(c.stores);
+    const poll = async () => { const s = await api('health'); $('[data-g="status"]').textContent = s.loaded ? `준비됨${s.llm ? ` · 에이전트 ${s.model}` : ' · 에이전트 규칙'}` : '모델 불러오는 중'; if (!s.loaded) setTimeout(poll, 1500); };
     poll();
   } catch { $('[data-g="status"]').textContent = '서버에 연결하지 못했습니다'; }
 }
@@ -95,90 +139,89 @@ async function boot() {
 // ---------------------------------------------------------------- screens
 const VIEWS = {};
 
-// 시작 · any offline business -> a recommended 3D space, a few edits, people, and the decisions it can test
+// 시작 · the landing chat: the agent (Claude, rules without a key) reads the business, asks if it must, and builds the
+// space with tools; its cards, the 3D space, the edits and the decisions are drawn inside the conversation
 const EXAMPLES = [
   ['카페', '성수동에 30평 카페를 열어요. 주말 줄이 걱정이고 좌석을 늘리고 싶어요.'],
-  ['편의점 신제품', '동네 편의점이에요. 신제품: 제로콜라 를 입구 쪽에 진열하면 더 팔릴까요?'],
+  ['편의점 신제품', '동네 편의점이에요. 신제품 제로콜라를 입구 쪽에 진열하면 더 팔릴까요?'],
   ['굿즈 팝업', '캐릭터 굿즈 팝업스토어 200㎡를 2주 열어요. 포토존과 계산 대기 줄이 걱정이에요.'],
   ['야외 축제', '야외 푸드 페스티벌을 열어요. 푸드 텐트와 무대 사이 동선이 궁금해요.'],
-  ['드럭스토어', '드럭스토어에서 신제품: 선크림 행사 진열 위치를 정하려고 해요.'],
 ];
 const OPS_TXT = { duplicate: '추가', relabel: '행사 자리', stations: '계산 자리', remove: '뺌' };
-VIEWS.start = async (root) => {
-  const cats = await api('spaces');
-  VIEWS.start._cats = cats;
-  const s = store.get('startForm', {});
-  K(root, 'desc').value = s.desc || ''; K(root, 'area').value = s.area || '';
-  const COMMON = ['arch_cafe', 'arch_cvs', 'arch_supermarket', 'arch_drugstore', 'arch_store', 'arch_restaurant', 'arch_popup_goods', 'arch_popup_experience', 'arch_exhibition_hall', 'arch_festival', 'arch_event_hall', 'arch_market'];
-  const chip = c => `<button type="button" class="chip${s.cat === c.id ? ' on' : ''}" data-cat="${c.id}" title="${esc(c.title)}">${esc(c.label)}</button>`;
-  const rest = cats.filter(c => !COMMON.includes(c.id));
-  slot(root, 'cats').innerHTML = COMMON.map(id => cats.find(c => c.id === id)).filter(Boolean).map(chip).join('')
-    + `<span data-more hidden>${rest.map(chip).join('')}</span><button type="button" class="chip" data-act="more" style="border-style:dashed">+ ${rest.length}개 더</button>`;
-  if (rest.some(c => c.id === s.cat)) { $('[data-more]', root).hidden = false; $('[data-act="more"]', root).remove(); }
-  slot(root, 'examples').innerHTML = EXAMPLES.map(([t], i) => `<button type="button" class="chip" data-ex="${i}">${esc(t)}</button>`).join('');
-};
-VIEWS.start.after = (el, params, cleanups) => {
-  let cat = store.get('startForm', {}).cat || null, files = [];
-  const save = () => store.set('startForm', { desc: K(el, 'desc').value, area: K(el, 'area').value, cat });
-  $$('[data-cat]', el).forEach(b => b.onclick = () => { cat = cat === b.dataset.cat ? null : b.dataset.cat; $$('[data-cat]', el).forEach(x => x.classList.toggle('on', x.dataset.cat === cat)); save(); });
-  $$('[data-ex]', el).forEach(b => b.onclick = () => { K(el, 'desc').value = EXAMPLES[+b.dataset.ex][1]; cat = null; $$('[data-cat]', el).forEach(x => x.classList.remove('on')); save(); build(); });
-  K(el, 'desc').oninput = save; K(el, 'area').oninput = save;
-  const more = $('[data-act="more"]', el); if (more) more.onclick = () => { $('[data-more]', el).hidden = false; more.remove(); };
-  K(el, 'files').onchange = e => { files = [...e.target.files].map(f => f.name); set(el, 'fileNote', files.length ? `${files.join(' · ')} · 결정 단계에서 이 기록으로 보정합니다` : '없으면 공간과 흐름부터 봅니다.'); };
-  const box = slot(el, 'agent');
-  let s3 = null;
-  cleanups.push(() => s3?.dispose());
-  async function build(pick) {
-    const desc = K(el, 'desc').value.trim();
-    if (!desc && !cat) { K(el, 'desc').focus(); K(el, 'desc').placeholder = '한 줄이면 됩니다 — 업종과 걱정되는 것을 적어 주세요'; return; }
-    box.style.display = 'block';
-    box.innerHTML = `<div class="card" style="padding:20px"><div class="lbl">02 · 에이전트</div><ol data-slot="steps" style="list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:2px"></ol></div>`;
-    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    const titles = ['업종 이해', '맵 추천', '맵 맞추기', '사람 배치', '시험할 결정'];
-    const list = slot(box, 'steps');
-    list.innerHTML = titles.map((t, i) => `<li class="ag-step" data-i="${i}"><span class="ag-dot"><span class="spin"></span></span><span class="ag-n mono">${String(i + 1).padStart(2, '0')}</span><b>${t}</b><span class="ag-d muted">대기</span></li>`).join('');
-    let r;
-    try {
-      r = await api('agent', { description: desc, category: cat ? VIEWS.start._cats.find(c => c.id === cat)?.label : null, area: +K(el, 'area').value || null, files, pick });
-    } catch (e) { box.insertAdjacentHTML('beforeend', errBox(e)); return; }
-    for (let i = 0; i < titles.length; i++) {            // reveal the steps in order; the times are the agent's own
-      const li = $(`[data-i="${i}"]`, list), st = r.steps[i];
-      await new Promise(res => setTimeout(res, 260));
-      if (!st) { li.classList.add('ag-skip'); $('.ag-dot', li).innerHTML = '–'; $('.ag-d', li).textContent = '앞 단계에서 멈춤'; continue; }
-      li.classList.add(st.ask ? 'ag-ask' : 'ag-done'); $('.ag-dot', li).innerHTML = st.ask ? '?' : '✓';
-      $('.ag-d', li).textContent = `${st.detail} · ${st.ms}ms`;
-    }
-    if (!r.space) {                                       // the agent could not tell the business: ask, do not guess
-      box.insertAdjacentHTML('beforeend', `<div class="card" style="margin-top:12px;padding:16px;border-color:#3B73FF"><b>어떤 업종인지 위 칩에서 하나 골라 주세요.</b> <span class="muted">설명에서 업종을 찾지 못해 맵을 고르지 않았습니다.</span></div>`);
-      return;
-    }
-    renderWorld(r);
-  }
-  function renderWorld(r) {
-    const [u, rec, ad, pl, dc] = r.steps.map(x => x);
-    const recs = rec.recommendations, chosen = rec.chosen;
-    const U = u.understanding;
-    box.insertAdjacentHTML('beforeend', `
-<div class="card" style="margin-top:12px;padding:20px"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:baseline"><div class="lbl">맵 추천 · 27개 원형 중</div><span class="muted" style="font-size:12px">${U.read_by === 'rules' ? '설명을 규칙으로 읽었습니다' : esc(U.read_by) + '이(가) 설명을 읽었습니다'}${U.llm_failed?.length ? ` (언어 모델 실패: ${esc(U.llm_failed.join(', '))})` : ''}</span></div>
-<div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">${recs.map((c, i) => `
-<button type="button" class="rec card${c.id === chosen ? ' on' : ''}" data-pick="${c.id}"><img src="${c.thumb}" alt="${esc(c.title)} 3D 모형" loading="lazy"><span style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="font-weight:600">${i + 1}. ${esc(c.label)}</b><span class="mono muted" style="font-size:11px">${Math.round(c.area_m2).toLocaleString()}㎡${c.floors > 1 ? ` · ${c.floors}층` : ''}${c.outdoor ? ' · 야외' : ''}</span></span><span class="muted" style="font-size:12px;line-height:1.5">${esc(c.title)}</span><span style="display:flex;flex-wrap:wrap;gap:4px">${c.why.map(w => `<span class="tag" style="background:rgba(0,0,0,.05)">${esc(w)}</span>`).join('')}</span>${c.id === chosen ? '<span class="tag tag-ok" style="align-self:flex-start">이 맵으로 세움</span>' : '<span class="mono muted" style="font-size:11px">이 맵으로 바꾸기 →</span>'}</button>`).join('')}</div></div>
-
-<div class="card" style="margin-top:12px;overflow:hidden"><div style="position:relative"><div data-slot="space" style="height:560px;background:#e9ecec"></div>
-<div style="position:absolute;left:14px;top:14px;display:flex;flex-wrap:wrap;gap:8px;max-width:calc(100% - 28px)"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">${esc(r.space.title)}</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">손님 ${pl.people.count}명 · 걷는 모습은 표현</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">에이전트 수정 ${ad.ops.length}</span></div></div>
-<div style="padding:16px 20px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px">
-<div><div class="lbl">맵 맞추기 · 에이전트가 바꾼 것</div>${ad.ops.length ? ad.ops.map(o => `<button type="button" class="list-btn" data-focus="${o.op === 'duplicate' ? o.id : o.id}" style="display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border);width:100%;text-align:left"><span class="tag ${o.op === 'relabel' ? '' : 'tag-ok'}" style="${o.op === 'relabel' ? 'background:#e3ebfe;color:#1d4ed8' : ''};flex:none">${OPS_TXT[o.op] || o.op}</span><span style="font-size:13px;line-height:1.55">${esc(o.why)}</span></button>`).join('') : '<p class="muted" style="font-size:13px;margin-top:10px">요청에 맞춰 바꿀 것이 없어 원형 그대로 두었습니다.</p>'}
+const rich = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split(/\n{2,}/).map(p => {
+  const ls = p.split('\n');
+  return ls.every(l => /^\s*[-·•]\s/.test(l)) ? `<ul>${ls.map(l => `<li>${l.replace(/^\s*[-·•]\s/, '')}</li>`).join('')}</ul>`
+    : ls.some(l => /^\s*[-·•]\s/.test(l)) ? ls.map(l => /^\s*[-·•]\s/.test(l) ? `<ul><li>${l.replace(/^\s*[-·•]\s/, '')}</li></ul>` : `<p>${l}</p>`).join('') : `<p>${p.replace(/\n/g, '<br>')}</p>`;
+}).join('');
+function recsHTML(recs) {
+  return `<div class="art"><div class="lbl">맵 추천 · 27개 원형 중</div><div class="recs">${recs.map((c, i) => `
+<button type="button" class="rec card" data-pick="${c.id}" data-label="${esc(c.label)}"><img src="${c.thumb}" alt="${esc(c.title)} 3D 모형" loading="lazy"><span style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="font-weight:600">${i + 1}. ${esc(c.label)}</b><span class="mono muted" style="font-size:11px">${Math.round(c.area_m2).toLocaleString()}㎡${c.floors > 1 ? ` · ${c.floors}층` : ''}${c.outdoor ? ' · 야외' : ''}</span></span><span class="muted" style="font-size:12px;line-height:1.5">${esc(c.title)}</span><span style="display:flex;flex-wrap:wrap;gap:4px">${(c.why || []).map(w => `<span class="tag" style="background:rgba(0,0,0,.05)">${esc(w)}</span>`).join('')}</span><span class="tag tag-ok rec-on">이 맵으로 세움</span><span class="mono muted rec-cta">이 맵으로 바꾸기 →</span></button>`).join('')}</div></div>`;
+}
+function worldHTML(r) {
+  const st = Object.fromEntries(r.steps.map(x => [x.key, x])), ad = st.adapt, pl = st.place, dc = st.decide;
+  return `<div class="art card" style="overflow:hidden;padding:0"><div style="position:relative"><div data-slot="space" class="stage"></div>
+<div style="position:absolute;left:14px;top:14px;display:flex;flex-wrap:wrap;gap:8px;max-width:calc(100% - 28px)"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">${esc(r.space.title)}</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">손님 ${pl.people.count}명 · 걷는 모습은 표현</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">물체에 커서를 올려 보세요</span></div></div>
+<div class="world-cols"><div><div class="lbl">에이전트가 바꾼 것</div>${ad.ops.length ? ad.ops.map(o => `<button type="button" class="list-btn" data-focus="${o.id}" style="display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border);width:100%;text-align:left"><span class="tag ${o.op === 'relabel' ? '' : 'tag-ok'}" style="${o.op === 'relabel' ? 'background:#e3ebfe;color:#1d4ed8;' : ''}flex:none">${OPS_TXT[o.op] || o.op}</span><span style="font-size:13px;line-height:1.55">${esc(o.why)}</span></button>`).join('') : '<p class="muted" style="font-size:13px;margin-top:10px">요청에 맞춰 바꿀 것이 없어 원형 그대로 두었습니다.</p>'}
 ${ad.skipped.map(o => `<div style="display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border)"><span class="tag" style="background:#f6ebd3;color:#6b4a00;flex:none">못 바꿈</span><span style="font-size:13px;line-height:1.55">${esc(o.why)} — ${esc(o.reason)}</span></div>`).join('')}
 ${ad.note ? `<p class="muted" style="font-size:12px;line-height:1.6;margin-top:8px">${esc(ad.note)}</p>` : ''}<p class="mono muted" style="font-size:10px;letter-spacing:.4px;margin-top:8px">통로 ${r.space.aisle_min_std ?? .8}m 이상 · 집기 겹침 없음 · 출입문 앞 비움을 지킨 수정만 적용</p></div>
-<div><div class="lbl">03 · 이 공간에서 시험할 결정</div>${dc.decisions.map(d => `<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="font-size:15px;font-weight:500;line-height:1.5">${esc(d.q)}</div><div class="muted" style="font-size:12px;margin-top:4px">지표: ${esc(d.metric)} · 필요한 기록: ${esc(d.needs)}</div><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">${dc.calibrated ? `<a class="btn btn-mono btn-sm" href="#connect">올린 기록으로 보정하기 →</a>` : '<span class="tag" style="background:rgba(0,0,0,.05)">기록이 오면 숫자를 냅니다</span>'}${d.example ? `<a class="btn btn-outline btn-sm" href="${d.example}">보정된 예시로 보기 →</a>` : ''}</div></div>`).join('')}
-<p class="muted" style="font-size:12px;line-height:1.6;margin-top:8px">숫자는 이 공간의 실제 기록으로 보정된 모델만 냅니다. 비슷한 업종의 일반론이나 언어 모델의 짐작으로는 내지 않습니다.</p></div>
-</div></div>`);
-    $$('[data-pick]', box).forEach(b => b.onclick = () => b.dataset.pick !== chosen && build(b.dataset.pick));
-    s3?.dispose();
-    s3 = mountSpace(slot(box, 'space'), { glb: r.glb, space: r.space, ops: ad.ops, people: pl.people }, { maxPeople: 40 });
-    $$('[data-focus]', box).forEach(b => b.onclick = () => { const on = !b.classList.contains('on'); $$('[data-focus]', box).forEach(x => x.classList.remove('on')); b.classList.toggle('on', on); s3.focus(on ? b.dataset.focus : null); });
+<div><div class="lbl">이 공간에서 시험할 결정</div>${dc.decisions.map(d => `<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="font-size:15px;font-weight:500;line-height:1.5">${esc(d.q)}</div><div class="muted" style="font-size:12px;margin-top:4px">지표: ${esc(d.metric)} · 필요한 기록: ${esc(d.needs)}</div><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">${dc.calibrated ? '<a class="btn btn-mono btn-sm" href="#connect">올린 기록으로 보정하기 →</a>' : '<span class="tag" style="background:rgba(0,0,0,.05)">기록이 오면 숫자를 냅니다</span>'}${d.example ? `<a class="btn btn-outline btn-sm" href="${d.example}">보정된 예시로 보기 →</a>` : ''}</div></div>`).join('')}</div></div></div>`;
+}
+VIEWS.start = async (root) => {
+  slot(root, 'examples').innerHTML = EXAMPLES.map(([t], i) => `<button type="button" class="btn btn-sm mono" data-ex="${i}" style="height:30px;font-size:11px;letter-spacing:.5px;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.85);background:transparent">${esc(t)}</button>`).join('');
+  const h = await api('health').catch(() => ({}));
+  set(root, 'by', h.llm ? `에이전트: ${h.model} · 결정의 숫자는 그 공간의 기록으로 보정된 모델만 냅니다` : '에이전트: 규칙(언어 모델 키 없음) · 결정의 숫자는 그 공간의 기록으로 보정된 모델만 냅니다');
+};
+VIEWS.start.after = (el, params, cleanups) => {
+  const thread = slot(el, 'thread'), composer = slot(el, 'composer'), ta = K(el, 'ask');
+  let history = [], files = [], s3 = null, busy = false;
+  cleanups.push(() => s3?.dispose());
+  const atBottom = () => thread.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  function bubble(role, html) {
+    const d = document.createElement('div'); d.className = `msg ${role}`;
+    d.innerHTML = role === 'user' ? `<div class="bub">${html}</div>` : `<span class="ava" aria-hidden="true"><i></i><i></i><i></i></span><div class="body">${html}</div>`;
+    thread.appendChild(d); return d;
   }
-  $('[data-act="build"]', el).onclick = () => build();
-  if (params.go) build();
+  function freeze() {          // keep one live 3D scene: the older one becomes a still picture of itself
+    if (!s3) return; const host = s3.__host;
+    try { const u = s3.shot(); host.innerHTML = `<img src="${u}" alt="이전 3D 공간" style="width:100%;height:100%;object-fit:cover;display:block">`; } catch { host.innerHTML = ''; }
+    s3.dispose(); s3 = null;
+  }
+  function draw(msgEl, art) {
+    const body = $('.body', msgEl);
+    if (art.type === 'recs') {
+      body.insertAdjacentHTML('beforeend', recsHTML(art.recs));
+    } else if (art.type === 'world') {
+      const r = art.run; freeze();
+      $$('.rec', body).forEach(b => { const on = b.dataset.pick === r.space.id; b.classList.toggle('on', on); });
+      body.insertAdjacentHTML('beforeend', worldHTML(r));
+      const host = $$('[data-slot="space"]', body).at(-1), st = Object.fromEntries(r.steps.map(x => [x.key, x]));
+      s3 = mountSpace(host, { glb: r.glb, space: r.space, ops: st.adapt.ops, people: st.place.people }, { maxPeople: 40 }); s3.__host = host;
+      const cur = s3;
+      $$('[data-focus]', body).forEach(b => b.onclick = () => { if (s3 !== cur) return; const on = !b.classList.contains('on'); $$('[data-focus]', body).forEach(x => x.classList.remove('on')); b.classList.toggle('on', on); cur.focus(on ? b.dataset.focus : null); });
+    }
+    $$('[data-pick]', body).forEach(b => b.onclick = () => !b.classList.contains('on') && send(`${b.dataset.label} 맵(${b.dataset.pick})으로 바꿔서 다시 세워 주세요.`));
+  }
+  async function send(text) {
+    text = (text || '').trim(); if (!text || busy) return;
+    busy = true;
+    if (!el.classList.contains('chatting')) { el.classList.add('chatting'); thread.style.display = 'flex'; thread.after(composer); }
+    history.push({ role: 'user', text });
+    bubble('user', esc(text)).scrollIntoView({ behavior: 'smooth', block: 'center' });
+    ta.value = '';
+    const ai = bubble('ai', '<div class="typing" aria-label="생각하는 중"><i></i><i></i><i></i></div>');
+    try {
+      const r = await api('chat', { history, files });
+      $('.body', ai).innerHTML = rich(r.reply) + (r.tools?.length ? `<div class="mono muted tools">${r.tools.map(t => t.tool === 'recommend_spaces' ? '맵 추천' : '공간 세우기').join(' → ')} · ${esc(r.by)}</div>` : '');
+      history.push({ role: 'assistant', text: r.reply });
+      for (const a of r.artifacts || []) draw(ai, a);
+    } catch (e) { $('.body', ai).innerHTML = errBox(e); history.pop(); }
+    busy = false; ai.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  $('[data-act="send"]', el).onclick = () => send(ta.value);
+  ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(ta.value); } };
+  $$('[data-ex]', el).forEach(b => b.onclick = () => send(EXAMPLES[+b.dataset.ex][1]));
+  K(el, 'files').onchange = e => { files = [...e.target.files].map(f => f.name); set(el, 'fileLbl', files.length ? `기록 ${files.length}개` : '+ 기록 CSV'); };
+  if (params.q) send(params.q);
 };
 
 // S0 결정 브리프
@@ -340,6 +383,9 @@ VIEWS.plans = async (root) => {
 };
 
 // S5 실행
+// what each engine is, in words a store manager reads (the technical note stays in the API and the CSV)
+const ENG_PLAIN = { calibrated: '이 매장들의 실제 영수증으로 학습한 결정 모델 — 우리 엔진', jev_calibrated: '외부 결정 모델(Jev)에 이 매장 기록으로 보정만 얹은 것',
+  persona: '언어 모델이 손님 역할로 답한 것 — 비교용', no_promo: '진열 효과가 없다고 보는 기준', avg_lift: '전체 평균 효과만 곱하는 기준' };
 function runCards(r) {
   const order = ['calibrated', 'jev_calibrated', 'persona', 'no_promo', 'avg_lift'];
   const engines = [...r.engines].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
@@ -351,17 +397,17 @@ function runCards(r) {
       const ok = k != null && k <= 3;
       return `<article class="card acc ${sel ? 'wash-w' : 'wash'}" style="overflow:hidden;--card-accent:${acc};${sel ? 'border-color:#171717;box-shadow:0 0 0 1px #171717' : ''}">${base(e) ? '' : `<img data-shot="${c}" alt="${esc(e.label)} · ${LBL[c]} 3D 장면" style="display:block;width:100%;height:118px;object-fit:cover;border-bottom:1px solid var(--border);background:#eceeed">`}
 <div style="padding:12px 14px 14px"><div style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="sq" style="background:${COL[c]};width:8px;height:8px"></span>${LBL[c]}</div><div style="margin-top:10px;display:flex;align-items:baseline;justify-content:space-between"><span class="stat" style="font-size:24px">${p.per_1000 >= 100 ? n0(p.per_1000) : nf(p.per_1000)}</span><span class="num muted" style="font-size:11px">실제 ${nf(a)}</span></div>
-<div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:6px"><span class="lbl" style="text-transform:none;white-space:nowrap">평소 대비 ${nf(p.lift, 1)}배</span><span class="tag ${ok ? 'tag-ok' : 'tag-no'}" style="white-space:nowrap">${k == null ? '—' : ok ? `실제의 ${nf(k)}` : `${n0(k)}배 과대`}</span></div>${p.mc_p05 != null ? `<div class="mono muted" style="margin-top:6px;font-size:10px;letter-spacing:.3px">90% ${n0(p.mc_p05)}–${n0(p.mc_p95)}건 · 손님 운</div>` : ''}</div></article>`;
+<div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:6px"><span class="lbl" style="text-transform:none;white-space:nowrap">평소 대비 ${nf(p.lift, 1)}배</span>${ok ? '' : `<span class="tag tag-no" style="white-space:nowrap">실제의 ${n0(k)}배</span>`}</div></div></article>`;
     }).join('');
-    return `<section><div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--border)"><span style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:500"><span class="sq" style="background:${sq};width:10px;height:10px"></span>${esc(e.label)}</span><span class="mono muted" style="font-size:11px;letter-spacing:.5px">${esc(e.note)}</span><span class="tag ${e.live ? 'tag-ok' : 'tag-ai'}">${e.live ? '지금 계산' : '저장된 평가'}</span></div><div style="margin-top:14px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">${cards}</div></section>`;
+    return `<section><div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--border)"><span style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:500"><span class="sq" style="background:${sq};width:10px;height:10px"></span>${esc(e.label)}</span><span class="muted" style="font-size:13px">${ENG_PLAIN[e.id] || esc(e.note)}</span></div><div style="margin-top:14px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">${cards}</div></section>`;
   };
   const main = engines.filter(e => !base(e)), rest = engines.filter(base);
   return main.map(section).join('') + (rest.length ? `<details class="card" style="padding:12px 16px"><summary style="cursor:pointer;font-size:14px">비교 기준 ${rest.length}개 · ${rest.map(e => esc(e.label)).join(' · ')} <span class="mono muted" style="font-size:11px;margin-left:8px">진열 효과를 빼거나 평균으로 둔 경우</span></summary><div style="display:flex;flex-direction:column;gap:24px;margin-top:16px">${rest.map(section).join('')}</div></details>` : '');
 }
 function fillRun(root, r) {
-  set(root, 'title', `실행 #${r.id}`);
-  set(root, 'intro', `엔진 ${r.engines.filter(e => !['no_promo', 'avg_lift'].includes(e.id)).length}개 × 안 4개 (아래에 비교 기준 ${r.engines.filter(e => ['no_promo', 'avg_lift'].includes(e.id)).length}개). 숫자는 방문 1,000회당 판매이고, 오른쪽은 시험 기간(48–53주) 실제값입니다. 모델이 이 기간의 구매를 본 적은 없습니다. 모든 안이 같은 방문과 같은 난수를 씁니다.`);
-  set(root, 'decisions', n0(r.decisions)); set(root, 'actual', n0(r.actual_buys)); set(root, 'seed', String(r.seed)); set(root, 'draws', String(r.draws)); set(root, 'weeks', `${r.weeks.join('–')}주`); set(root, 'at', r.at);
+  set(root, 'title', '실행 결과');
+  set(root, 'intro', `숫자는 방문 1,000회당 판매입니다. 카드 오른쪽 '실제'는 모델이 학습에 쓰지 않은 ${r.weeks.join('–')}주에 실제로 팔린 값입니다. 네 가지 안은 같은 손님, 같은 방문으로 비교했습니다.`);
+  const meta = K(root, 'decisions')?.closest('.card'); if (meta) meta.remove();
   slot(root, 'engines').innerHTML = runCards(r);
 }
 VIEWS.run = async (root) => { const r = await api('run/latest') || await api('run', { draws: 100, seed: 42 }); fillRun(root, r); VIEWS.run._r = r; };
@@ -411,12 +457,12 @@ VIEWS.layout = async (root, params) => {
   K(root, 'store').innerHTML = stores.map(s => `<option value="${s.store_id}" ${s.store_id === sid ? 'selected' : ''}>Store ${s.store_id}</option>`).join('');
   set(root, 'chip1', `제안 배치 · ${L.as_of}주까지 보고 결정 · ${L.weeks.join('–')}주 시뮬레이션`);
   set(root, 'chip2', `자리 · 앞쪽 엔드캡 ${L.capacity.A_front_endcap} · 기타 진열 ${L.capacity.C_other_display}`);
-  set(root, 'lbl', `같은 손님 · 같은 운 · ${L.weeks.join('–')}주 실제 방문 ${n0(L.visits)}회 · 추첨 200번`);
+  set(root, 'lbl', `${L.weeks.join('–')}주에 실제로 온 손님 ${n0(L.visits)}회 방문으로 시뮬레이션`);
   set(root, 'h2', `상품 ${moved.length}개를 옮기면, 판매 방문이 ${nf(cur.expected_units, 1)}에서 ${nf(nxt.expected_units, 1)}로.`);
-  slot(root, 'stats').innerHTML = stat(`×${nf(nxt.lift)}`, `${L.as_of}주 배치 고정 대비`, `90% 범위 ${n0(cur.mc_p05)}–${n0(cur.mc_p95)} → ${n0(nxt.mc_p05)}–${n0(nxt.mc_p95)}`)
-    + stat(`${nxt.extra_revenue >= 0 ? '+' : '-'}$${nf(Math.abs(nxt.extra_revenue))}`, '기대 매출 차이', '6주 · 할인 전 가격 기준')
-    + stat(`${(nxt.share_of_draws_above_baseline * 100).toFixed(1)}%`, '추첨 중 기준선보다 많음', '손님 운만 흔듦')
-    + stat(`${V.actual} vs ${nf(V.expected, 1)}`, '이 매장 실제 vs 시뮬레이션', `실제 진열 그대로 · 90% ${n0(V.mc_p05)}–${n0(V.mc_p95)}`);
+  slot(root, 'stats').innerHTML = stat(`×${nf(nxt.lift)}`, `지금(${L.as_of}주) 배치 대비`, `판매 방문 ${nf(cur.expected_units, 1)} → ${nf(nxt.expected_units, 1)}`)
+    + stat(`${nxt.extra_revenue >= 0 ? '+' : '-'}$${nf(Math.abs(nxt.extra_revenue))}`, '6주 기대 매출 차이', '할인 전 가격 기준')
+    + stat(`${Math.round(nxt.share_of_draws_above_baseline * 100)}%`, '지금보다 더 팔릴 확률', '같은 손님으로 200번 다시 돌려 본 결과')
+    + stat(`${V.actual} / ${nf(V.expected, 1)}`, '이 매장 실제 판매 / 모델', '지금 배치 그대로 6주');
   slot(root, 'tags').innerHTML = `<span class="tag tag-ok">엔드캡 효과 · 시뮬레이터가 실제 범위 안</span><span class="tag ${V.in_band ? 'tag-ok' : 'tag-no'}">이 매장 6주 판매 ${V.actual}건 · ${V.in_band ? '범위 안' : '범위 밖'}</span>`;
   slot(root, 'moves').innerHTML = moved.map(p => `<button type="button" class="tr list-btn" data-id="${p.id}" style="display:grid;grid-template-columns:28px minmax(0,1fr) 150px 70px;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid rgba(216,221,223,.7);font-size:14px;width:100%"><span class="num" style="font-size:11px;text-align:center;border-radius:2px;background:${COL[p.next] === '#B8BEC2' ? '#B8BEC2' : COL[p.next]};color:${p.next === 'A_front_endcap' ? '#fff' : '#000'};padding:1px 0">${p.n}</span><span style="font-size:13px">${esc(p.name)} ${esc(p.size)}</span><span class="mono muted" style="font-size:11px">${LB(p.now)} → <b style="color:#000;font-weight:500">${LB(p.next)}</b></span><span class="num r" style="font-size:12px">${p.gain ? '+$' + nf(p.gain) : '자리 양보'}</span></button>`).join('');
   VIEWS.layout._L = L;
@@ -439,8 +485,8 @@ VIEWS.report = async (root) => {
   const [r, last] = await Promise.all([api('report'), api('run/latest')]);
   const N = r.numbers, eff = r.effects;
   const extra = N.per_1000_with - N.per_1000_without, usd = extra * N.median_shelf_price_usd;
-  set(root, 'title', `리포트 · 실행 #${last?.id ?? '—'}`); set(root, 'run', `#${last?.id ?? '—'}`); set(root, 'auc', nf(r.auc, 3));
-  set(root, 'lead', `48–53주 실제 효과 ${nf(eff.A_front_endcap.actual.lift)}배(95% 범위 ${nf(eff.A_front_endcap.actual.lo)}–${nf(eff.A_front_endcap.actual.hi)}) 안에 든 추정입니다. 시뮬레이터 ${nf(eff.A_front_endcap.simulated.calibrated)}배. 엔드캡이었던 방문의 판매는 실제보다 낮게 보는 편이라 보수적입니다.`);
+  set(root, 'title', '리포트');
+  set(root, 'lead', `엔드캡에 두면 평소보다 약 ${nf(eff.A_front_endcap.simulated.calibrated, 1)}배 팔린다고 봅니다. 실제로 엔드캡이었던 매장들에서 잰 효과(${nf(eff.A_front_endcap.actual.lift, 1)}배) 범위 안이고, 실제보다 약간 낮게 보는 편이라 보수적인 추정입니다.`);
   set(root, 'per1000', `${nf(N.per_1000_without)} → ${nf(N.per_1000_with)}개`);
   set(root, 'usd', `$${nf(usd, 1)}`); set(root, 'usdSub', `추가 ${nf(extra, 1)}개 × 중간 가격 $${nf(N.median_shelf_price_usd)} · 패널 가구 기준`);
   const p = store.get('partner', {}), weeks = +p.weeks || 0, visits = +p.visits || 0;

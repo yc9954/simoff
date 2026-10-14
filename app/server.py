@@ -9,7 +9,7 @@ Routes (all GET unless noted):
   /api/stores                      stores with display records, busiest first (weeks 48-53)
   /api/world?store=                S2 store map + who visited
   /api/household?id=&product=      S3 one household, every engine, four conditions
-  /api/persona?id=&product=        S3 ask the persona engine live (OPENAI_API_KEY)
+  /api/persona?id=&product=        S3 ask the persona engine live (ANTHROPIC_API_KEY or OPENAI_API_KEY)
   /api/plans                       S4 the plans the data can test
   POST /api/brief {question}       S0 one line -> testable decision
   POST /api/run                    S5 every plan x every engine on the held-out weeks
@@ -18,6 +18,7 @@ Routes (all GET unless noted):
   /api/report                      S7
   POST /api/connect {transactions, products?, placements?}   S8 CSV text -> full cycle in the background
   /api/job?id=                     S8 progress
+  POST /api/chat {history, files?}  시작: Claude talks, decides, and builds the space with tools (rules without a key)
   /api/spaces                      the 27 archetype spaces (consumer-jev) the world builder recommends from
   POST /api/agent {description, category?, area?, files?, pick?}   시작: business in -> map, edits, people, decisions
 """
@@ -33,8 +34,19 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+# keys for the optional language model live in app/.env (gitignored, never committed): KEY=value per line;
+# a variable already set in the environment wins
+_env = Path(__file__).resolve().parent / '.env'
+if _env.exists():
+    for _line in _env.read_text().splitlines():
+        if '=' in _line and not _line.lstrip().startswith('#'):
+            _k, _v = _line.split('=', 1)
+            os.environ.setdefault(_k.strip(), _v.strip())
+
 import service  # noqa: E402
 import world  # noqa: E402
+import chat  # noqa: E402
 
 STATIC = Path(__file__).resolve().parent / 'static'
 
@@ -88,7 +100,7 @@ class Handler(SimpleHTTPRequestHandler):
         p = u.path
         S = service
         table = {
-            ('GET', '/api/health'): lambda: {'ok': True, 'loaded': bool(S._state), 'llm': S.has_openai(), 'model': S.openai_model() if S.has_openai() else None},
+            ('GET', '/api/health'): lambda: {'ok': True, 'loaded': bool(S._state), 'llm': S.has_llm(), 'model': S.llm_model() if S.has_llm() else None},
             ('GET', '/api/catalog'): S.catalog,
             ('GET', '/api/replay'): lambda: S.replay_basket(q.get('basket')),
             ('GET', '/api/stores'): S.stores,
@@ -107,6 +119,7 @@ class Handler(SimpleHTTPRequestHandler):
             ('GET', '/api/job'): lambda: S.JOBS[q['id']],
             ('GET', '/api/sample'): lambda: S.sample_files(q.get('store', '367')),
             ('GET', '/api/spaces'): world.catalog,
+            ('POST', '/api/chat'): lambda: chat.chat(body.get('history') or [], body.get('files') or []),
             ('POST', '/api/agent'): lambda: world.run_agent(body.get('description', ''), body.get('category'), body.get('area'),
                                                             body.get('files') or [], body.get('pick')),
         }

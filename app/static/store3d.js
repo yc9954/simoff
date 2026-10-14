@@ -398,6 +398,11 @@ export function mountStore(el, data, opts = {}) {
     renderer.domElement.style.cursor = p ? 'pointer' : 'grab';
   });
   renderer.domElement.addEventListener('pointerleave', () => opts.onHover?.(null));
+  function frustum(a) {
+    const half = 20.5;
+    Object.assign(camera, a > 1.3 ? { left: -half, right: half, top: half / a, bottom: -half / a } : { left: -half * a / 1.3, right: half * a / 1.3, top: half / 1.3, bottom: -half / 1.3 });
+    camera.updateProjectionMatrix();
+  }
   function resize() {
     const w = el.clientWidth, h = el.clientHeight; if (!w || !h) return;
     renderer.setSize(w, h, false);
@@ -407,6 +412,7 @@ export function mountStore(el, data, opts = {}) {
   }
   const ro = new ResizeObserver(resize); ro.observe(el);
   let alive = true, last = performance.now(), camAnim = null, following = false;
+  const SPEED = opts.speed ?? 6;   // people walk in time-lapse, so a few seconds show a store's worth of trips
   function update(now) {
     const dt = Math.min(.05, (now - last) / 1000); last = now;
     if (animating) { const k = Math.min(1, (now - t0) / dur); items.forEach(it => place(it, ease(k))); if (k >= 1) animating = false; }
@@ -424,10 +430,10 @@ export function mountStore(el, data, opts = {}) {
       const c = state === 'next' ? it.p.next : it.p.now;
       it.tag.material.color.set(animating ? '#ffffff' : (c === 'A_front_endcap' ? '#cfdcff' : c === 'C_other_display' ? '#e3ebfe' : '#ffffff'));
     }
-    if (!reduce) moveShoppers(dt);
+    if (!reduce) moveShoppers(dt * SPEED);
     if (following && shoppers[0]) { const p = shoppers[0].root.position; controls.target.lerp(new THREE.Vector3(p.x, .9, p.z), .08);
       camera.position.copy(controls.target).addScaledVector(VIEWS.cereal.dir.clone().normalize(), 60); }
-    controls.update(); renderer.render(scene, camera);
+    controls.update(); if (!opts.manual) renderer.render(scene, camera);
   }
   // the loop drives animation; update() alone is what a snapshot needs, so cards still render in a hidden tab (no rAF there)
   function frame(now) { if (!alive) return; update(now); requestAnimationFrame(frame); }
@@ -435,7 +441,7 @@ export function mountStore(el, data, opts = {}) {
     camAnim = { t0: performance.now(), ft: controls.target.clone(), fp: camera.position.clone(), fz: camera.zoom,
       tt: target.clone(), tp: target.clone().addScaledVector(dir.clone().normalize(), 60), tz: zoom };
   }
-  resize(); go(state, false); requestAnimationFrame(frame);
+  resize(); go(state, false); if (!opts.manual) requestAnimationFrame(frame);
   return {
     go,
     get state() { return state; },
@@ -447,6 +453,15 @@ export function mountStore(el, data, opts = {}) {
     setHighlight,
     setView(name) { view = VIEWS[name] || view; placeCamera(view); },
     ready: () => loadAssets(),
+    advance(now) { update(now); },
+    // draw the scene as `card` wants it (highlight, view, plan state) into a 2D canvas; used by liveCards
+    drawInto(ctx, w, h, card) {
+      setHighlight(card.highlight); if (card.view && VIEWS[card.view] !== view) { view = VIEWS[card.view]; placeCamera(view); }
+      if (card.state && card.state !== state) go(card.state, false);
+      if (renderer.domElement.width !== w || renderer.domElement.height !== h) { renderer.setPixelRatio(1); renderer.setSize(w, h, false); }
+      frustum(w / h);
+      controls.update(); renderer.render(scene, camera); ctx.drawImage(renderer.domElement, 0, 0, w, h);
+    },
     shot(w, h) { update(performance.now()); const pr = renderer.getPixelRatio(); renderer.setPixelRatio(1); renderer.setSize(w, h, false); camera.updateProjectionMatrix(); controls.update(); renderer.render(scene, camera); const u = renderer.domElement.toDataURL('image/jpeg', .86); renderer.setPixelRatio(pr); resize(); return u; },
     select(id) {
       sel = sel === id ? null : id;
@@ -475,4 +490,32 @@ export async function snapshots(data, list, w = 640, h = 300) {
     s3.dispose(); host.remove();
   }
   return Object.fromEntries(list.map(x => [x.key, shotCache.get(x.key)]));
+}
+
+// Live cards: one store, rendered off-screen, drawn in turn into every visible card canvas. Each card keeps its own
+// highlight and view; the people are shared and keep walking. One WebGL context however many cards there are.
+export function liveCards(data, cards) {
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:-10000px;top:0;width:640px;height:300px';
+  document.body.appendChild(host);
+  const s3 = mountStore(host, data, { shoppers: 26, state: 'now', rings: false, manual: true });
+  const dpr = Math.min(devicePixelRatio || 1, 2), seen = new Set();
+  const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting ? seen.add(e.target) : seen.delete(e.target)), { rootMargin: '80px' });
+  cards.forEach(c => io.observe(c.canvas));
+  let alive = true, turn = 0;
+  function frame(now) {
+    if (!alive) return;
+    s3.advance(now);
+    const vis = cards.filter(c => seen.has(c.canvas));
+    for (let k = 0; k < Math.min(3, vis.length); k++) {          // three cards a frame: smooth enough, cheap enough
+      const c = vis[(turn + k) % vis.length], r = c.canvas.getBoundingClientRect();
+      const w = Math.max(2, Math.round(r.width * dpr)), h = Math.max(2, Math.round(r.height * dpr));
+      if (c.canvas.width !== w || c.canvas.height !== h) { c.canvas.width = w; c.canvas.height = h; }
+      s3.drawInto(c.canvas.getContext('2d'), w, h, c);
+    }
+    turn += 3;
+    requestAnimationFrame(frame);
+  }
+  s3.ready().then(() => setTimeout(() => alive && requestAnimationFrame(frame), 300));
+  return { dispose() { alive = false; io.disconnect(); s3.dispose(); host.remove(); } };
 }
