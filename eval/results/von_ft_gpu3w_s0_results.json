@@ -1,0 +1,96 @@
+{
+ "tag": "gpu3w_s0",
+ "args": {
+  "tag": "gpu3w_s0",
+  "weeks": [
+   42,
+   44
+  ],
+  "neg_ratio": 4.0,
+  "epochs": 4,
+  "lr": 1.5e-05,
+  "batch": 8,
+  "brier_weight": 0.5,
+  "train_layers": 28,
+  "seed": 0,
+  "max_steps": 0,
+  "ckpt_dir": "/tmp/von-ft"
+ },
+ "train": {
+  "buys": 315,
+  "non_buys_sampled": 1260,
+  "non_buys_total": 218110,
+  "offset": -5.153887801720375,
+  "steps": 788
+ },
+ "kept_epoch": 1,
+ "epochs": [
+  {
+   "epoch": 1,
+   "step": 197,
+   "calib_logloss": 0.010000700158829536,
+   "minutes": 0.9
+  },
+  {
+   "epoch": 2,
+   "step": 394,
+   "calib_logloss": 0.010032332665027725,
+   "minutes": 1.7
+  },
+  {
+   "epoch": 3,
+   "step": 591,
+   "calib_logloss": 0.010127620938886351,
+   "minutes": 2.6
+  },
+  {
+   "epoch": 4,
+   "step": 788,
+   "calib_logloss": 0.0100084438664097,
+   "minutes": 3.4
+  }
+ ],
+ "minutes": 4.2,
+ "actual": {
+  "rate": 0.0015604859407973536,
+  "by_condition": {
+   "A_front_endcap": 0.006826,
+   "B_mailer_only": 0.003498,
+   "C_other_display": 0.004137,
+   "none": 0.001081
+  }
+ },
+ "engines": {
+  "von_ft": {
+   "log_loss": 0.011059533307714045,
+   "brier": 0.0015544545941681698,
+   "auc": 0.7550890329088618,
+   "ece": 0.0005452141134425851,
+   "mean_p": 0.0011617141989224628,
+   "by_condition": {
+    "A_front_endcap": 0.001507,
+    "B_mailer_only": 0.001004,
+    "C_other_display": 0.004014,
+    "none": 0.000992
+   }
+  },
+  "von_ft_calibrated": {
+   "log_loss": 0.01603227068885906,
+   "brier": 0.0019353094302781016,
+   "auc": 0.754656165683399,
+   "ece": 0.0009116015844702045,
+   "mean_p": 0.001685284856816218,
+   "by_condition": {
+    "A_front_endcap": 0.003618,
+    "B_mailer_only": 0.001972,
+    "C_other_display": 0.011839,
+    "none": 0.001014
+   }
+  }
+ },
+ "endcap_lift": {
+  "rows": 500,
+  "von_ft": 1.7069096565246582,
+  "von_ft_calibrated": 3.931337833404541
+ }
+}
