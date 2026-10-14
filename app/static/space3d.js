@@ -99,6 +99,11 @@ export function mountSpace(el, data, opts = {}) {
   Object.assign(controls, { enableDamping: true, dampingFactor: .08, minPolarAngle: .3, maxPolarAngle: Math.PI / 2.3, minZoom: .5, maxZoom: 8, screenSpacePanning: true });
   const target = new THREE.Vector3(cx, 0, -cy), dir = new THREE.Vector3(-.8, 1.05, 1.0).normalize();
   controls.target.copy(target); camera.position.copy(target).addScaledVector(dir, R * 3);
+  function frustum(a) {
+    const half = R * .5;
+    Object.assign(camera, a > 1.2 ? { left: -half * a / 1.2, right: half * a / 1.2, top: half / 1.2, bottom: -half / 1.2 } : { left: -half, right: half, top: half / a, bottom: -half / a });
+    camera.updateProjectionMatrix();
+  }
   function resize() {
     const w = el.clientWidth || 1, h = el.clientHeight || 1; renderer.setSize(w, h, false);
     const half = R * .5, a = w / h;
@@ -308,18 +313,35 @@ export function mountSpace(el, data, opts = {}) {
   }
 
   // ---------------------------------------------------------------- loop
-  let alive = true, last = performance.now();
+  let alive = true, last = performance.now(), boost = 1;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // one highlighted fixture (a plan's spot) for the cards
+  const hl = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: '#8bd34f', transparent: true, opacity: .5, depthWrite: false }));
+  hl.visible = false; hl.renderOrder = 10; root.add(hl);
+  function setHighlight(id) {
+    const n = id && fixtureNode(id); hl.visible = !!n; if (!n) return;
+    const b = new THREE.Box3().setFromObject(n), sz = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
+    hl.scale.set(sz.x + .5, sz.y + .3, sz.z + .5); hl.position.copy(c);
+  }
   function update(now) {
     const dt = Math.min(.05, (now - last) / 1000); last = now;
     const pulse = .22 + .14 * Math.sin(now / 350); marks.forEach(m => { m.material.opacity = pulse; });
-    if (!reduce) walk(dt * (opts.speed ?? 6));   // time-lapse, like the store views
+    if (!reduce) walk(dt * (opts.speed ?? 6) * boost);   // time-lapse, like the store views
+    if (opts.manual) return;
     placeTags(); rideCard();
     controls.update(); renderer.render(scene, camera);
   }
   function frame(now) { if (!alive) return; update(now); requestAnimationFrame(frame); }
-  requestAnimationFrame(frame);
+  if (!opts.manual) requestAnimationFrame(frame);
   return {
+    advance(now) { update(now); },
+    pace(b) { boost = b; },
+    setHighlight,
+    drawInto(ctx, w, h, card) {
+      setHighlight(card.fx);
+      if (renderer.domElement.width !== w || renderer.domElement.height !== h) { renderer.setPixelRatio(1); renderer.setSize(w, h, false); }
+      frustum(w / h); controls.update(); renderer.render(scene, camera); ctx.drawImage(renderer.domElement, 0, 0, w, h);
+    },
     ready: () => ready,
     focus(id) {
       const n = id && (fixtureNode(id) || null);
@@ -329,5 +351,35 @@ export function mountSpace(el, data, opts = {}) {
     },
     shot(w = 960, h = 540) { update(performance.now()); renderer.setSize(w, h, false); renderer.render(scene, camera); const u = renderer.domElement.toDataURL('image/jpeg', .86); resize(); return u; },
     dispose() { alive = false; ro.disconnect(); removeEventListener('keydown', onKey); card.remove(); tags.forEach(t => t.userData.el.remove()); walkers.forEach(w => w.mixer.stopAllAction()); renderer.dispose(); el.removeChild(renderer.domElement); },
+  };
+}
+
+// Live cards for a space: one off-screen scene drawn in turn into every visible card canvas, each card highlighting
+// its own plan's fixture. Same contract as store3d.liveCards: run() speeds people up, stop() freezes the frame.
+export function spaceCards(data, cards, opts = {}) {
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:-10000px;top:0;width:640px;height:300px';
+  document.body.appendChild(host);
+  const s3 = mountSpace(host, data, { manual: true, maxPeople: 30 });
+  const dpr = Math.min(devicePixelRatio || 1, 2), seen = new Set();
+  const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting ? seen.add(e.target) : seen.delete(e.target)), { rootMargin: '80px' });
+  cards.forEach(c => io.observe(c.canvas));
+  let alive = true, turn = 0, running = false, freezeAt = opts.paused ? performance.now() + 2500 : Infinity;
+  const draw = c => { const r = c.canvas.getBoundingClientRect(), w = Math.max(2, Math.round(r.width * dpr)), h = Math.max(2, Math.round(r.height * dpr));
+    if (c.canvas.width !== w || c.canvas.height !== h) { c.canvas.width = w; c.canvas.height = h; } s3.drawInto(c.canvas.getContext('2d'), w, h, c); };
+  function frame(now) {
+    if (!alive) return;
+    if (now >= freezeAt) { freezeAt = Infinity; cards.forEach(draw); running = false; return; }
+    s3.advance(now);
+    const vis = cards.filter(c => seen.has(c.canvas));
+    for (let k = 0; k < Math.min(3, vis.length); k++) draw(vis[(turn + k) % vis.length]);
+    turn += 3; requestAnimationFrame(frame);
+  }
+  const start = () => { if (alive && !running) { running = true; requestAnimationFrame(frame); } };
+  s3.ready().then(() => setTimeout(start, 600));
+  return {
+    run() { freezeAt = Infinity; s3.pace(4); start(); },
+    stop() { s3.pace(1); freezeAt = performance.now(); },
+    dispose() { alive = false; io.disconnect(); s3.dispose(); host.remove(); },
   };
 }

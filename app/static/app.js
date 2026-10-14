@@ -1,7 +1,7 @@
 // SimOff screens. Each screen is the storyboard board's own markup (screens/<id>.html);
 // this file fills its data-k / data-slot / data-shot hooks from the API and wires the controls.
 import { mountStore, liveCards } from './store3d.js';
-import { mountSpace } from './space3d.js';
+import { mountSpace, spaceCards } from './space3d.js';
 
 // ---------------------------------------------------------------- helpers
 const $ = (s, el = document) => el.querySelector(s);
@@ -68,17 +68,41 @@ async function fillShots(root, opts = {}) {
     const base = { canvas: c, plan, group: `${eng}:${plan}`, lift: liftOf(eng, plan) };
     return k === 'report' ? { ...base, highlight: 'A_front_endcap', view: 'cereal', state: 'next' } : { ...base, highlight: k, view: 'card', state: 'now' };
   });
-  live = liveCards(d, cards, opts);
+  const P = projSpace();
+  if (P) {
+    const best = run?.engines?.find(e => e.id === 'calibrated')?.plans?.slice().sort((a, b) => b.per_1000 - a.per_1000)[0]?.id || 'A_front_endcap';
+    cards.forEach(c => { const plan = c.plan === 'A_front_endcap' && c.view === 'cereal' ? best : c.plan; c.fx = P.plans[plan]?.fx; });
+    live = spaceCards({ glb: P.glb, space: P.space, ops: P.ops, people: P.people }, cards, opts);
+  } else live = liveCards(d, cards, opts);
   const mine = live; cleanups.push(() => { mine.dispose(); if (live === mine) live = null; });
 }
 
 // the project the chat started; every step after it shows the same context and the way forward
 const FLOW = [['start', '공간 세우기'], ['connect', '기록 연결'], ['plans', '시험할 안'], ['run', '실행'], ['layout', '최종 배치'], ['report', '리포트']];
 function setProject(p) { store.set('project', { ...p, at: Date.now() }); }
+// a space project: the space the chat built, carried through every step; the numbers come from SimOff-1, whose four
+// store conditions are mapped onto this space (entrance spot, inner spot, flyer/coupon, as it is)
+const projSpace = () => { const p = store.get('project'); return p && p.kind === 'space' ? p : null; };
+const planName = c => projSpace()?.plans?.[c]?.label || LBL[c];
+function makeProject(r, business) {
+  const st = Object.fromEntries(r.steps.map(x => [x.key, x])), sp = r.space, ops = st.adapt.ops;
+  const door = sp.doors.find(d => d.main) || sp.doors[0], dist = f => Math.hypot(f.cx - door.x, f.cy - door.y);
+  const shop = sp.fixtures.filter(f => ['pick', 'shop', 'browse', 'order', 'pickup', 'checkout', 'service', 'seat'].includes(f.role) && !['context', 'floor', 'boundary', 'structure', 'staff', 'facade', 'decor'].includes(f.klass));
+  const mv = ops.find(o => o.op === 'move'), rl = ops.find(o => o.op === 'relabel');
+  const target = (mv && sp.fixtures.find(f => f.id === mv.id)) || (rl && sp.fixtures.find(f => f.id === rl.id)) || [...shop].sort((a, b) => dist(a) - dist(b))[0];
+  const inner = [...shop].filter(f => f !== target).sort((a, b) => dist(b) - dist(a))[0];
+  const T = (rl?.label && !mv ? rl.label.replace(/^행사: /, '') : target?.label) || '대표 상품';
+  return { kind: 'space', title: business || sp.title, spaceTitle: sp.title.split(' — ')[0], glb: r.glb, space: sp, ops, people: st.place.people,
+    plans: { A_front_endcap: { label: `${T} · 입구 쪽`, desc: '들어오자마자 보이는 자리', fx: target?.id },
+             B_mailer_only: { label: '전단 · 쿠폰 홍보', desc: '공간은 그대로 두고 밖에서 알림', fx: null },
+             C_other_display: { label: `${T} · 안쪽 자리`, desc: '매장 안쪽 보조 자리', fx: inner?.id },
+             none: { label: '지금 그대로', desc: '비교 기준', fx: null } } };
+}
+const MODEL_NOTE = 'SimOff-1 · 마트 데이터로 추정';
 function flowBar(view) {
   const i = FLOW.findIndex(f => f[0] === view); if (i <= 0) return '';
   const p = store.get('project'), next = FLOW[i + 1];
-  const what = p ? `${esc(p.title.length > 38 ? p.title.slice(0, 38) + '…' : p.title)} · Store ${esc(p.store)}` : '샘플 프로젝트 · 마트 · Store 367';
+  const what = p ? `${esc(p.title.length > 38 ? p.title.slice(0, 38) + '…' : p.title)} · ${esc(p.kind === 'space' ? p.spaceTitle : `Store ${p.store}`)}` : '샘플 프로젝트 · 마트 · Store 367';
   return `<div class="flow-bar"><span><span class="lbl">프로젝트</span> ${what}</span>${next ? `<a class="btn btn-mono btn-sm" href="#${next[0]}">다음: ${next[1]} →</a>` : '<a class="btn btn-outline btn-sm" href="#start">새 공간 세우기</a>'}</div>`;
 }
 
@@ -178,7 +202,7 @@ function worldHTML(r) {
 <div class="world-cols"><div><div class="lbl">바꾼 것</div>${ad.ops.length ? ad.ops.map(o => `<button type="button" class="list-btn" data-focus="${o.id}" style="display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border);width:100%;text-align:left"><span class="tag ${o.op === 'relabel' ? '' : 'tag-ok'}" style="${o.op === 'relabel' ? 'background:#e3ebfe;color:#1d4ed8;' : ''}flex:none">${OPS_TXT[o.op] || o.op}</span><span style="font-size:13px;line-height:1.55">${esc(o.why)}</span></button>`).join('') : '<p class="muted" style="font-size:13px;margin-top:10px">요청에 맞춰 바꿀 것이 없어 원형 그대로 두었습니다.</p>'}
 ${ad.skipped.map(o => `<div style="display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border)"><span class="tag" style="background:#f6ebd3;color:#6b4a00;flex:none">못 바꿈</span><span style="font-size:13px;line-height:1.55">${esc(o.why)} — ${esc(o.reason)}</span></div>`).join('')}
 ${ad.note ? `<p class="muted" style="font-size:12px;line-height:1.6;margin-top:8px">${esc(ad.note)}</p>` : ''}</div>
-<div><div class="lbl">이 공간에서 시험할 결정</div>${dc.decisions.map(d => `<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="font-size:15px;font-weight:500;line-height:1.5">${esc(d.q)}</div><div class="muted" style="font-size:12px;margin-top:4px">지표: ${esc(d.metric)} · 필요한 기록: ${esc(d.needs)}</div><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">${dc.calibrated ? '<a class="btn btn-mono btn-sm" href="#connect">올린 기록으로 보정하기 →</a>' : '<span class="tag" style="background:rgba(0,0,0,.05)">기록이 오면 숫자를 냅니다</span>'}${d.example ? `<a class="btn btn-outline btn-sm" href="${d.example}">보정된 예시로 보기 →</a>` : ''}</div></div>`).join('')}</div></div></div>`;
+<div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div class="lbl">이 공간에서 시험할 결정</div><a class="btn btn-mono btn-sm" href="#connect">다음: 기록 연결 →</a></div>${dc.decisions.map(d => `<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="font-size:15px;font-weight:500;line-height:1.5">${esc(d.q)}</div><div class="muted" style="font-size:12px;margin-top:4px">지표: ${esc(d.metric)} · 필요한 기록: ${esc(d.needs)}</div><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">${dc.calibrated ? '<a class="btn btn-mono btn-sm" href="#connect">올린 기록으로 보정하기 →</a>' : '<span class="tag" style="background:rgba(0,0,0,.05)">기록이 오면 숫자를 냅니다</span>'}${d.example ? `<a class="btn btn-outline btn-sm" href="${d.example}">보정된 예시로 보기 →</a>` : ''}</div></div>`).join('')}</div></div></div>`;
 }
 VIEWS.start = async (root) => {
   VIEWS.start._models = await api('models').catch(() => ({ models: [], default: null }));
@@ -223,6 +247,7 @@ VIEWS.start.after = (el, params, cleanups) => {
       body.insertAdjacentHTML('beforeend', recsHTML(art.recs));
     } else if (art.type === 'world') {
       const r = art.run; freeze();
+      setProject(makeProject(r, [...history].reverse().find(h => h.role === 'user')?.text));
       $$('.rec', body).forEach(b => { const on = b.dataset.pick === r.space.id; b.classList.toggle('on', on); });
       body.insertAdjacentHTML('beforeend', worldHTML(r));
       const host = $$('[data-slot="space"]', body).at(-1), st = Object.fromEntries(r.steps.map(x => [x.key, x]));
@@ -417,6 +442,13 @@ VIEWS.engines.after = (el) => {
 
 // S4 결정 안
 VIEWS.plans = async (root) => {
+  const P = projSpace();
+  if (P) {
+    root.innerHTML = `<div class="hdr"><h1 class="ptitle">시험할 안 · ${esc(P.spaceTitle)}</h1><a class="btn btn-mono" href="#run?go=1">4개 안 실행 →</a></div>
+<p class="body muted" style="margin-top:-8px;max-width:760px">${esc(P.title)}. 이 공간에서 비교할 네 가지 안입니다. 숫자는 ${MODEL_NOTE}.</p>
+<div class="plan-grid">${PLANS.map(c => `<article class="card plan-card"><img data-shot="${c}" alt="${esc(P.plans[c].label)} 3D 장면" style="display:block;width:100%;height:170px;background:#eceeed"><div style="padding:14px 16px"><div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500"><span class="sq" style="background:${COL[c]};width:9px;height:9px"></span>${esc(P.plans[c].label)}</div><div class="muted" style="font-size:13px;margin-top:6px">${esc(P.plans[c].desc)}</div></div></article>`).join('')}</div>`;
+    return;
+  }
   const [plans, last] = await Promise.all([api('plans'), api('run/latest')]);
   set(root, 'total', n0(plans.reduce((a, p) => a + p.evidence_rows, 0)));
   plans.forEach(p => set(root, `ev:${p.id}`, n0(p.evidence_rows)));
@@ -436,8 +468,8 @@ function runCards(r) {
     const cards = PLANS.map(c => {
       const p = e.plans.find(x => x.id === c), a = r.actual_per_1000[c], k = p.ratio_to_actual, sel = false;
       const ok = k != null && k <= 3;
-      return `<article class="card acc run-card ${sel ? 'wash-w' : 'wash'}" data-card="${e.id}:${c}" style="overflow:hidden;--card-accent:${acc};${sel ? 'border-color:#171717;box-shadow:0 0 0 1px #171717' : ''}">${base(e) ? '' : `<img data-shot="${c}" data-engine="${e.id}" alt="${esc(e.label)} · ${LBL[c]} 3D 장면" style="display:block;width:100%;height:118px;object-fit:cover;border-bottom:1px solid var(--border);background:#eceeed">`}
-<div style="padding:12px 14px 14px"><div style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="sq" style="background:${COL[c]};width:8px;height:8px"></span>${LBL[c]}</div><div style="margin-top:10px;display:flex;align-items:baseline;justify-content:space-between"><span class="stat" style="font-size:24px">${p.per_1000 >= 100 ? n0(p.per_1000) : nf(p.per_1000)}</span><span class="num muted" style="font-size:11px">실제 ${nf(a)}</span></div>
+      return `<article class="card acc run-card ${sel ? 'wash-w' : 'wash'}" data-card="${e.id}:${c}" style="overflow:hidden;--card-accent:${acc};${sel ? 'border-color:#171717;box-shadow:0 0 0 1px #171717' : ''}">${base(e) ? '' : `<img data-shot="${c}" data-engine="${e.id}" alt="${esc(e.label)} · ${planName(c)} 3D 장면" style="display:block;width:100%;height:118px;object-fit:cover;border-bottom:1px solid var(--border);background:#eceeed">`}
+<div style="padding:12px 14px 14px"><div style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="sq" style="background:${COL[c]};width:8px;height:8px"></span>${esc(planName(c))}</div><div style="margin-top:10px;display:flex;align-items:baseline;justify-content:space-between"><span class="stat" style="font-size:24px">${p.per_1000 >= 100 ? n0(p.per_1000) : nf(p.per_1000)}</span>${projSpace() ? '' : `<span class="num muted" style="font-size:11px">실제 ${nf(a)}</span>`}</div>
 <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:6px"><span class="lbl" style="text-transform:none;white-space:nowrap">평소 대비 ${nf(p.lift, 1)}배</span>${ok ? '' : `<span class="tag tag-no" style="white-space:nowrap">실제의 ${n0(k)}배</span>`}</div></div></article>`;
     }).join('');
     return `<section><div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--border)"><span style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:500"><span class="sq" style="background:${sq};width:10px;height:10px"></span>${esc(e.label)}</span><span class="muted" style="font-size:13px">${ENG_PLAIN[e.id] || esc(e.note)}</span></div><div style="margin-top:14px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">${cards}</div></section>`;
@@ -447,7 +479,9 @@ function runCards(r) {
 }
 function fillRun(root, r) {
   set(root, 'title', '실행 결과');
-  set(root, 'intro', `숫자는 방문 1,000회당 판매입니다. 카드 오른쪽 '실제'는 모델이 학습에 쓰지 않은 ${r.weeks.join('–')}주에 실제로 팔린 값입니다. 네 가지 안은 같은 손님, 같은 방문으로 비교했습니다.`);
+  const P = projSpace();
+  set(root, 'intro', P ? `${P.spaceTitle}에서 네 가지 안을 같은 손님, 같은 방문으로 비교했습니다. 숫자는 방문 1,000회당 판매 · ${MODEL_NOTE}.`
+    : `숫자는 방문 1,000회당 판매입니다. 카드 오른쪽 '실제'는 모델이 학습에 쓰지 않은 ${r.weeks.join('–')}주에 실제로 팔린 값입니다. 네 가지 안은 같은 손님, 같은 방문으로 비교했습니다.`);
   const meta = K(root, 'decisions')?.closest('.card'); if (meta) meta.remove();
   slot(root, 'engines').innerHTML = runCards(r);
 }
@@ -525,6 +559,20 @@ VIEWS.verify = async (root) => {
 // 최종 배치 (3D)
 function stat(v, l, sub) { return `<div style="display:flex;flex-direction:column;gap:8px;padding:16px 0;border-top:1px solid var(--border)"><span class="lbl">${l}</span><span class="stat">${v}</span><span class="muted" style="font-size:12px">${sub}</span></div>`; }
 VIEWS.layout = async (root, params) => {
+  const P = projSpace(); VIEWS.layout._P = P;
+  if (P) {
+    const r = await api('run/latest'), eng = r.engines.find(e => e.id === 'calibrated');
+    const ranked = [...eng.plans].sort((a, b) => b.per_1000 - a.per_1000), best = ranked[0], base = eng.plans.find(p => p.id === 'none');
+    VIEWS.layout._best = best.id;
+    root.innerHTML = `<div class="hdr"><h1 class="ptitle">최종 배치 · ${esc(P.spaceTitle)}</h1></div>
+<section class="fit-screen"><div class="fit-stage" style="position:relative;overflow:hidden;border:1px solid var(--border);background:var(--card)"><div data-slot="pstage" style="width:100%;height:100%"></div>
+<div style="position:absolute;left:16px;top:16px"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">제안: ${esc(P.plans[best.id].label)}</span></div></div>
+<aside class="fit-side"><div><div class="lbl">${esc(P.title.length > 60 ? P.title.slice(0, 60) + '…' : P.title)}</div><h2 class="display" style="margin-top:8px;font-size:22px;line-height:1.35">제안: ${esc(P.plans[best.id].label)}. 판매가 지금의 ${nf(best.lift, 1)}배.</h2></div>
+<div class="stats4">${stat(`×${nf(best.lift, 1)}`, '지금 그대로 대비', `방문 1,000회당 ${nf(base.per_1000)} → ${nf(best.per_1000)}`)}${stat(`+${nf(best.per_1000 - base.per_1000)}`, '방문 1,000회당 추가 판매', MODEL_NOTE)}</div>
+<div class="tbl fit-list"><div class="th" style="grid-template-columns:minmax(0,1fr) 70px"><span>안</span><span class="r">1,000회당</span></div>${ranked.map(p => `<button type="button" class="tr list-btn" data-plan="${p.id}" style="display:grid;grid-template-columns:minmax(0,1fr) 70px;gap:10px;align-items:center;padding:12px 14px;border-top:1px solid rgba(216,221,223,.7);width:100%"><span style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="sq" style="background:${COL[p.id]};width:8px;height:8px"></span>${esc(P.plans[p.id].label)}${p.id === best.id ? ' <span class="tag tag-ok">최선</span>' : ''}</span><span class="num r" style="font-size:12px">${nf(p.per_1000)}</span></button>`).join('')}</div>
+</aside></section>`;
+    return;
+  }
   const stores = await api('stores');
   const sid = params.store || store.get('store', stores[0].store_id);
   const L = await api(`layout?store=${sid}`);
@@ -545,6 +593,15 @@ VIEWS.layout = async (root, params) => {
   VIEWS.layout._L = L;
 };
 VIEWS.layout.after = (el, params, cleanups) => {
+  const P = VIEWS.layout._P;
+  if (P) {
+    const s = mountSpace(slot(el, 'pstage'), { glb: P.glb, space: P.space, ops: P.ops, people: P.people }, { maxPeople: 40 });
+    cleanups.push(() => s.dispose());
+    const show = id => { s.setHighlight(P.plans[id]?.fx); $$('[data-plan]', el).forEach(b => b.classList.toggle('on', b.dataset.plan === id)); };
+    s.ready().then(() => show(VIEWS.layout._best));
+    $$('[data-plan]', el).forEach(b => b.onclick = () => show(b.dataset.plan));
+    return;
+  }
   const L = VIEWS.layout._L;
   const s3 = stage3d(slot(el, 'stage'), { aisles: L.aisles, products: L.products }, { state: 'now', shoppers: 14, weeks: L.weeks.join('–') });
   cleanups.push(() => s3.dispose());
@@ -574,7 +631,17 @@ VIEWS.report = async (root) => {
   set(root, 'share', `${Math.round((N.segments.find(s => s.segment.includes('없는'))?.share_of_extra || 0) * 100)}%`);
   const ok = store.get('approved'); if (ok) slot(root, 'approve').innerHTML = `<span class="tag tag-ok" style="height:32px;padding:0 12px">승인됨 · ${esc(ok)}</span> <button type="button" class="btn btn-ghost btn-sm" data-act="undo">취소</button>`;
 };
+function relabelText(root, map) {          // swap the example's plan names for the project's, in every text node
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); const nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
+  for (const n of nodes) { let t = n.nodeValue; for (const [a, b] of map) t = t.split(a).join(b); if (t !== n.nodeValue) n.nodeValue = t; }
+}
 VIEWS.report.after = (el) => {
+  const P = projSpace();
+  if (P) {
+    const h2 = $('h2.display', el); if (h2) h2.innerHTML = `${esc(P.spaceTitle)},<br>${esc(P.plans.A_front_endcap.label)}.`;
+    relabelText(el, [['다음 주 콜드 시리얼', P.spaceTitle], ['앞쪽 엔드캡', P.plans.A_front_endcap.label], ['기타 진열', P.plans.C_other_display.label], ['평소대로', P.plans.none.label], ['전단', P.plans.B_mailer_only.label]]);
+    const lead = K(el, 'lead'); if (lead) lead.textContent = `${P.plans.A_front_endcap.label}에 두면 지금보다 판매가 늘 것으로 봅니다. ${MODEL_NOTE} — 이 공간의 기록이 오면 다시 보정합니다.`;
+  }
   const a = $('[data-act="approve"]', el); if (a) a.onclick = () => { store.set('approved', new Date().toLocaleString('ko-KR')); render(); };
   const u = $('[data-act="undo"]', el); if (u) u.onclick = () => { store.set('approved', null); render(); };
   $('[data-act="pdf"]', el).onclick = () => print();
@@ -584,8 +651,14 @@ VIEWS.report.after = (el) => {
 // S8 매장 연결
 VIEWS.connect = async (root) => {
   const c = await api('catalog');
+
   set(root, 'cardEp', `${c.endpoints.filter(e => e.events != null).length} / ${c.endpoints.length}`);
   set(root, 'cardStore', `STORE ${store.get('store', '367')}`); set(root, 'cardSub', `${n0(c.households)}가구 · 1년`);
+  const P = projSpace();
+  if (P) {
+    set(root, 'cardStore', P.spaceTitle.slice(0, 28)); set(root, 'cardSub', '기록 연결 전'); set(root, 'cardSrc', 'SIMOFF-1');
+    const s = $('[data-act="sample"]', root); if (s) s.textContent = '샘플 기록으로 계속 (마트 데이터)';
+  }
 };
 VIEWS.connect.after = (el) => {
   let files = {};
@@ -605,7 +678,10 @@ VIEWS.connect.after = (el) => {
         if (!['running', 'mapping'].includes(j.status)) break;
         await new Promise(r => setTimeout(r, 2000)); j = await api(`job?id=${j.id}`);
       }
-      if (j.layout) {
+      if (j.layout && projSpace()) {
+        job.insertAdjacentHTML('beforeend', `<div class="card" style="margin-top:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span style="font-size:14px">SimOff-1을 이 기록으로 보정했습니다. 이제 ${esc(projSpace().spaceTitle)}에서 안을 비교할 수 있습니다.</span><a class="btn btn-mono" href="#plans">다음: 시험할 안 →</a></div>`);
+        set(el, 's1', '연결됨');
+      } else if (j.layout) {
         const P = j.layout.plans;
         job.insertAdjacentHTML('beforeend', `<div style="margin-top:16px;position:relative;overflow:hidden;border:1px solid var(--border);border-radius:6px"><div data-slot="ustage" style="height:520px"></div><div style="position:absolute;left:16px;top:16px;display:flex;gap:8px;flex-wrap:wrap"><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">이 매장 · 앞으로 4주 예측</span><span class="glass mono" style="padding:6px 10px;border-radius:4px;font-size:11px">판매 방문 지금 배치 ${nf(P.current.expected_units, 1)} → 제안 ${nf(P.proposed.expected_units, 1)}</span></div></div>
           <div style="margin-top:12px;display:flex;justify-content:flex-end"><a class="btn btn-mono" href="#plans">다음: 시험할 안 →</a></div>`);
