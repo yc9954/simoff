@@ -372,6 +372,46 @@ def run_grid(model='simoff_retail', draws=50, seed=42):
     return out
 
 
+# ---------------------------------------------------------------- playground: one customer, one product, one store condition
+DECIDE_FIELDS = {   # name: (default, lo, hi) — the household state SimOff-1 reads, in the units the data uses
+    'visits': (50, 1, 300), 'avg_spend': (30.0, 1, 150), 'cereal_visit_rate': (.1, 0, 1), 'disc_share': (.15, 0, .5),
+    'private_share': (.2, 0, 1), 'cereal_spend_share': (.013, 0, .2), 'hp_count': (0, 0, 13)}
+
+
+def decide_products():
+    s = state()
+    base = s['rows'].groupby('product_id')[['prod_base', 'prod_private']].first()
+    pr = s['products'].join(base, how='inner')
+    return [{'product_id': str(i), 'brand': r.brand, 'type': r.product_type, 'size': r.package_size, 'price': float(r.shelf_price),
+             'private': bool(r.prod_private)} for i, r in pr.sort_values('prod_base', ascending=False).iterrows()]
+
+
+def decide(inp):
+    """SimOff-1 for one visit: the probability this customer buys this product, under the asked condition and all nine."""
+    s = state()
+    hh = {k: float(np.clip(float(inp.get(k, d)), lo, hi)) for k, (d, lo, hi) in DECIDE_FIELDS.items()}
+    base = s['rows'].groupby('product_id')[['prod_base', 'prod_private']].first()
+    pid = str(inp.get('product_id') or base.prod_base.idxmax())
+    if pid not in base.index:
+        raise KeyError(f'unknown product {pid}')
+    want = (inp.get('display') or 'shelf', inp.get('mailer') or 'none')
+    X = []
+    for d, _, df in GRID_DISPLAY:
+        for m, _, mf in GRID_MAILER:
+            X.append({**hh, 'prod_base': float(base.prod_base[pid]), 'prod_private': float(base.prod_private[pid]), **df, **mf, '_id': (d, m)})
+    X = pd.DataFrame(X)
+    P = s['engines']['calibrated'].predict(X)
+    cells = [{'display': d, 'mailer': m, 'display_label': dl, 'mailer_label': ml, 'p': float(p)}
+             for (d, dl, _), (m, ml, _), p in zip([g for g in GRID_DISPLAY for _ in GRID_MAILER], GRID_MAILER * len(GRID_DISPLAY), P)]
+    ref = next(c['p'] for c in cells if (c['display'], c['mailer']) == ('shelf', 'none'))
+    pick = next((c for c in cells if (c['display'], c['mailer']) == want), cells[0])
+    pr = s['products'].loc[pid]
+    return {'model': 'SimOff-1', 'input': {**hh, 'product_id': pid, 'display': pick['display'], 'mailer': pick['mailer']},
+            'product': {'brand': pr.brand, 'type': pr.product_type, 'size': pr.package_size, 'price': float(pr.shelf_price)},
+            'p_buy': pick['p'], 'per_1000_visits': pick['p'] * 1000, 'lift_vs_shelf': pick['p'] / ref if ref else None,
+            'all_conditions': [{**c, 'lift': c['p'] / ref if ref else None} for c in cells]}
+
+
 def latest_grid(model='simoff_retail'):
     model = model if model in ('simoff_retail', 'jev_raw', 'persona') else 'simoff_retail'
     f = CACHE / f'grid_{model}.json'

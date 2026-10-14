@@ -295,3 +295,35 @@ img[data-shot]:not([src]) { color: transparent; background: linear-gradient(100d
 @media (max-width: 1100px) { .cn-screen { grid-template-columns: 1fr; } }
 .chat-new { display: none; }
 .chatting .chat-new { display: inline-flex; margin-left: auto; background: rgba(255,255,255,.7); }
+/* 모델 체험: input on the left, SimOff-1's answer on the right */
+.pg { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 20px; align-items: stretch; }
+@media (min-width: 1101px) { .main.stepv .pg { height: calc(100vh - 100px); } .pg > .card { overflow: auto; } }
+@media (max-width: 1100px) { .pg { grid-template-columns: 1fr; } }
+.pg > .card { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+.pg-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.pg-head h2 { margin: 6px 0 0; font-size: 18px; font-weight: 600; }
+.pg-model { background: #171717; color: #fff; }
+.pg-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.pg-presets button, .pg-seg button, .pg-tabs button { height: 28px; padding: 0 10px; border: 1px solid var(--border); background: #fff; font: inherit; font-size: 12px; cursor: pointer; color: var(--mfg); }
+.pg-presets button.on, .pg-seg button.on, .pg-tabs button.on { background: #171717; border-color: #171717; color: #fff; }
+.pg-sec { border-top: 1px solid var(--border); padding-top: 12px; }
+.pg-f { display: grid; grid-template-columns: 150px minmax(0,1fr) 64px; gap: 12px; align-items: center; height: 32px; font-size: 13px; }
+.pg-f input[type=range] { width: 100%; accent-color: #171717; }
+.pg-f output { font-family: "GeistMono", monospace; font-size: 12px; text-align: right; }
+.pg-select { margin-top: 8px; width: 100%; height: 36px; border: 1px solid var(--border); background: #fff; font: inherit; font-size: 13px; padding: 0 10px; }
+.pg-seg-l { font-size: 12px; color: var(--mfg); margin: 10px 0 6px; }
+.pg-seg { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 0; }
+.pg-seg button { height: 34px; margin-left: -1px; }
+.pg-tabs { display: flex; } .pg-tabs button { margin-left: -1px; }
+.pg-big { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+.pg-big > span:first-child { font-size: 56px; font-weight: 500; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.pg-big-s { font-size: 14px; color: var(--mfg); }
+.pg-stats { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-top: 18px; }
+.pg-stats > div { border-top: 1px solid #171717; padding-top: 8px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pg-stats b { font-size: 20px; font-weight: 500; }
+.pg-grid { margin-top: 8px; display: grid; grid-template-columns: 92px repeat(3, minmax(0,1fr)); gap: 4px; font-size: 12px; }
+.pg-grid > span { color: var(--mfg); align-self: center; }
+.pg-cell { padding: 8px 10px; border: 1px solid transparent; display: flex; flex-direction: column; gap: 2px; cursor: pointer; text-align: left; font: inherit; }
+.pg-cell b { font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.pg-cell.on { border-color: #171717; box-shadow: 0 0 0 1px #171717; }
+.pg-json { margin: 0; padding: 14px; background: #f6f7f8; border: 1px solid var(--border); font: 12px/1.55 "GeistMono", monospace; white-space: pre-wrap; word-break: break-all; }

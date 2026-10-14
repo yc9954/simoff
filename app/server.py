@@ -125,6 +125,8 @@ class Handler(SimpleHTTPRequestHandler):
             ('POST', '/api/chat'): lambda: chat.chat(body.get('history') or [], body.get('files') or [], body.get('model')),
             ('POST', '/api/grid'): lambda: S.run_grid(body.get('model') or 'simoff_retail', seed=int(body.get('seed', 42))),
             ('GET', '/api/grid/latest'): lambda: S.latest_grid(q.get('model') or 'simoff_retail'),
+            ('POST', '/api/decide'): lambda: S.decide(body),
+            ('GET', '/api/decide/products'): S.decide_products,
             ('GET', '/api/models'): lambda: {'models': decision_models.MODELS, 'default': decision_models.DEFAULT},
             ('POST', '/api/agent'): lambda: world.run_agent(body.get('description', ''), body.get('category'), body.get('area'),
                                                             body.get('files') or [], body.get('pick')),

@@ -159,7 +159,7 @@ async function render() {
   cleanups.forEach(f => { try { f(); } catch {} }); cleanups = []; hideTip();
   const el = $('#view');
   el.innerHTML = '<div class="loading"><span class="spin"></span> 불러오는 중</div>';
-  const TITLES = { start: '공간 세우기', connect: '기록 연결', plans: '시험할 안', run: '실행', layout: '최종 배치', report: '리포트', verify: '모델 검증',
+  const TITLES = { start: '공간 세우기', connect: '기록 연결', plans: '시험할 안', run: '실행', layout: '최종 배치', report: '리포트', verify: '모델 검증', try: '모델 체험',
                   brief: '결정 브리프', endpoints: '엔드포인트', world: '매장 월드', engines: '엔진 비교' };
   document.title = `${TITLES[view] || ''} · SimOff`;
   try {
@@ -570,6 +570,60 @@ ${q(3, '누가 살지 먼저 짚나', '살 손님을 안 살 손님보다 높게
 <div><div class="lbl">정리</div><ul class="vq-list"><li><b>SimOff-1</b> 은 실제 구매 수준과 진열 효과를 모두 실제 범위 안에서 맞혔습니다.</li><li><b>Jev</b> 는 누가 살지 순위는 꽤 짚지만, 구매 확률을 수십 배 부풀리고 진열 효과를 작게 봅니다.</li><li><b>언어 모델 페르소나</b> 는 그럴듯하게 답하지만 구매를 약 200배 부풀리고, 진열이 달라져도 답이 거의 같습니다.</li></ul></div>
 <div><div class="lbl">아직 판정하지 못한 것</div><ul class="vq-list muted"><li>전단 효과 — 같은 주에 전단을 안 한 매장이 없어 비교할 수 없음</li><li>할인 — 사지 않은 방문의 가격이 기록에 없음</li></ul></div></section>`;
   if (chart) slot(root, 'chart').replaceWith(chart);
+};
+
+// 모델 체험: one customer, one product, one store condition in; SimOff-1's probability out, with all nine conditions beside it
+const PG_FIELDS = [   // [key, label, min, max, step, format]
+  ['visits', '26주 동안 방문', 1, 300, 1, v => `${v}회`], ['avg_spend', '한 번 장볼 때 지출', 5, 120, 1, v => `$${v}`],
+  ['cereal_visit_rate', '시리얼을 사는 방문', 0, .6, .01, v => `${Math.round(v * 100)}%`], ['cereal_spend_share', '지출 중 시리얼', 0, .1, .002, v => `${(v * 100).toFixed(1)}%`],
+  ['disc_share', '할인 상품 비중', 0, .4, .01, v => `${Math.round(v * 100)}%`], ['private_share', '자체 브랜드 비중', 0, 1, .05, v => `${Math.round(v * 100)}%`],
+  ['hp_count', '이 상품을 산 횟수', 0, 10, 1, v => `${v}회`]];
+const PG_PRESETS = {
+  '평균 손님': { visits: 50, avg_spend: 30, cereal_visit_rate: .1, cereal_spend_share: .012, disc_share: .15, private_share: .2, hp_count: 0 },
+  '시리얼 단골': { visits: 120, avg_spend: 45, cereal_visit_rate: .35, cereal_spend_share: .04, disc_share: .15, private_share: .1, hp_count: 4 },
+  '가끔 오는 손님': { visits: 10, avg_spend: 20, cereal_visit_rate: .05, cereal_spend_share: .008, disc_share: .12, private_share: .2, hp_count: 0 },
+  '할인 찾는 손님': { visits: 60, avg_spend: 28, cereal_visit_rate: .12, cereal_spend_share: .016, disc_share: .35, private_share: .6, hp_count: 1 }};
+const PG_TYPE = { 'KIDS CEREAL': '어린이 시리얼', 'ALL FAMILY CEREAL': '가족용 시리얼', 'ADULT CEREAL': '성인용 시리얼' };
+const pgProd = p => `${PG_TYPE[p.type] || p.type} · ${p.size.toLowerCase()} · $${nf(p.price)}${p.private ? ' · 자체 브랜드' : ''}`;
+VIEWS.try = async (root) => {
+  const prods = await api('decide/products'); VIEWS.try._prods = prods;
+  K(root, 'product').innerHTML = prods.map((p, i) => `<option value="${p.product_id}">${i + 1}. ${esc(pgProd(p))}</option>`).join('');
+  slot(root, 'presets').innerHTML = Object.keys(PG_PRESETS).map(k => `<button type="button" data-preset="${k}">${k}</button>`).join('');
+  slot(root, 'fields').innerHTML = PG_FIELDS.map(([k, l, lo, hi, st]) => `<label class="pg-f"><span>${l}</span><input type="range" data-f="${k}" min="${lo}" max="${hi}" step="${st}"><output data-o="${k}"></output></label>`).join('');
+};
+VIEWS.try.after = (el, params, cleanups) => {
+  const st = { ...PG_PRESETS['평균 손님'], ...store.get('pg', {}) };
+  st.product_id ??= VIEWS.try._prods[0].product_id; st.display ??= 'front'; st.mailer ??= 'none';
+  let t = null, seq = 0;
+  const paint = () => {
+    PG_FIELDS.forEach(([k, , , , , f]) => { $(`[data-f="${k}"]`, el).value = st[k]; $(`[data-o="${k}"]`, el).textContent = f(+st[k]); });
+    K(el, 'product').value = st.product_id;
+    $$('[data-seg]', el).forEach(g => $$('button', g).forEach(b => b.classList.toggle('on', b.dataset.v === st[g.dataset.seg])));
+    $$('[data-preset]', el).forEach(b => b.classList.toggle('on', PG_FIELDS.every(([k]) => +PG_PRESETS[b.dataset.preset][k] === +st[k])));
+  };
+  const ask = () => { clearTimeout(t); store.set('pg', st); t = setTimeout(async () => {
+    const my = ++seq, req = { ...st }; PG_FIELDS.forEach(([k]) => { req[k] = +req[k]; });
+    let r; try { r = await api('decide', req); } catch (e) { slot(el, 'view').innerHTML = errBox(e); return; }
+    if (my !== seq) return;
+    set(el, 'p', `${nf(r.p_buy * 100, 3)}%`); set(el, 'pSub', `${n0(1 / r.p_buy)}번 들르면 한 번꼴`);
+    set(el, 'per1000', `${nf(r.per_1000_visits, 2)}개`); set(el, 'lift', r.lift_vs_shelf == null ? '—' : `×${nf(r.lift_vs_shelf, 2)}`);
+    set(el, 'prod', pgProd(VIEWS.try._prods.find(p => p.product_id === r.input.product_id)));
+    const max = Math.max(...r.all_conditions.map(c => c.p)), D = [['shelf', '평소 선반'], ['other', '보조 진열'], ['front', '입구 엔드캡']], M = [['none', '전단 없음'], ['inner', '전단 안쪽 면'], ['front', '전단 1면']];
+    slot(el, 'grid').innerHTML = `<span></span>${D.map(d => `<span>${d[1]}</span>`).join('')}` + M.map(([m, ml]) => `<span>${ml}</span>` + D.map(([d]) => {
+      const c = r.all_conditions.find(x => x.display === d && x.mailer === m), a = .06 + .5 * c.p / max;
+      return `<button type="button" class="pg-cell${d === r.input.display && m === r.input.mailer ? ' on' : ''}" data-cell="${d}:${m}" style="background:rgba(15,118,110,${a.toFixed(3)})"><b>${nf(c.p * 1000, 2)}</b><span class="muted" style="font-size:11px">×${nf(c.lift, 2)}</span></button>`;
+    }).join('')).join('');
+    $$('[data-cell]', el).forEach(b => b.onclick = () => { [st.display, st.mailer] = b.dataset.cell.split(':'); paint(); ask(); });
+    const out = { ...r, all_conditions: r.all_conditions.map(c => ({ display: c.display, mailer: c.mailer, p: +c.p.toFixed(6), lift: +c.lift.toFixed(3) })), p_buy: +r.p_buy.toFixed(6), per_1000_visits: +r.per_1000_visits.toFixed(3), lift_vs_shelf: +r.lift_vs_shelf.toFixed(3) };
+    set(el, 'json', `POST /api/decide\n${JSON.stringify(req, null, 2)}\n\n→ 200\n${JSON.stringify(out, null, 2)}`);
+  }, 120); };
+  $$('[data-f]', el).forEach(i => i.oninput = () => { st[i.dataset.f] = +i.value; paint(); ask(); });
+  K(el, 'product').onchange = e => { st.product_id = e.target.value; ask(); };
+  $$('[data-seg]', el).forEach(g => $$('button', g).forEach(b => b.onclick = () => { st[g.dataset.seg] = b.dataset.v; paint(); ask(); }));
+  $$('[data-preset]', el).forEach(b => b.onclick = () => { Object.assign(st, PG_PRESETS[b.dataset.preset]); paint(); ask(); });
+  $$('[data-out]', el).forEach(b => b.onclick = () => { $$('[data-out]', el).forEach(x => x.classList.toggle('on', x === b)); slot(el, 'view').hidden = b.dataset.out !== 'view'; slot(el, 'json').hidden = b.dataset.out !== 'json'; });
+  cleanups.push(() => clearTimeout(t));
+  paint(); ask();
 };
 
 // 최종 배치 (3D)
