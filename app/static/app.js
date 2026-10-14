@@ -259,7 +259,7 @@ VIEWS.start.after = (el, params, cleanups) => {
       $$('.rec', body).forEach(b => { const on = b.dataset.pick === r.space.id; b.classList.toggle('on', on); });
       body.insertAdjacentHTML('beforeend', worldHTML(r));
       const host = $$('[data-slot="space"]', body).at(-1), st = Object.fromEntries(r.steps.map(x => [x.key, x]));
-      s3 = mountSpace(host, { glb: r.glb, space: r.space, ops: st.adapt.ops, people: st.place.people }, { maxPeople: 40, spin: true }); s3.__host = host;
+      s3 = mountSpace(host, { glb: r.glb, space: r.space, ops: st.adapt.ops, people: st.place.people }, { maxPeople: 40, spin: true, zoom: .62 }); s3.__host = host;
       const cur = s3;
       $$('[data-focus]', body).forEach(b => b.onclick = () => { if (s3 !== cur) return; cur.spin(false); const on = !b.classList.contains('on'); $$('[data-focus]', body).forEach(x => x.classList.remove('on')); b.classList.toggle('on', on); cur.focus(on ? b.dataset.focus : null); });
     }
@@ -502,8 +502,11 @@ VIEWS.run = async (root) => {
   set(root, 'title', '실행 결과');
   set(root, 'intro', `${MODEL_TITLE[g.model] || g.model} 하나로 아홉 가지 안을 같은 손님, 같은 방문(${n0(g.decisions)}개 결정)에 돌렸습니다. 숫자는 방문 1,000회당 판매.`);
   const meta = K(root, 'decisions')?.closest('.card'); if (meta) meta.remove();
-  slot(root, 'engines').innerHTML = gridHTML(g, true); markBestGrid(root, g);
+  const ran = ranGrid(g.model);
+  if (!ran) { set(root, 'title', '실행'); set(root, 'intro', `아홉 가지 안이 준비됐습니다. 실행을 누르면 ${MODEL_TITLE[g.model] || g.model}이(가) 같은 손님, 같은 방문으로 모두 시뮬레이션합니다.`); const b = $('[data-act="rerun"]', root); if (b) b.textContent = '실행'; }
+  slot(root, 'engines').innerHTML = gridHTML(g, ran); if (ran) markBestGrid(root, g);
 };
+const ranGrid = (m, on) => { try { if (on) sessionStorage.setItem(`oa:ran:${m}`, '1'); return sessionStorage.getItem(`oa:ran:${m}`) === '1'; } catch { return !!on; } };
 VIEWS.run.live = { paused: true };     // the result is in: the cards settle, then hold still
 VIEWS.run.after = (el, params) => {
   const gauge = slot(el, 'gauge'), bar = $('.gauge-bar i', gauge), txt = $('.gauge-txt', gauge);
@@ -527,11 +530,11 @@ VIEWS.run.after = (el, params) => {
     live?.stop();
     if (res) {
       const keep = new Map($$('canvas[data-key]', el).map(c => [c.dataset.key, c]));
-      VIEWS.run._g = res; slot(el, 'engines').innerHTML = gridHTML(res, true);
+      VIEWS.run._g = res; ranGrid(res.model, true); slot(el, 'engines').innerHTML = gridHTML(res, true);
       $$('img[data-shot]', el).forEach(i => { const c = keep.get(i.dataset.group); if (c) i.replaceWith(c); });
       markBestGrid(el, res);
     } else if (err) slot(el, 'engines').insertAdjacentHTML('afterbegin', errBox(err));
-    setTimeout(() => { gauge.hidden = true; const i = K(el, 'intro'); if (i) i.hidden = false; }, 900);
+    setTimeout(() => { gauge.hidden = true; const i = K(el, 'intro'); if (i) { i.hidden = false; if (res) i.textContent = `${MODEL_TITLE[res.model] || res.model} 하나로 아홉 가지 안을 같은 손님, 같은 방문(${n0(res.decisions)}개 결정)에 돌렸습니다. 숫자는 방문 1,000회당 판매.`; } }, 900);
     b.disabled = false; b.textContent = '다시 실행';
   };
   $('[data-act="rerun"]', el).onclick = rerun;

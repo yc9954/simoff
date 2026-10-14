@@ -99,6 +99,7 @@ export function mountSpace(el, data, opts = {}) {
   Object.assign(controls, { enableDamping: true, dampingFactor: .08, minPolarAngle: .3, maxPolarAngle: Math.PI / 2.3, minZoom: .5, maxZoom: 8, screenSpacePanning: true });
   const target = new THREE.Vector3(cx, 0, -cy), dir = new THREE.Vector3(-.8, 1.05, 1.0).normalize();
   controls.target.copy(target); camera.position.copy(target).addScaledVector(dir, R * 3);
+  if (opts.zoom) { camera.zoom = opts.zoom; camera.updateProjectionMatrix(); }   // a fresh space starts pulled back, the whole room in view
   // a freshly built space turns slowly on its vertical axis until the person grabs it
   const spinOk = opts.spin && !matchMedia('(prefers-reduced-motion: reduce)').matches;
   Object.assign(controls, { autoRotate: !!spinOk, autoRotateSpeed: 1.6 });
@@ -350,7 +351,7 @@ export function mountSpace(el, data, opts = {}) {
     ready: () => ready,
     focus(id) {
       const n = id && (fixtureNode(id) || null);
-      if (!n) { controls.target.copy(target); camera.zoom = 1; camera.updateProjectionMatrix(); return; }
+      if (!n) { controls.target.copy(target); camera.zoom = opts.zoom || 1; camera.updateProjectionMatrix(); return; }
       const b = new THREE.Box3().setFromObject(n), c = b.getCenter(new THREE.Vector3());
       controls.target.copy(c); camera.position.copy(c).addScaledVector(dir, R * 3); camera.zoom = 2.2; camera.updateProjectionMatrix();
     },
