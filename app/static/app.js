@@ -119,7 +119,9 @@ async function render() {
   cleanups.forEach(f => { try { f(); } catch {} }); cleanups = []; hideTip();
   const el = $('#view');
   el.innerHTML = '<div class="loading"><span class="spin"></span> 불러오는 중</div>';
-  document.title = `${$(`.nav-a[data-id="${view}"] span`).textContent} · SimOff`;
+  const TITLES = { start: '공간 세우기', connect: '기록 연결', plans: '시험할 안', run: '실행', layout: '최종 배치', report: '리포트', verify: '모델 검증',
+                  brief: '결정 브리프', endpoints: '엔드포인트', world: '매장 월드', engines: '엔진 비교' };
+  document.title = `${TITLES[view] || ''} · SimOff`;
   try {
     const html = await template(view);
     const root = document.createElement('div'); root.style.display = 'contents'; root.innerHTML = html;
@@ -178,8 +180,9 @@ VIEWS.start.after = (el, params, cleanups) => {
   // decision model picker (like choosing a model in any frontier-model product); each entry shows its training data and source
   const M = VIEWS.start._models, menu = slot(el, 'models'), btn = $('[data-act="model"]', el);
   let model = store.get('decisionModel', M.default) || M.default;
-  const showModel = () => { const m = M.models.find(x => x.id === model) || M.models[0]; if (m) set(el, 'modelName', m.name); };
-  menu.innerHTML = M.models.map(m => `<button type="button" role="option" class="mpick-item" data-model="${m.id}"><span class="mpick-row"><b>${esc(m.name)}</b><span class="mpick-tag">${esc(m.tag)}</span><span class="mpick-check">✓</span></span><span class="mpick-what">${esc(m.what)}</span><span class="mpick-data">학습 데이터 · ${esc(m.trained_on)}</span>${m.sources.length ? `<span class="mpick-src">${m.sources.map(x => `<a href="${x.url}" target="_blank" rel="noopener">${esc(x.label)} ↗</a>`).join('')}</span>` : ''}</button>`).join('');
+  if (!M.models.some(x => x.id === model)) model = M.default;
+  const showModel = () => { const m = M.models.find(x => x.id === model) || M.models[0]; if (m) set(el, 'modelName', m.title); };
+  menu.innerHTML = M.models.map(m => `<button type="button" role="option" class="mpick-item" data-model="${m.id}"><span class="mpick-row"><b>${esc(m.title)}</b><span class="mpick-check">✓</span></span><span class="mpick-src">${m.source.url ? `<a href="${m.source.url}" target="_blank" rel="noopener">${esc(m.source.label)} ↗</a>` : esc(m.source.label)}</span></button>`).join('');
   const mark = () => $$('[data-model]', menu).forEach(b => { const on = b.dataset.model === model; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
   const close = () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
   btn.onclick = e => { e.stopPropagation(); menu.hidden = !menu.hidden; btn.setAttribute('aria-expanded', String(!menu.hidden)); };
