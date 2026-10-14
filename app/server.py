@@ -1,4 +1,4 @@
-"""Offline API server: the screens in static/ and the JSON they read, on one port.
+"""SimOff server: the screens in static/ and the JSON they read, on one port.
 
   python app/server.py            # http://localhost:8790  (PORT env overrides; Replit sets it)
 
@@ -158,7 +158,7 @@ def main():
             service.run_plans(draws=100)
     threading.Thread(target=warm, daemon=True).start()
     srv = ThreadingHTTPServer(('0.0.0.0', port), Handler)
-    print(f'Offline API on http://localhost:{port}')
+    print(f'SimOff on http://localhost:{port}')
     srv.serve_forever()
 
 

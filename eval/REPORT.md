@@ -1,4 +1,4 @@
-# Offline API · 첫 실측 평가
+# SimOff · 첫 실측 평가
 
 2026-10-11 · dunnhumby Complete Journey (84.51°) · 콜드 시리얼 상위 25개 상품
 

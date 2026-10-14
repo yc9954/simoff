@@ -1,4 +1,4 @@
-# Offline API · app
+# SimOff · app
 
 **Decision model for offline world simulation.** Any place people walk through — a shop, a pop-up, an event, an exhibition — is raised in 3D, filled with people, and the decision model calibrated on that place's own records tests a change before the doors open. The supermarket cereal case below is one worked example, not the product's scope.
 

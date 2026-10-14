@@ -1,4 +1,4 @@
-// Offline API screens. Each screen is the storyboard board's own markup (screens/<id>.html);
+// SimOff screens. Each screen is the storyboard board's own markup (screens/<id>.html);
 // this file fills its data-k / data-slot / data-shot hooks from the API and wires the controls.
 import { mountStore, liveCards } from './store3d.js';
 import { mountSpace } from './space3d.js';
@@ -119,7 +119,7 @@ async function render() {
   cleanups.forEach(f => { try { f(); } catch {} }); cleanups = []; hideTip();
   const el = $('#view');
   el.innerHTML = '<div class="loading"><span class="spin"></span> 불러오는 중</div>';
-  document.title = `${$(`.nav-a[data-id="${view}"] span`).textContent} · Offline API`;
+  document.title = `${$(`.nav-a[data-id="${view}"] span`).textContent} · SimOff`;
   try {
     const html = await template(view);
     const root = document.createElement('div'); root.style.display = 'contents'; root.innerHTML = html;

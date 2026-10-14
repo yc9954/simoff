@@ -1,4 +1,4 @@
-"""Everything the Offline API screens ask for, computed from the data and the simulator.
+"""Everything the SimOff screens ask for, computed from the data and the simulator.
 
 Nothing here is a mock. Calibrated model, 'no promo' model and average-lift baseline run live;
 Jev and the persona engine are the stored answers from the evaluation run (eval/results), because
