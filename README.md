@@ -25,7 +25,7 @@ python cycle.py --dataset dunnhumby # 한 사이클: 데이터 → ① 맵 → �
 python cycle.py --data 내매장/ --weeks 4   # 내 CSV 3개: 마지막 주 배치 기준, 앞으로 4주 Poisson 방문 예측
 ```
 
-`runs/<이름>/`: `01_map.{json,svg,png}` 지금 배치 · `02_ledger.json` 전체 장부(커밋 안 함) · `03_validation.json` 그 매장 실제 vs 시뮬레이션 · `04_final_map.{json,svg,png}` 제안 배치(바뀌는 상품 강조) · `04_ledger.json` 실제/고정/제안 비교 · `REPORT.md`. 표와 모델 캐시는 `runs/<이름>/data/`.
+`runs/<이름>/`: `01_map.{json,svg,png}` 지금 배치 · `02_ledger.json` 전체 장부(커밋 안 함) · `03_validation.json` 그 매장 실제 vs 시뮬레이션 · `04_final_map.{json,svg,png}` 제안 배치(바뀌는 상품 강조) · `04_final_3d.html` 같은 배치를 3D 매장 위에, 47주 배치에서 제안 배치로 상품이 옮겨가는 애니메이션(`viewer3d.py`) · `04_ledger.json` 실제/고정/제안 비교 · `REPORT.md`. 표와 모델 캐시는 `runs/<이름>/data/`.
 
 ## 남은 작업
 

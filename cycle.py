@@ -11,6 +11,7 @@ Writes runs/<name>/:
   02_ledger.json                   simulation of the horizon: actual (backtest only) / current / proposed
   03_validation.json               this store: simulated 'actual' vs real sales (backtest only)
   04_final_map.json, 04_final_map.svg, 04_ledger.json   chosen layout, moves, same customers / same luck
+  04_final_3d.html                 the chosen layout on a 3D store, animated from the current one (viewer3d.py)
   REPORT.md
 """
 import argparse
@@ -161,6 +162,8 @@ def main():
     (out / '04_ledger.json').write_text(json.dumps({'store_id': store, 'weeks': list(horizon), 'baseline': 'current', 'plans': summary,
                                                     'moves': moves, 'definitions': ledger['definitions']}, ensure_ascii=False, indent=1))
     pngs = [render_png(out / f) for f in ['01_map.svg', '04_final_map.svg']]
+    import subprocess, sys
+    subprocess.run([sys.executable, str(HERE / 'viewer3d.py'), str(out)], check=True, capture_output=True)   # 04_final_3d.html
 
     # ---- report
     mk = lambda pid: next(f"{pr['n']}. {pr['brand']} {pr['type'].title()} {pr['size']}".strip() for pr in m['products'] if pr['product_id'] == pid)
