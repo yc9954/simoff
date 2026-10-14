@@ -1,189 +1,478 @@
-// The store in 3D. Same scene viewer3d.py writes, as a module the screens mount.
-// mountStore(el, data, opts) -> { go(state, animate), select(id), dispose() }
-// data: { aisles:[{department|name, sales_share|share, category_home|home}], products:[{n,id,name,size,now,next,moved,mailer,units}], labels }
-// opts: { state:'now'|'next', shoppers: n, onHover(p|null, x, y) }
-// Positions are a template (the data has no floor plan); zones, slot counts and placements come from data.
+// The store in 3D, in meters. Same look as gs2500 (same team): white store, soft sun, room environment,
+// the gs2500 shopper and checkout-terminal models. The data has no floor plan, so positions are a template;
+// the aisles (department and sales share), the display slots and where each cereal sits come from data.
+//
+// mountStore(el, data, opts) -> { go(state, animate), select(id), focus(name), dispose(), get state() }
+// data: { aisles:[{department|name, sales_share|share, category_home|home}], products:[{n,id,name,size,now,next,moved,mailer,units}] }
+// opts: { state:'now'|'next', shoppers:n, onHover(p|null,x,y,state), view:'store'|'cereal', rings:true }
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
-const C = { floor: '#dfe3e2', fixture: '#f7f8f8', edge: '#a3aaa8', home: '#e4ecff', ink: '#111', muted: '#5b6362',
-  A_front_endcap: '#3B73FF', C_other_display: '#88ACFA', none: '#B8BEC2', mailer: '#FCBB00', moved: '#0F766E', shopper: '#171717' };
+export const COND = { A_front_endcap: '#3B73FF', C_other_display: '#88ACFA', none: '#9aa3a6', B_mailer_only: '#FCBB00' };
+const MOVED = '#0F766E';
+const W = 36, D = 24;                       // store footprint, meters
+const ZB = -8, ZF = 4, GL = ZF - ZB;        // gondola run, back to front
+const GW = 1.15, GH = 1.85;                 // gondola width and height
+const SHELF_Y = [.16, .58, 1.0, 1.42];      // shelf decks
+
+let assets = null;
+function loadAssets() {
+  if (!assets) {
+    const loader = new GLTFLoader();
+    assets = Promise.all([loader.loadAsync('assets/shopper.glb'), loader.loadAsync('assets/checkout-terminal.glb')])
+      .then(([shopper, terminal]) => ({ shopper, terminal }))
+      .catch(() => ({ shopper: null, terminal: null }));
+  }
+  return assets;
+}
+
+// deterministic noise so every visit to the page draws the same store
+const rnd = (i, k = 0) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
 
 export function mountStore(el, data, opts = {}) {
-  const THREE = window.THREE;
-  const canvas = document.createElement('canvas');
-  canvas.style.cssText = 'display:block;width:100%;height:100%;touch-action:none';
-  el.appendChild(canvas);
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.02;
+  renderer.domElement.style.cssText = 'display:block;width:100%;height:100%;touch-action:none';
+  el.appendChild(renderer.domElement);
+
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#eceeed');
-  const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 400);
-  const home0 = opts.camera || { pos: [4, 13, 15], target: [-12, 0, 0] };
-  camera.position.set(...home0.pos);
-  const controls = new THREE.OrbitControls(camera, canvas);
-  controls.target.set(...home0.target); controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.47; controls.minDistance = 6; controls.maxDistance = 80;
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x6d736f, 0.55));
-  const sun = new THREE.DirectionalLight(0xffffff, 0.55);
-  sun.position.set(-14, 30, 18); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30 }); scene.add(sun);
+  scene.background = new THREE.Color('#e9ecec');
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const env = new RoomEnvironment();
+  scene.environment = pmrem.fromScene(env, .04).texture; scene.environmentIntensity = .5;
+  env.dispose(); pmrem.dispose();
 
-  const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: .85, metalness: 0, ...o });
-  function box(w, h, d, m, x, y, z) {
-    const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y + h / 2, z); o.castShadow = o.receiveShadow = true; scene.add(o); return o;
+  const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, .1, 400);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = .08;
+  controls.minPolarAngle = .35; controls.maxPolarAngle = Math.PI / 2.4;
+  controls.minZoom = .7; controls.maxZoom = 6; controls.screenSpacePanning = true;
+  const VIEWS = {
+    store: { target: new THREE.Vector3(-.5, 0, .5), dir: new THREE.Vector3(-.78, 1.0, 1.0), zoom: 1 },
+    cereal: { target: new THREE.Vector3(-12.5, .8, 3.2), dir: new THREE.Vector3(-1.0, .85, .95), zoom: 2.3 },
+    plan: { target: new THREE.Vector3(0, 0, 0), dir: new THREE.Vector3(0, 1, .02), zoom: .95 },
+    card: { target: new THREE.Vector3(-4, 0, 2), dir: new THREE.Vector3(-.78, 1.0, 1.0), zoom: 1.25 },
+  };
+  let view = VIEWS[opts.view || 'store'];
+  const placeCamera = (v) => { controls.target.copy(v.target); camera.position.copy(v.target).addScaledVector(v.dir.clone().normalize(), 60); camera.zoom = v.zoom; camera.updateProjectionMatrix(); };
+  placeCamera(view);
+
+  scene.add(new THREE.HemisphereLight('#f6f8ff', '#c3c9c0', 1.15));
+  const sun = new THREE.DirectionalLight('#fff4e2', 2.5); sun.position.set(-14, 26, 16);
+  sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+  Object.assign(sun.shadow.camera, { left: -24, right: 24, top: 20, bottom: -20, near: 1, far: 80 });
+  sun.shadow.normalBias = .03; sun.shadow.bias = -.0002; sun.shadow.radius = 3; scene.add(sun);
+  const fill = new THREE.DirectionalLight('#dfeaff', .9); fill.position.set(16, 10, -8); scene.add(fill);
+
+  // ---------------------------------------------------------------- materials and helpers
+  const mats = new Map();
+  const mat = (color, o = {}) => { const k = color + JSON.stringify(o); if (!mats.has(k)) mats.set(k, new THREE.MeshStandardMaterial({ color, roughness: .62, metalness: .03, ...o })); return mats.get(k); };
+  const unit = new THREE.BoxGeometry(1, 1, 1);
+  const root = new THREE.Group(); scene.add(root);
+  function box(size, pos, color, o = {}, parent = root) {
+    const m = new THREE.Mesh(o.round ? new RoundedBoxGeometry(...size, 2, o.round) : unit, typeof color === 'string' ? mat(color, o.m || {}) : color);
+    if (!o.round) m.scale.set(...size);
+    m.position.set(...pos); m.castShadow = o.cast !== false; m.receiveShadow = true; parent.add(m); return m;
   }
-  function label(text, { size = 46, color = C.ink, weight = 600, scale = 1.7 } = {}) {
-    const c = document.createElement('canvas'), g = c.getContext('2d');
-    const f = `${weight} ${size}px "Instrument Sans", Pretendard, "Noto Sans KR", sans-serif`;
-    g.font = f; const w = Math.ceil(g.measureText(text).width) + 16; c.width = w; c.height = size + 16;
-    const tex = new THREE.CanvasTexture(c); tex.anisotropy = 4;
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true }));
-    s.scale.set(w / 100 * scale, (size + 16) / 100 * scale, 1);
-    s.userData.paint = () => { g.clearRect(0, 0, c.width, c.height); g.font = f; g.fillStyle = color; g.textBaseline = 'middle'; g.fillText(text, 8, c.height / 2); tex.needsUpdate = true; };
-    s.userData.paint(); scene.add(s); return s;
+  function canvasTex(w, h, draw) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+  }
+  const FONT = '"Instrument Sans", Pretendard, "Noto Sans KR", Arial, sans-serif';
+  function sign(text, sub, w, h, pos, rotY = 0, bg = '#ffffff', fg = '#16191a', parent = root) {
+    const t = canvasTex(1024, Math.round(1024 * h / w), (g, cw, ch) => {
+      g.fillStyle = bg; g.fillRect(0, 0, cw, ch);
+      g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = `700 ${Math.round(ch * (sub ? .42 : .55))}px ${FONT}`; g.fillText(text, cw / 2, ch * (sub ? .4 : .52), cw * .92);
+      if (sub) { g.globalAlpha = .62; g.font = `500 ${Math.round(ch * .24)}px ${FONT}`; g.fillText(sub, cw / 2, ch * .78, cw * .9); }
+    });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, toneMapped: false, side: THREE.DoubleSide }));
+    m.position.set(...pos); m.rotation.y = rotY; parent.add(m); return m;
   }
 
-  const W = 44, Dp = 30;
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, Dp), mat(C.floor)); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-  const grid = new THREE.GridHelper(W, 22, C.muted, C.muted); grid.position.y = .01; grid.material.transparent = true; grid.material.opacity = .12; scene.add(grid);
-  box(W, .6, .3, mat(C.edge), 0, 0, -Dp / 2); box(.3, .6, Dp, mat(C.edge), -W / 2, 0, 0); box(.3, .6, Dp, mat(C.edge), W / 2, 0, 0);
-  box(W - 8, 1.2, .8, mat(C.fixture), 0, 0, -Dp / 2 + 1.2);
-  label('매장 뒤 벽면', { size: 34, color: C.muted, weight: 500 }).position.set(-15, 1.8, -Dp / 2 + 1.2);
-
-  const aisles = data.aisles.map(a => ({ name: a.department ?? a.name, share: a.sales_share ?? a.share, home: a.category_home ?? a.home }));
-  const N = aisles.length, x0 = -18.5, step = 37 / Math.max(N - 1, 1);
-  const ax = i => x0 + i * step;
-  const AW = 2.0, AZ0 = -9.5, AZ1 = 3.0, AH = 1.95;
-  aisles.forEach((a, i) => {
-    box(AW, AH, AZ1 - AZ0, mat(a.home ? C.home : C.fixture), ax(i), 0, (AZ0 + AZ1) / 2);
-    box(AW + .24, .04, AZ1 - AZ0 - .1, mat(C.edge), ax(i), .95, (AZ0 + AZ1) / 2);
-    box(AW, 1.1, .8, mat(C.fixture), ax(i), 0, AZ0 - .7);
-    box(AW, 1.1, .9, mat(C.fixture), ax(i), 0, AZ1 + .75);
-    label(String(a.name).slice(0, 12), { size: 40 }).position.set(ax(i), AH + 1.1, AZ0 + 1.2);
-    label(`${Math.round(a.share * 100)}% 매출`, { size: 30, color: C.muted, weight: 500 }).position.set(ax(i), AH + .6, AZ0 + 1.2);
+  // ---------------------------------------------------------------- shell: floor, walls, storefront
+  box([W + .8, .4, D + .8], [0, -.2, 0], '#bfc7bf', { round: .06 });
+  const floorTex = canvasTex(512, 512, (g, w, h) => {
+    g.fillStyle = '#e4e4de'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 9000; i++) { const v = 150 + Math.floor(rnd(i, 1) * 70); g.fillStyle = `rgba(${v},${v},${v},.07)`; g.fillRect(rnd(i, 2) * w, rnd(i, 3) * h, 2, 2); }
+    g.strokeStyle = '#c9cac4'; g.lineWidth = 3; g.strokeRect(0, 0, w, h);
   });
-  const home = Math.max(0, aisles.findIndex(a => a.home));
-  const TX0 = -17, TX1 = -3, TZ = 8;
-  box(TX1 - TX0, .75, 2.2, mat(C.fixture), (TX0 + TX1) / 2, 0, TZ);
-  label('매장 앞·보조 진열', { size: 34, color: C.muted, weight: 500 }).position.set((TX0 + TX1) / 2, .3, TZ + 1.7);
-  box(4.5, .08, 2.4, mat(C.ink), -18, 0, Dp / 2 - 1.4);
-  label('입구', { size: 40 }).position.set(-18, .9, Dp / 2 - 1.4);
-  for (const x of [6, 10, 14]) box(2.6, 1.0, 1.0, mat(C.edge), x, 0, 11);
-  label('계산대', { size: 40 }).position.set(10, 1.9, 11);
+  floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping; floorTex.repeat.set(W / 1.2, D / 1.2);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({ map: floorTex, roughness: .42, metalness: .04 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = .005; floor.receiveShadow = true; root.add(floor);
+  const wallC = '#eef0ec', H = 3.6;
+  box([W, H, .2], [0, H / 2, -D / 2], wallC);
+  box([.2, H, D], [W / 2, H / 2, 0], '#e3e7e4');                                                // far side wall
+  box([.2, .55, D], [-W / 2, .275, 0], '#e3e7e4');                                              // near side: cut away
+  box([W, .22, .24], [0, H - .2, -D / 2 + .14], '#2e6f8e', { cast: false });                    // brand band
+  box([.24, .22, D], [W / 2 - .14, H - .2, 0], '#2e6f8e', { cast: false });
+  sign('FRESH · DAIRY · FROZEN', null, 7, .5, [-6, H - .62, -D / 2 + .12], 0, '#f5f8f6', '#2e6f8e');
+  // storefront glass (front, z = +D/2) with an entrance gap on the left
+  const glass = new THREE.MeshPhysicalMaterial({ color: '#d7eaee', roughness: .05, metalness: 0, transparent: true, opacity: .16, depthWrite: false });
+  const ENTRY = [-15.5, -11.5];
+  for (const [a, b] of [[-W / 2, ENTRY[0]], [ENTRY[1], W / 2]]) {
+    const m = new THREE.Mesh(unit, glass); m.scale.set(b - a, 2.4, .05); m.position.set((a + b) / 2, 1.3, D / 2 - .05); root.add(m);
+    for (let x = a; x <= b + .01; x += 3.0) box([.05, 2.5, .06], [x, 1.25, D / 2 - .05], '#b4bec0', { m: { metalness: .6, roughness: .3 }, cast: false });
+    box([b - a, .08, .08], [(a + b) / 2, 2.5, D / 2 - .05], '#b4bec0', { m: { metalness: .6, roughness: .3 }, cast: false });
+  }
+  box([ENTRY[1] - ENTRY[0], .02, 2.2], [(ENTRY[0] + ENTRY[1]) / 2, .012, D / 2 - 1.2], '#7d8587', { cast: false });   // entrance mat
+  sign('입구', null, 1.6, .5, [(ENTRY[0] + ENTRY[1]) / 2, 2.95, D / 2 - .05], 0, '#2e6f8e', '#ffffff');
 
-  // products
-  const PW = .62, PH = .9, PD = .22;
+  // weekly flyer stand by the entrance: the mailer reaches people here and at home
+  const FLY = [-10.4, D / 2 - 2.6];
+  box([.9, 1.2, .5], [FLY[0], .6, FLY[1]], '#e9ecea', { round: .03 });
+  for (let i = 0; i < 3; i++) { const f = box([.26, .36, .02], [FLY[0] - .28 + i * .28, 1.05, FLY[1] + .26], '#FCBB00', { cast: false }); f.rotation.x = -.25; }
+  sign('이번 주 전단', null, 1.1, .3, [FLY[0], 1.5, FLY[1] + .27], 0, '#FCBB00', '#16191a');
+
+  // back wall: glass-door coolers
+  const coolerN = 13, coolerW = (W - 4) / coolerN;
+  for (let i = 0; i < coolerN; i++) {
+    const x = -W / 2 + 2 + coolerW * (i + .5), z = -D / 2 + .75;
+    box([coolerW - .04, 2.3, 1.2], [x, 1.15, z], '#f4f5f4');
+    const lit = new THREE.Mesh(unit, new THREE.MeshStandardMaterial({ color: '#f2f7fa', emissive: '#eaf3ff', emissiveIntensity: .55, roughness: .4 }));
+    lit.scale.set(coolerW - .22, 1.9, .05); lit.position.set(x, 1.2, z + .58); root.add(lit);
+    for (let s = 0; s < 5; s++) for (let k = 0; k < 6; k++) {
+      const c = ['#f5f1e6', '#e3edf3', '#f3d9c8', '#d7e7d2', '#f7e6a5', '#e9d1dc'][(i + s + k) % 6];
+      box([.14, .26, .14], [x - coolerW / 2 + .22 + k * (coolerW - .3) / 6, .42 + s * .38, z + .45], c, { cast: false });
+    }
+    const door = new THREE.Mesh(unit, glass); door.scale.set(coolerW - .1, 2.0, .04); door.position.set(x, 1.2, z + .62); root.add(door);
+    box([.04, 2.0, .06], [x - coolerW / 2 + .04, 1.2, z + .63], '#b9c2c4', { m: { metalness: .7, roughness: .25 }, cast: false });
+  }
+
+  // ---------------------------------------------------------------- aisles by department
+  const aisles = data.aisles.map(a => ({ name: a.department ?? a.name, share: a.sales_share ?? a.share, home: a.category_home ?? a.home }));
+  const N = aisles.length, X0 = -13.5, X1 = 10.5, step = (X1 - X0) / Math.max(N - 1, 1);
+  const ax = i => X0 + i * step;
+  const home = Math.max(0, aisles.findIndex(a => a.home));
+  const goods = [];                       // instanced shelf goods: [x,y,z,w,h,d,color]
+  const palette = {
+    GROCERY: ['#c8463c', '#e2a33c', '#3e6fae', '#f1ebe0', '#6e8f4e', '#d36f2f', '#8a5a3b', '#e9d6a6'],
+    'DRUG GM': ['#e9eef3', '#5d8fc9', '#b7d4e6', '#f2f2f2', '#7aa6c9', '#d9e4ec'],
+    PRODUCE: ['#6aa84f', '#c0392b', '#f1c232', '#e69138', '#93c47d', '#a64d79'],
+    MEAT: ['#c0605a', '#d98880', '#b04a4a', '#e6b0aa'], 'MEAT-PCKGD': ['#d47c6a', '#e6b8a2', '#b85c4c', '#f0d2c4'],
+    DELI: ['#e8c07a', '#d9a066', '#f3e2c0', '#c98c5a'], NUTRITION: ['#4f7a5e', '#9bbf8a', '#e8efe2', '#c9a35b'],
+    FUEL: ['#3c3c3c', '#c9302c', '#e8e8e8'], KIOSK: ['#e2e2e2', '#3e6fae'],
+  };
+  const pal = name => palette[String(name).toUpperCase()] || ['#d9dcdc', '#b9c3c8', '#e6d3b3', '#9db1a4', '#e7e2d6', '#c7b9a5'];
+  function gondola(x, name, isHome) {
+    box([GW, .12, GL], [x, .06, (ZB + ZF) / 2], '#cfd4d1');
+    box([.06, GH, GL], [x, GH / 2 + .06, (ZB + ZF) / 2], '#e9ecea');
+    for (const y of SHELF_Y) box([GW, .03, GL], [x, y, (ZB + ZF) / 2], '#f2f3f1', { cast: false });
+    for (const y of SHELF_Y) for (const s of [-1, 1]) box([.02, .05, GL], [x + s * GW / 2, y + .03, (ZB + ZF) / 2], '#cbd2d4', { cast: false });   // price rails
+    const p = pal(name);
+    SHELF_Y.forEach((y, li) => {
+      for (const side of [-1, 1]) {
+        let z = ZB + .1;
+        while (z < ZF - .15) {
+          if (isHome && side === -1 && z > ZF - 4.6 && li >= 0) { z += .2; continue; }    // leave the cereal section free
+          const k = Math.floor(rnd(x * 7 + z * 13, li * 3 + side) * p.length);
+          const w = .14 + rnd(z, li + 9) * .2, h = .2 + rnd(z, li + 4) * .2, d = .3;
+          const facings = 1 + Math.floor(rnd(z, li + 2) * 3);
+          for (let f = 0; f < facings && z < ZF - .15; f++) { goods.push([x + side * (GW / 2 - d / 2 - .03), y + .015 + h / 2, z + w / 2, d, h, w, p[k]]); z += w + .01; }
+          z += .04;
+        }
+      }
+    });
+    box([GW + .1, 1.25, .8], [x, .625, ZB - .45], '#eceeec');       // rear end cap
+    box([GW + .1, 1.0, .9], [x, .5, ZF + .5], '#eceeec');           // front end cap base
+  }
+  function produce(x) {
+    for (const z of [ZB + 1.5, ZB + 4.5, ZB + 7.5, ZB + 10.5]) {
+      const t = box([GW + .8, .8, 2.6], [x, .4, z], '#b88a5a', { round: .05 });
+      t.rotation.x = 0;
+      const top = new THREE.Mesh(unit, mat('#8e6a45')); top.scale.set(GW + .7, .06, 2.5); top.position.set(x, .83, z); top.rotation.x = -.18; top.receiveShadow = true; root.add(top);
+      const c = pal('PRODUCE')[Math.floor(rnd(z, x) * 6)];
+      for (let i = 0; i < 26; i++) {
+        const s = new THREE.Mesh(new THREE.SphereGeometry(.09 + rnd(i, z) * .03, 10, 8), mat(c, { roughness: .5 }));
+        s.position.set(x - (GW + .5) / 2 + rnd(i, 1 + z) * (GW + .5), .95 + rnd(i, 2) * .08, z - 1.1 + rnd(i, 3 + z) * 2.2); s.castShadow = true; root.add(s);
+      }
+    }
+  }
+  function cooledCase(x, name) {
+    box([GW + .5, .9, GL], [x, .45, (ZB + ZF) / 2], '#f4f5f4');
+    box([GW + .3, .05, GL - .2], [x, .92, (ZB + ZF) / 2], '#dfe7ea', { cast: false });
+    const p = pal(name);
+    for (let z = ZB + .3; z < ZF - .2; z += .32) for (const s of [-1, 1]) goods.push([x + s * .28, .99, z, .26, .1, .22, p[Math.floor(rnd(z, x + s) * p.length)]]);
+    box([.06, .35, GL], [x, 1.12, (ZB + ZF) / 2], '#cfdde2', { m: { transparent: true, opacity: .5 } });
+  }
+  aisles.forEach((a, i) => {
+    const x = ax(i), up = String(a.name).toUpperCase();
+    if (up === 'PRODUCE') produce(x);
+    else if (up.startsWith('MEAT') || up === 'DELI') cooledCase(x, up);
+    else gondola(x, up, i === home);
+    // aisle header sign: department, aisle number, share of this store's sales
+    for (const s of [-1, 1]) box([.03, .9, .03], [x + s * .9, 3.05, ZF - .3], '#9aa6a8', { cast: false });
+    sign(`${i + 1}  ${a.name}`, `매출 ${Math.round(a.share * 100)}%`, 2.4, .62, [x, 2.55, ZF - .3], 0, a.home ? '#2e6f8e' : '#ffffff', a.home ? '#ffffff' : '#16191a');
+  });
+  if (goods.length) {
+    const inst = new THREE.InstancedMesh(new RoundedBoxGeometry(1, 1, 1, 1, .08), new THREE.MeshStandardMaterial({ roughness: .55 }), goods.length);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), c = new THREE.Color();
+    goods.forEach(([x, y, z, w, h, d, col], i) => { m4.compose(new THREE.Vector3(x, y, z), q, new THREE.Vector3(w, h, d)); inst.setMatrixAt(i, m4); inst.setColorAt(i, c.set(col)); });
+    inst.castShadow = true; inst.receiveShadow = true; root.add(inst);
+  }
+
+  // front: secondary displays (promo tables), checkout lanes
+  const TX0 = -15, TX1 = -3.4, TZ = 7.4;
+  for (let i = 0; i < 4; i++) {
+    const x = TX0 + 1.45 + i * 2.9;
+    box([2.5, .78, 1.5], [x, .39, TZ], '#c9a77c', { round: .04 });
+    box([2.6, .05, 1.6], [x, .8, TZ], '#e9dcc6', { cast: false });
+  }
+  sign('매장 앞 · 보조 진열', null, 3.2, .5, [(TX0 + TX1) / 2, 2.4, TZ - .9], 0, '#ffffff', '#16191a');
+  for (const s of [-1, 1]) box([.03, .7, .03], [(TX0 + TX1) / 2 + s * 1.4, 2.95, TZ - .9], '#9aa6a8', { cast: false });
+  const lanes = [3, 6.4, 9.8, 13.2], CZ = 9.6;
+  const terminals = [];
+  lanes.forEach((x, i) => {
+    box([.9, .9, 3.2], [x, .45, CZ], '#e8ebe9', { round: .04 });
+    const belt = box([.62, .04, 2.2], [x, .92, CZ - .4], '#2d3133', { cast: false });
+    belt.material = mat('#2d3133', { roughness: .8 });
+    box([.06, 1.6, .06], [x + .5, .8, CZ - 1.5], '#9aa6a8');
+    sign(String(i + 1), null, .5, .5, [x + .5, 1.85, CZ - 1.5], 0, '#2e6f8e', '#ffffff');
+    terminals.push([x, CZ + .9]);
+  });
+
+  // ---------------------------------------------------------------- the 25 cereals
+  const typeColor = (name) => {
+    const s = name.toLowerCase();
+    if (s.startsWith('private')) return ['#f4f1e8', '#2f7d4a', 'PRIVATE'];
+    if (s.includes('kids')) return ['#d8322b', '#ffd23f', 'KIDS'];
+    if (s.includes('adult')) return ['#8a5a36', '#f0dcb4', 'ADULT'];
+    return ['#e48a1f', '#ffffff', 'FAMILY'];
+  };
+  const boxGeo = new RoundedBoxGeometry(.24, .34, .08, 2, .012);
+  function boxMaterials(p) {
+    const [bg, fg, tag] = typeColor(p.name);
+    const face = canvasTex(256, 360, (g, w, h) => {
+      g.fillStyle = bg; g.fillRect(0, 0, w, h);
+      g.fillStyle = fg; g.font = `800 34px ${FONT}`; g.textAlign = 'center'; g.fillText(tag, w / 2, 52);
+      g.font = `700 22px ${FONT}`; g.fillText('CEREAL', w / 2, 84);
+      g.beginPath(); g.fillStyle = '#ffffff'; g.ellipse(w / 2, 220, 86, 40, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = bg === '#f4f1e8' ? '#d9b26b' : '#e8b85a';
+      for (let i = 0; i < 26; i++) { g.beginPath(); g.arc(w / 2 - 60 + rnd(i, p.n) * 120, 205 + rnd(i, p.n + 1) * 26, 9, 0, Math.PI * 2); g.fill(); }
+      g.fillStyle = fg; g.font = `600 20px ${FONT}`; g.fillText(p.size, w / 2, 318);
+      g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(0, h - 22, w, 22);
+      g.fillStyle = '#ffffff'; g.font = `700 16px ${FONT}`; g.fillText(`#${p.n}`, w / 2, h - 6);
+    });
+    const side = mat(bg, { roughness: .5 });
+    const front = new THREE.MeshStandardMaterial({ map: face, roughness: .45 });
+    return [side, side, side, side, front, side];
+  }
+  // where each placement puts a product: [x, y, z, rotY] and how many facings it shows
   function slots(key) {
-    const pos = {}, g = { A_front_endcap: [], C_other_display: [], none: [] };
+    const out = {}, g = { A_front_endcap: [], C_other_display: [], none: [] };
     data.products.forEach(p => (g[p[key]] || g.none).push(p));
-    const order = [...Array(N).keys()].sort((a, b) => Math.abs(a - home) - Math.abs(b - home));
-    g.A_front_endcap.forEach((p, j) => { const i = order[Math.floor(j / 3) % N]; pos[p.id] = [ax(i) - .7 + (j % 3) * .7, 1.1, AZ1 + 1.2 + PD / 2 + .02, 0]; });
-    g.C_other_display.forEach((p, j) => { const r = Math.floor(j / 10), c = j % 10; pos[p.id] = [TX0 + .8 + c * 1.4, .75, TZ - .5 + r * 1.0, 0]; });
-    g.none.forEach((p, j) => { const lvl = j % 2, col = Math.floor(j / 2); pos[p.id] = [ax(home) + AW / 2 + PD / 2 + .1, [0, .97][lvl] + .02, AZ0 + .6 + col * .9, Math.PI / 2]; });
-    return pos;
+    const capOrder = [...Array(N).keys()].sort((a, b) => Math.abs(a - home) - Math.abs(b - home));
+    g.A_front_endcap.forEach((p, j) => { const i = capOrder[Math.floor(j / 2) % N]; out[p.id] = { pos: [ax(i) - .27 + (j % 2) * .54, 1.0, ZF + .98], rot: 0, kind: 'cap' }; });
+    g.C_other_display.forEach((p, j) => { const t = Math.floor(j / 4), k = j % 4; out[p.id] = { pos: [TX0 + 1.45 + t * 2.9 - .9 + (k % 2) * 1.0 + (k > 1 ? .35 : 0), .82, TZ - .35 + (k > 1 ? .7 : 0)], rot: 0, kind: 'table' }; });
+    g.none.forEach((p, j) => { const lvl = j % 4, col = Math.floor(j / 4); out[p.id] = { pos: [ax(home) - GW / 2 + .06, SHELF_Y[3 - lvl] + .03, ZF - .35 - col * .62], rot: -Math.PI / 2, kind: 'shelf' }; });
+    return out;
   }
   const POS = { now: slots('now'), next: slots('next') };
+  const pinTex = new Map();
+  function pin(p) {
+    const t = canvasTex(128, 160, (g) => {
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(64, 60, 52, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.moveTo(40, 100); g.lineTo(88, 100); g.lineTo(64, 150); g.fill();
+      g.fillStyle = '#16191a'; g.font = `800 52px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(p.n), 64, 62);
+    });
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true }));
+    s.scale.set(.42, .52, 1); s.renderOrder = 10; root.add(s); return s;
+  }
   const items = data.products.map(p => {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(PW, PH, PD), new THREE.MeshStandardMaterial({ roughness: .6 }));
-    mesh.castShadow = true; mesh.userData.p = p; scene.add(mesh);
-    const tag = label(String(p.n), { size: 44, weight: 700, scale: 1.3 });
-    let ring = null;
-    if (p.moved && opts.rings !== false) {
-      ring = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(PW + .14, PH + .14, PD + .14)), new THREE.LineBasicMaterial({ color: C.moved, transparent: true }));
-      scene.add(ring);
+    const g = new THREE.Group(); const ms = boxMaterials(p);
+    for (let k = 0; k < 3; k++) for (let r = 0; r < 2; r++) {
+      const b = new THREE.Mesh(boxGeo, ms); b.position.set((k - 1) * .25, .17 + r * .345, 0); b.castShadow = true; b.userData.p = p; g.add(b);
     }
-    let dot = null;
-    if (p.mailer) { dot = new THREE.Mesh(new THREE.SphereGeometry(.09, 16, 12), mat(C.mailer)); scene.add(dot); }
-    return { p, mesh, tag, ring, dot, from: null, to: null };
+    root.add(g);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(.5, .025, 8, 40), new THREE.MeshBasicMaterial({ color: MOVED, transparent: true, depthTest: false }));
+    ring.rotation.x = -Math.PI / 2; ring.renderOrder = 9; ring.visible = !!(p.moved && opts.rings !== false); root.add(ring);
+    const tag = pin(p);
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(.07, 12, 10), new THREE.MeshBasicMaterial({ color: COND.B_mailer_only, depthTest: false }));
+    dot.renderOrder = 11; dot.visible = !!p.mailer; root.add(dot);
+    return { p, g, ring, tag, dot, from: null, to: null };
   });
 
-  // shoppers: a representation of foot traffic, not movement data (the data has no paths)
-  const shoppers = [];
-  const route = () => {
-    const i = Math.floor(Math.random() * N), side = Math.random() < .5 ? -1 : 1;
-    const xa = ax(i) + side * (AW / 2 + .9);
-    return [[-18, Dp / 2 - 2], [xa, AZ1 + 2.2], [xa, AZ0 + 1 + Math.random() * 8], [xa, AZ1 + 2.2], [6 + Math.floor(Math.random() * 3) * 4, 12.4], [-15, Dp / 2 - 2]];
-  };
-  for (let k = 0; k < (opts.shoppers || 0); k++) {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(.22, .22, 1.1, 14), mat(C.shopper, { roughness: .5 }));
-    m.castShadow = true; scene.add(m);
-    shoppers.push({ m, path: route(), t: Math.random() * 5, speed: 2.2 + Math.random() });
+  // ---------------------------------------------------------------- shoppers (a representation: the data has no paths)
+  const shoppers = []; let shopperAsset = null;
+  const corridorF = ZF + 1.8, gapX = i => ax(i) + step / 2;
+  function route(k) {
+    const i = Math.floor(rnd(k, 5) * (N - 1)), lane = lanes[Math.floor(rnd(k, 6) * lanes.length)];
+    const x = gapX(i), zIn = ZB + 1 + rnd(k, 7) * (GL - 2);
+    return [[-13.5, D / 2 - .6, 'Walk'], [-13.5, corridorF, 'Walk'], [x, corridorF, 'Walk'], [x, zIn, 'Walk'], [x, zIn, 'Browse', 2.4],
+            [x, corridorF, 'Carry'], [lane - .8, corridorF, 'Carry'], [lane - .8, CZ, 'Carry'], [lane - .8, CZ + .4, 'Pay', 1.8], [lane - .8, D / 2 - 1.2, 'Carry'], [-9.5, D / 2 - 1.2, 'Carry'], [-12.5, D / 2 + .2, 'Carry']];
+  }
+  function addShoppers(asset, n) {
+    const colors = ['#496077', '#954f51', '#657851', '#806488', '#337477', '#9d873e', '#6a6b79'], skins = ['#cfa281', '#b88668', '#d8ae8a', '#b78a70'];
+    for (let k = 0; k < n; k++) {
+      const rootC = cloneSkinned(asset.scene);
+      rootC.traverse(o => { if (!o.isMesh) return; o.castShadow = true; o.material = o.material.clone();
+        if (o.material.name === 'Outerwear') o.material.color.set(colors[k % colors.length]);
+        if (o.material.name === 'Skin') o.material.color.set(skins[k % skins.length]);
+        if (o.material.name === 'Trousers') o.material.color.set(k % 3 === 0 ? '#b9ae97' : '#323d4d'); });
+      const s = .95 + (k % 4) * .03; rootC.scale.setScalar(s);
+      const mixer = new THREE.AnimationMixer(rootC);
+      const acts = Object.fromEntries(asset.animations.map(c => [c.name, mixer.clipAction(c)]));
+      const sh = { root: rootC, mixer, acts, cur: null, path: route(k * 3 + 1), seg: 0, t: rnd(k, 9) * 4, wait: 0, k };
+      // start somewhere along the route so the store is already busy at rest
+      sh.seg = Math.floor(rnd(k, 11) * (sh.path.length - 2));
+      root.add(rootC); shoppers.push(sh); play(sh, 'Walk');
+    }
+  }
+  function play(sh, name, speed = 1) {
+    if (sh.cur === name) return; const a = sh.acts[name] || sh.acts.Walk; if (!a) return;
+    a.reset().setEffectiveTimeScale(speed).setEffectiveWeight(1).play(); if (sh.acts[sh.cur]) sh.acts[sh.cur].crossFadeTo(a, .25, false); sh.cur = name;
   }
   function moveShoppers(dt) {
-    for (const s of shoppers) {
-      s.t += dt * s.speed / 6;
-      const seg = Math.floor(s.t);
-      if (seg >= s.path.length - 1) { s.path = route(); s.t = 0; continue; }
-      const a = s.path[seg], b = s.path[seg + 1], k = s.t - seg;
-      s.m.position.set(a[0] + (b[0] - a[0]) * k, .55, a[1] + (b[1] - a[1]) * k);
+    for (const sh of shoppers) {
+      const P = sh.path; if (sh.seg >= P.length - 1) { sh.path = route(sh.k * 7 + Math.floor(performance.now() / 1000)); sh.seg = 0; }
+      const a = P[sh.seg], b = P[sh.seg + 1];
+      if (a[3] && sh.wait < a[3]) { sh.wait += dt; play(sh, a[2]); sh.mixer.update(dt); sh.root.position.set(a[0], 0, a[1]); continue; }
+      const dx = b[0] - a[0], dz = b[1] - a[1], len = Math.hypot(dx, dz) || .001;
+      sh.t += dt * 1.15 / len;
+      if (sh.t >= 1) { sh.seg++; sh.t = 0; sh.wait = 0; continue; }
+      sh.root.position.set(a[0] + dx * sh.t, 0, a[1] + dz * sh.t);
+      sh.root.rotation.y = Math.atan2(dx, dz);
+      play(sh, a[2] === 'Browse' || a[2] === 'Pay' ? 'Walk' : a[2]); sh.mixer.update(dt);
     }
   }
+  loadAssets().then(as => {
+    if (!alive) return;
+    if (as.terminal) terminals.forEach(([x, z]) => { const t = as.terminal.scene.clone(); t.position.set(x, .9, z - 1.3); t.rotation.y = Math.PI; t.scale.setScalar(.9); t.traverse(o => { if (o.isMesh) o.castShadow = true; }); root.add(t); });
+    if (as.shopper && opts.shoppers) { shopperAsset = as.shopper; addShoppers(as.shopper, opts.shoppers); }
+  });
 
-  let state = opts.state || 'now', t0 = 0, dur = 1600, animating = false, sel = null;
-  const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  function place(it, k) {
-    const a = it.from, b = it.to, x = a[0] + (b[0] - a[0]) * k, z = a[2] + (b[2] - a[2]) * k;
-    const lift = (a[0] !== b[0] || a[2] !== b[2]) ? Math.sin(Math.PI * k) * 2.2 : 0;
-    const y = a[1] + (b[1] - a[1]) * k + lift + PH / 2, ry = a[3] + (b[3] - a[3]) * k;
-    it.mesh.position.set(x, y, z); it.mesh.rotation.y = ry;
-    it.tag.position.set(x, y + PH / 2 + .45, z);
-    if (it.ring) { it.ring.position.copy(it.mesh.position); it.ring.rotation.y = ry; }
-    if (it.dot) it.dot.position.set(x + .22 * Math.cos(ry), y + PH / 2 + .02, z - .22 * Math.sin(ry));
+  // ---------------------------------------------------------------- plan zones (cards highlight where a plan acts)
+  const zones = {
+    A_front_endcap: [GW + .5, 1.6, 1.3, ax(home), ZF + .55],
+    C_other_display: [TX1 - TX0 + .4, 1.4, 2.0, (TX0 + TX1) / 2, TZ],
+    B_mailer_only: [1.5, 1.9, 1.2, FLY[0], FLY[1]],
+    none: [.9, 2.0, 5.0, ax(home) - GW / 2 - .25, ZF - 2.3],
+  };
+  const hl = new THREE.Mesh(unit, new THREE.MeshBasicMaterial({ color: '#8bd34f', transparent: true, opacity: .55, depthWrite: false }));
+  hl.visible = false; hl.renderOrder = 8; root.add(hl);
+  function setHighlight(c) {
+    const z = zones[c]; hl.visible = !!z; if (!z) return;
+    hl.scale.set(z[0], z[1], z[2]); hl.position.set(z[3], z[1] / 2, z[4]);
   }
-  function paint(k) {
-    for (const it of items) {
-      const prev = state === 'next' ? it.p.now : it.p.next, cur = state === 'next' ? it.p.next : it.p.now;
-      it.mesh.material.color.set(C[k < .5 && animating ? prev : cur] || C.none);
-    }
+  setHighlight(opts.highlight);
+
+  // ---------------------------------------------------------------- layout animation
+  let state = opts.state || 'now', t0 = 0, dur = 1700, animating = false, sel = null;
+  const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const lerpAngle = (a, b, k) => a + (((b - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI) * k;
+  function place(it, k) {
+    const a = it.from.pos, b = it.to.pos;
+    const x = a[0] + (b[0] - a[0]) * k, z = a[2] + (b[2] - a[2]) * k;
+    const lift = (a[0] !== b[0] || a[2] !== b[2]) ? Math.sin(Math.PI * k) * 3.2 : 0;
+    const y = a[1] + (b[1] - a[1]) * k + lift;
+    it.g.position.set(x, y, z); it.g.rotation.y = lerpAngle(it.from.rot, it.to.rot, k);
+    const kind = k < .5 ? it.from.kind : it.to.kind;
+    it.g.scale.setScalar(kind === 'shelf' ? .78 : 1);
+    it.tag.position.set(x, y + (kind === 'shelf' ? .75 : 1.25), z); it.ring.position.set(x, .03 + (y > .5 ? y - .02 : 0), z); it.dot.position.set(x + .16, it.tag.position.y + .17, z);
+    it.kind = kind; it.ring.scale.setScalar(kind === 'shelf' ? .55 : kind === 'table' ? .8 : 1);
   }
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   function go(target, animate = !reduce) {
     for (const it of items) { it.from = POS[state][it.p.id]; it.to = POS[target][it.p.id]; }
     state = target;
-    if (animate) { t0 = performance.now(); animating = true; } else { items.forEach(it => place(it, 1)); animating = false; paint(1); }
+    if (animate) { t0 = performance.now(); animating = true; } else { items.forEach(it => place(it, 1)); animating = false; }
   }
 
+  // ---------------------------------------------------------------- hover, resize, loop
   const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
-  canvas.addEventListener('pointermove', e => {
-    const r = canvas.getBoundingClientRect();
+  const meshes = items.flatMap(it => it.g.children);
+  renderer.domElement.addEventListener('pointermove', e => {
+    const r = renderer.domElement.getBoundingClientRect();
     mouse.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
     ray.setFromCamera(mouse, camera);
-    const hit = ray.intersectObjects(items.map(i => i.mesh))[0];
-    opts.onHover?.(hit ? hit.object.userData.p : null, e.clientX - r.left, e.clientY - r.top, state);
-    canvas.style.cursor = hit ? 'pointer' : 'grab';
+    const hit = ray.intersectObjects(meshes)[0] || ray.intersectObjects(items.map(i => i.tag))[0];
+    const p = hit ? (hit.object.userData.p || items.find(i => i.tag === hit.object)?.p) : null;
+    opts.onHover?.(p, e.clientX - r.left, e.clientY - r.top, state);
+    renderer.domElement.style.cursor = p ? 'pointer' : 'grab';
   });
-  canvas.addEventListener('pointerleave', () => opts.onHover?.(null));
-
-  function resize() { const w = el.clientWidth, h = el.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  renderer.domElement.addEventListener('pointerleave', () => opts.onHover?.(null));
+  function resize() {
+    const w = el.clientWidth, h = el.clientHeight; if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    const half = 20.5, a = w / h;
+    Object.assign(camera, a > 1.3 ? { left: -half, right: half, top: half / a, bottom: -half / a } : { left: -half * a / 1.3, right: half * a / 1.3, top: half / 1.3, bottom: -half / 1.3 });
+    camera.updateProjectionMatrix();
+  }
   const ro = new ResizeObserver(resize); ro.observe(el);
-  let alive = true, last = performance.now();
+  let alive = true, last = performance.now(), camAnim = null, following = false;
   function frame(now) {
     if (!alive) return;
     const dt = Math.min(.05, (now - last) / 1000); last = now;
-    if (animating) { const k = Math.min(1, (now - t0) / dur); items.forEach(it => place(it, ease(k))); paint(k); if (k >= 1) { animating = false; paint(1); } }
-    const pulse = .55 + .45 * Math.sin(now / 320);
+    if (animating) { const k = Math.min(1, (now - t0) / dur); items.forEach(it => place(it, ease(k))); if (k >= 1) animating = false; }
+    if (camAnim) {
+      const k = Math.min(1, (now - camAnim.t0) / 900), e = ease(k);
+      controls.target.lerpVectors(camAnim.ft, camAnim.tt, e); camera.position.lerpVectors(camAnim.fp, camAnim.tp, e);
+      camera.zoom = camAnim.fz + (camAnim.tz - camAnim.fz) * e; camera.updateProjectionMatrix(); if (k >= 1) camAnim = null;
+    }
+    const pulse = .55 + .45 * Math.sin(now / 300);
     for (const it of items) {
-      if (it.ring) it.ring.material.opacity = pulse;
-      it.mesh.material.emissive.setScalar(sel && it.p.id === sel ? .25 * pulse : 0);
+      it.ring.material.opacity = pulse;
+      const on = sel && it.p.id === sel, show = on || animating || it.kind !== 'shelf' || it.p.moved;
+      it.tag.visible = show; it.dot.visible = show && !!it.p.mailer;
+      const sc = it.kind === 'shelf' && !on ? .75 : 1; it.tag.scale.set((on ? .56 : .42) * sc, (on ? .7 : .52) * sc, 1);
+      const c = state === 'next' ? it.p.next : it.p.now;
+      it.tag.material.color.set(animating ? '#ffffff' : (c === 'A_front_endcap' ? '#cfdcff' : c === 'C_other_display' ? '#e3ebfe' : '#ffffff'));
     }
     if (!reduce) moveShoppers(dt);
+    if (following && shoppers[0]) { const p = shoppers[0].root.position; controls.target.lerp(new THREE.Vector3(p.x, .9, p.z), .08);
+      camera.position.copy(controls.target).addScaledVector(VIEWS.cereal.dir.clone().normalize(), 60); }
     controls.update(); renderer.render(scene, camera); requestAnimationFrame(frame);
   }
+  function flyTo(target, dir, zoom) {
+    camAnim = { t0: performance.now(), ft: controls.target.clone(), fp: camera.position.clone(), fz: camera.zoom,
+      tt: target.clone(), tp: target.clone().addScaledVector(dir.clone().normalize(), 60), tz: zoom };
+  }
   resize(); go(state, false); requestAnimationFrame(frame);
-  if (!reduce) moveShoppers(0);
   return {
     go,
     get state() { return state; },
+    focus(name) {
+      following = name === 'follow';
+      if (following) { if (shoppers[0]) flyTo(shoppers[0].root.position.clone(), VIEWS.cereal.dir, 2.8); return; }
+      const v = VIEWS[name]; if (v) { view = v; flyTo(v.target, v.dir, v.zoom); }
+    },
+    setHighlight,
+    setView(name) { view = VIEWS[name] || view; placeCamera(view); },
+    ready: () => loadAssets(),
+    shot(w, h) { renderer.setSize(w, h, false); camera.updateProjectionMatrix(); controls.update(); renderer.render(scene, camera); const u = renderer.domElement.toDataURL('image/jpeg', .86); resize(); return u; },
     select(id) {
       sel = sel === id ? null : id;
       const it = items.find(i => i.p.id === id);
-      if (sel && it) controls.target.copy(it.mesh.position); else controls.target.set(...home0.target);
+      if (sel && it) flyTo(it.g.position.clone(), VIEWS.cereal.dir, 3.4); else flyTo(view.target, view.dir, view.zoom);
       return sel;
     },
-    screenPos(id) {
-      const it = items.find(i => i.p.id === id); if (!it) return null;
-      const v = it.mesh.position.clone().project(camera), r = canvas.getBoundingClientRect();
-      return [(v.x + 1) / 2 * r.width, (1 - v.y) / 2 * r.height];
-    },
-    dispose() { alive = false; ro.disconnect(); renderer.dispose(); el.removeChild(canvas); },
+    dispose() { alive = false; ro.disconnect(); shoppers.forEach(s => s.mixer.stopAllAction()); renderer.dispose(); el.removeChild(renderer.domElement); },
   };
+}
+
+// Live card pictures: one offscreen store, one render per request, cached for the session.
+const shotCache = new Map();
+export async function snapshots(data, list, w = 640, h = 300) {
+  const todo = list.filter(x => !shotCache.has(x.key));
+  if (todo.length) {
+    const host = document.createElement('div');
+    host.style.cssText = `position:fixed;left:-10000px;top:0;width:${w}px;height:${h}px`;
+    document.body.appendChild(host);
+    const s3 = mountStore(host, data, { shoppers: 26, state: 'now', rings: false });
+    await s3.ready(); await new Promise(r => setTimeout(r, 900));
+    for (const x of todo) {
+      s3.setHighlight(x.highlight); s3.setView(x.view || 'card'); if (x.state) s3.go(x.state, false);
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      shotCache.set(x.key, s3.shot(w * 2, h * 2));
+    }
+    s3.dispose(); host.remove();
+  }
+  return Object.fromEntries(list.map(x => [x.key, shotCache.get(x.key)]));
 }

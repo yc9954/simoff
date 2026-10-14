@@ -58,7 +58,7 @@ class Handler(SimpleHTTPRequestHandler):
         super().__init__(*a, directory=str(STATIC), **k)
 
     def log_message(self, fmt, *args):
-        if '/api/' in (args[0] if args else ''):
+        if '/api/' in str(args[0] if args else ''):
             sys.stderr.write('%s\n' % (fmt % args))
 
     def send(self, code, body, ctype='application/json; charset=utf-8'):

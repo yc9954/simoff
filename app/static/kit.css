@@ -1,5 +1,10 @@
-/* Obolus kit, as the storyboard uses it (fonts load from Google Fonts / jsDelivr in index.html) */
+/* Obolus kit exactly as the storyboard boards use it (union of every board's style block). */
 body{margin:0}
+@font-face{font-family:"Pretendard";font-weight:400 800;font-display:swap;src:url("fonts/pretendard-ko.woff2") format("woff2-variations");unicode-range:U+1100-11FF,U+3130-318F,U+A960-A97F,U+AC00-D7A3,U+D7B0-D7FF,U+3000-303F,U+FF00-FFEF}
+@font-face{font-family:"Instrument Sans";font-weight:400 700;font-display:swap;src:url("fonts/instrument-sans.woff2") format("woff2")}
+@font-face{font-family:"GeistMono";font-weight:100 900;font-display:swap;src:url("fonts/geist-mono.woff2") format("woff2")}
+@font-face{font-family:"Host Grotesk";font-weight:300 800;font-display:swap;src:url("fonts/host-grotesk.woff2") format("woff2")}
+
 .ob{--bg:#fff;--fg:#000;--card:#f2f5f6;--muted-2:#edf0f2;--border:#d8dddf;--mfg:#4d5353;--primary:#171717;--sidebar:#eaecee;--sb-border:#dcdfe1;--red:#e40014;--real:#000;--ours:#0f766e;--jev:#6d5bd0;--persona:#f99c00;
 background:var(--bg);color:var(--fg);font-family:"Instrument Sans","Pretendard","GeistSans",system-ui,sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:-.003em;word-break:keep-all;overflow-wrap:break-word;box-sizing:border-box}
 .ob *{box-sizing:border-box;border-color:var(--border)}
@@ -58,3 +63,24 @@ background:var(--bg);color:var(--fg);font-family:"Instrument Sans","Pretendard",
 .glass-dark{background:rgba(28,28,29,.7);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid #262626}
 .glass-step{background:rgba(255,255,255,.055);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.1)}
 .fx{position:absolute;inset:0}
+.fx .absolute,.fx.absolute{position:absolute}.fx .inset-0{inset:0}.fx .overflow-hidden{overflow:hidden}.fx .block{display:block}.fx .size-full{width:100%;height:100%}.fx .pointer-events-none{pointer-events:none}
+.gcard{position:relative;overflow:hidden;border-radius:10px;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
+.gcard>.gtex,.gcard>.gshade{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.gcard>.gshade{background:linear-gradient(to bottom,rgba(0,0,0,.05),rgba(0,0,0,.2),rgba(0,0,0,.45))}
+.gcard>.gbody{position:relative;z-index:1}
+.gpill{display:inline-flex;align-self:flex-start;border-radius:6px;background:rgba(255,255,255,.9);padding:2px 6px;font-family:"GeistMono",monospace;font-size:11px;font-weight:500;color:#000;box-shadow:0 1px 2px rgba(20,20,25,.18)}
+.gtext{text-shadow:0 1px 8px rgba(31,10,44,.28)}
+.d3{position:relative;isolation:isolate;overflow:hidden;border-radius:16px;border:1px solid rgba(255,255,255,.1);color:#fff;padding:20px;box-shadow:0 3px 10px -4px rgba(12,12,16,.38)}
+.d3::before{content:"";position:absolute;inset:0;opacity:.12;pointer-events:none;background-image:radial-gradient(circle at center,rgba(255,255,255,.75) 0 .75px,transparent .9px);background-size:17px 17px;-webkit-mask-image:linear-gradient(135deg,#000,transparent 72%);mask-image:linear-gradient(135deg,#000,transparent 72%)}
+.d3>*{position:relative;z-index:1}
+@keyframes obulus-card-flow{from{transform:rotate(-18deg) translate3d(0,-22%,0)}to{transform:rotate(-18deg) translate3d(0,22%,0)}}
+@keyframes obulus-card-caustic{from{transform:rotate(-18deg) translate3d(0,16%,0)}to{transform:rotate(-18deg) translate3d(0,-16%,0)}}
+@keyframes obulus-card-fibre{from{background-position:0 0}to{background-position:92px 0}}
+.au{position:relative;isolation:isolate;aspect-ratio:1.586/1;width:100%;overflow:hidden;border-radius:24px;background:#100d21;color:#fff;box-shadow:0 28px 80px -34px rgba(48,35,105,.65)}
+.au>.au-l{position:absolute;pointer-events:none}
+.au-flow{inset:-95%;filter:blur(24px) saturate(1.08);animation:obulus-card-flow 24s linear infinite alternate}
+.au-caustic{inset:-70%;opacity:.6;mix-blend-mode:screen;filter:blur(8px);background:repeating-linear-gradient(180deg,transparent 0%,transparent 8%,rgba(255,255,255,.86) 9%,transparent 10%,transparent 21%);animation:obulus-card-caustic 18s linear infinite alternate}
+.au-fibre{inset:0;opacity:.25;mix-blend-mode:overlay;background-image:repeating-linear-gradient(98deg,transparent 0px,rgba(255,255,255,.25) 1px,transparent 2px,transparent 13px,rgba(0,0,0,.22) 14px,transparent 15px,transparent 23px);animation:obulus-card-fibre 30s linear infinite}
+.au-sheen{inset:0;background:linear-gradient(145deg,rgba(255,255,255,.28),transparent 23%,transparent 62%,rgba(7,4,20,.56))}
+.au-ring{inset:1px;border-radius:23px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+@media (prefers-reduced-motion:reduce){.au-flow,.au-caustic,.au-fibre{animation:none}}

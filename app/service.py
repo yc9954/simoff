@@ -178,7 +178,8 @@ def world(store_id):
     hh = v.groupby('household_id').agg(visits=('basket_id', 'size')).sort_values('visits', ascending=False)
     hh['buys'] = te.groupby('household_id').y.sum()
     first = te.drop_duplicates('household_id').set_index('household_id')
-    out = [{'household_id': str(h), 'visits_test': int(r.visits), 'cereal_buys_test': int(r.buys),
+    demo = _demo().index
+    out = [{'household_id': str(h), 'visits_test': int(r.visits), 'cereal_buys_test': int(r.buys), 'demographics': bool(h in demo),
             'state': {k: round(float(first.loc[h, k]), 4) for k in ['visits', 'avg_spend', 'cereal_visit_rate', 'disc_share', 'private_share', 'cereal_spend_share']}}
            for h, r in hh.head(40).iterrows()]
     daily = v.groupby('date').size()
@@ -374,7 +375,8 @@ def report():
     r = json.loads((EVAL / 'report_numbers.json').read_text())
     v = json.loads((SIM / 'results' / 'validation.json').read_text())
     return {'recommendation': 'A_front_endcap', 'label': LABEL['A_front_endcap'], 'numbers': r,
-            'effects': v['effects'], 'reproduction': v['report_reproduction'], 'auc': v['engines']['calibrated']['per_decision']['auc']}
+            'effects': v['effects'], 'reproduction': v['report_reproduction'],
+            'auc': json.loads((EVAL / 'jev_calib_results.json').read_text())['engines']['gbdt_calibrated']['auc']}   # the evaluation's AUC, same as the sidebar
 
 
 # ---------------------------------------------------------------- LLM (question structuring, explanations, persona)
