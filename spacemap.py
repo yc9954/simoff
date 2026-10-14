@@ -130,7 +130,7 @@ def render_svg(m, title, changes=None, layout=None):
         out.append(f'<rect x="{ax + 6}" y="{aisle_bot + 8}" width="{aisle_w - 12}" height="28" rx="3" fill="#ffffff" stroke="#3B73FF" stroke-opacity=".5"/>')  # front end cap
         slots[('A', i)] = (ax + 10, aisle_bot + 14)
         if a['category_home']:
-            slots['home'] = (ax + 10, aisle_top + 44, aisle_w - 20)
+            slots['home'] = (ax + 10, aisle_top + 58, aisle_w - 20)
     out.append(f'<text x="{x0 + 18}" y="{aisle_bot + 52}" font-size="10" fill="#3B73FF">앞쪽 엔드캡 줄</text>')
     # front band: front-of-store display, secondary displays, entrance, checkout
     fy = y0 + h - 100

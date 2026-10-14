@@ -12,7 +12,7 @@
   ],
   "draws": 200,
   "seed": 42,
-  "seconds": 19.3,
+  "seconds": 90.4,
   "households": 2123,
   "stores": 109,
   "products": 25,
@@ -177,7 +177,7 @@
     },
     {
      "date": "2017-11-29",
-     "expected_units": 11.982086435686785,
+     "expected_units": 11.982086435686787,
      "simulated_units": 8,
      "simulated_revenue": 26.220000000000006
     },
@@ -225,7 +225,7 @@
     },
     {
      "date": "2017-12-07",
-     "expected_units": 14.24349259309092,
+     "expected_units": 14.243492593090922,
      "simulated_units": 12,
      "simulated_revenue": 43.68000000000001
     },
@@ -243,7 +243,7 @@
     },
     {
      "date": "2017-12-10",
-     "expected_units": 17.28328903091955,
+     "expected_units": 17.283289030919555,
      "simulated_units": 12,
      "simulated_revenue": 46.78000000000001
     },
@@ -369,7 +369,7 @@
     },
     {
      "date": "2018-01-01",
-     "expected_units": 2.7848637381487746,
+     "expected_units": 2.784863738148775,
      "simulated_units": 3,
      "simulated_revenue": 11.27
     }
@@ -537,7 +537,7 @@
     },
     {
      "slot": "2017-11-21 14",
-     "expected_units": 0.4354613958673486,
+     "expected_units": 0.43546139586734867,
      "simulated_units": 0
     },
     {
@@ -587,12 +587,12 @@
     },
     {
      "slot": "2017-11-22 00",
-     "expected_units": 1.423844022932119,
+     "expected_units": 1.4238440229321194,
      "simulated_units": 0
     },
     {
      "slot": "2017-11-22 01",
-     "expected_units": 1.445168315470048,
+     "expected_units": 1.4451683154700483,
      "simulated_units": 3
     },
     {
@@ -612,7 +612,7 @@
     },
     {
      "slot": "2017-11-22 05",
-     "expected_units": 0.31316104303918885,
+     "expected_units": 0.3131610430391889,
      "simulated_units": 0
     },
     {
@@ -697,12 +697,12 @@
     },
     {
      "slot": "2017-11-22 23",
-     "expected_units": 2.1323436622442093,
+     "expected_units": 2.13234366224421,
      "simulated_units": 2
     },
     {
      "slot": "2017-11-23 00",
-     "expected_units": 2.3127037657465648,
+     "expected_units": 2.312703765746565,
      "simulated_units": 1
     },
     {
@@ -857,7 +857,7 @@
     },
     {
      "slot": "2017-11-24 20",
-     "expected_units": 1.2051238737782215,
+     "expected_units": 1.2051238737782217,
      "simulated_units": 0
     },
     {
@@ -912,7 +912,7 @@
     },
     {
      "slot": "2017-11-25 11",
-     "expected_units": 0.2179628838651836,
+     "expected_units": 0.21796288386518362,
      "simulated_units": 0
     },
     {
@@ -1082,7 +1082,7 @@
     },
     {
      "slot": "2017-11-26 23",
-     "expected_units": 1.570430683596369,
+     "expected_units": 1.5704306835963693,
      "simulated_units": 2
     },
     {
@@ -1197,7 +1197,7 @@
     },
     {
      "slot": "2017-11-27 22",
-     "expected_units": 2.213245659398012,
+     "expected_units": 2.2132456593980123,
      "simulated_units": 3
     },
     {
@@ -1282,7 +1282,7 @@
     },
     {
      "slot": "2017-11-28 18",
-     "expected_units": 1.4525902893223894,
+     "expected_units": 1.4525902893223896,
      "simulated_units": 1
     },
     {
@@ -1307,7 +1307,7 @@
     },
     {
      "slot": "2017-11-28 23",
-     "expected_units": 1.7035726261216393,
+     "expected_units": 1.7035726261216395,
      "simulated_units": 1
     },
     {
@@ -1737,7 +1737,7 @@
     },
     {
      "slot": "2017-12-02 21",
-     "expected_units": 1.5768443047842162,
+     "expected_units": 1.5768443047842164,
      "simulated_units": 1
     },
     {
@@ -1842,7 +1842,7 @@
     },
     {
      "slot": "2017-12-03 21",
-     "expected_units": 1.8002607369107746,
+     "expected_units": 1.8002607369107755,
      "simulated_units": 2
     },
     {
@@ -1922,7 +1922,7 @@
     },
     {
      "slot": "2017-12-04 13",
-     "expected_units": 0.26796051181198943,
+     "expected_units": 0.2679605118119895,
      "simulated_units": 0
     },
     {
@@ -2042,7 +2042,7 @@
     },
     {
      "slot": "2017-12-05 16",
-     "expected_units": 0.6346419080466981,
+     "expected_units": 0.6346419080466982,
      "simulated_units": 0
     },
     {
@@ -2067,17 +2067,17 @@
     },
     {
      "slot": "2017-12-05 21",
-     "expected_units": 1.9295433756744,
+     "expected_units": 1.9295433756744005,
      "simulated_units": 4
     },
     {
      "slot": "2017-12-05 22",
-     "expected_units": 2.63901773763122,
+     "expected_units": 2.6390177376312205,
      "simulated_units": 1
     },
     {
      "slot": "2017-12-05 23",
-     "expected_units": 1.9092998622489792,
+     "expected_units": 1.9092998622489794,
      "simulated_units": 4
     },
     {
@@ -2142,7 +2142,7 @@
     },
     {
      "slot": "2017-12-06 15",
-     "expected_units": 1.1538588168566712,
+     "expected_units": 1.1538588168566715,
      "simulated_units": 1
     },
     {
@@ -2167,12 +2167,12 @@
     },
     {
      "slot": "2017-12-06 20",
-     "expected_units": 2.0124904066694413,
+     "expected_units": 2.0124904066694422,
      "simulated_units": 3
     },
     {
      "slot": "2017-12-06 21",
-     "expected_units": 1.9768857078115933,
+     "expected_units": 1.9768857078115938,
      "simulated_units": 1
     },
     {
@@ -2262,7 +2262,7 @@
     },
     {
      "slot": "2017-12-07 17",
-     "expected_units": 0.5077260624263406,
+     "expected_units": 0.5077260624263407,
      "simulated_units": 0
     },
     {
@@ -2277,12 +2277,12 @@
     },
     {
      "slot": "2017-12-07 20",
-     "expected_units": 1.1550183680445827,
+     "expected_units": 1.155018368044583,
      "simulated_units": 1
     },
     {
      "slot": "2017-12-07 21",
-     "expected_units": 1.5424300339754422,
+     "expected_units": 1.5424300339754426,
      "simulated_units": 1
     },
     {
@@ -2297,7 +2297,7 @@
     },
     {
      "slot": "2017-12-08 00",
-     "expected_units": 0.8739227030168977,
+     "expected_units": 0.8739227030168978,
      "simulated_units": 2
     },
     {
@@ -2317,7 +2317,7 @@
     },
     {
      "slot": "2017-12-08 04",
-     "expected_units": 0.41893545130756843,
+     "expected_units": 0.4189354513075685,
      "simulated_units": 0
     },
     {
@@ -2362,7 +2362,7 @@
     },
     {
      "slot": "2017-12-08 17",
-     "expected_units": 1.3490910866881478,
+     "expected_units": 1.349091086688148,
      "simulated_units": 2
     },
     {
@@ -2472,17 +2472,17 @@
     },
     {
      "slot": "2017-12-09 17",
-     "expected_units": 1.2187049530783185,
+     "expected_units": 1.2187049530783187,
      "simulated_units": 1
     },
     {
      "slot": "2017-12-09 18",
-     "expected_units": 1.8097179798627867,
+     "expected_units": 1.809717979862787,
      "simulated_units": 2
     },
     {
      "slot": "2017-12-09 19",
-     "expected_units": 1.1804772018354415,
+     "expected_units": 1.1804772018354417,
      "simulated_units": 1
     },
     {
@@ -2497,12 +2497,12 @@
     },
     {
      "slot": "2017-12-09 22",
-     "expected_units": 2.2537907797411214,
+     "expected_units": 2.253790779741122,
      "simulated_units": 5
     },
     {
      "slot": "2017-12-09 23",
-     "expected_units": 1.7421861754229129,
+     "expected_units": 1.742186175422913,
      "simulated_units": 1
     },
     {
@@ -2602,7 +2602,7 @@
     },
     {
      "slot": "2017-12-10 22",
-     "expected_units": 2.1879510239224116,
+     "expected_units": 2.187951023922412,
      "simulated_units": 1
     },
     {
@@ -2667,7 +2667,7 @@
     },
     {
      "slot": "2017-12-11 15",
-     "expected_units": 0.8833801020730712,
+     "expected_units": 0.8833801020730713,
      "simulated_units": 0
     },
     {
@@ -2677,7 +2677,7 @@
     },
     {
      "slot": "2017-12-11 17",
-     "expected_units": 1.328368518402813,
+     "expected_units": 1.3283685184028131,
      "simulated_units": 1
     },
     {
@@ -2692,7 +2692,7 @@
     },
     {
      "slot": "2017-12-11 20",
-     "expected_units": 1.8112147909617193,
+     "expected_units": 1.8112147909617204,
      "simulated_units": 1
     },
     {
@@ -2702,7 +2702,7 @@
     },
     {
      "slot": "2017-12-11 22",
-     "expected_units": 2.0620181892241183,
+     "expected_units": 2.0620181892241187,
      "simulated_units": 5
     },
     {
@@ -2807,7 +2807,7 @@
     },
     {
      "slot": "2017-12-12 21",
-     "expected_units": 1.3433080908261492,
+     "expected_units": 1.3433080908261494,
      "simulated_units": 0
     },
     {
@@ -2842,7 +2842,7 @@
     },
     {
      "slot": "2017-12-13 04",
-     "expected_units": 0.3971570355950122,
+     "expected_units": 0.39715703559501225,
      "simulated_units": 0
     },
     {
@@ -2897,7 +2897,7 @@
     },
     {
      "slot": "2017-12-13 16",
-     "expected_units": 0.44859171943558807,
+     "expected_units": 0.4485917194355881,
      "simulated_units": 1
     },
     {
@@ -2927,7 +2927,7 @@
     },
     {
      "slot": "2017-12-13 22",
-     "expected_units": 1.8995932693740463,
+     "expected_units": 1.8995932693740465,
      "simulated_units": 0
     },
     {
@@ -3022,7 +3022,7 @@
     },
     {
      "slot": "2017-12-14 18",
-     "expected_units": 1.2358879497922555,
+     "expected_units": 1.2358879497922557,
      "simulated_units": 1
     },
     {
@@ -3032,7 +3032,7 @@
     },
     {
      "slot": "2017-12-14 20",
-     "expected_units": 0.7289605897345296,
+     "expected_units": 0.7289605897345297,
      "simulated_units": 0
     },
     {
@@ -3047,12 +3047,12 @@
     },
     {
      "slot": "2017-12-14 23",
-     "expected_units": 1.3631285417376378,
+     "expected_units": 1.363128541737638,
      "simulated_units": 2
     },
     {
      "slot": "2017-12-15 00",
-     "expected_units": 1.5069901713076912,
+     "expected_units": 1.5069901713076916,
      "simulated_units": 3
     },
     {
@@ -3117,7 +3117,7 @@
     },
     {
      "slot": "2017-12-15 15",
-     "expected_units": 1.554332931994687,
+     "expected_units": 1.554332931994688,
      "simulated_units": 3
     },
     {
@@ -3147,7 +3147,7 @@
     },
     {
      "slot": "2017-12-15 21",
-     "expected_units": 1.7826341128943635,
+     "expected_units": 1.7826341128943637,
      "simulated_units": 1
     },
     {
@@ -3232,7 +3232,7 @@
     },
     {
      "slot": "2017-12-16 17",
-     "expected_units": 1.2557628759347648,
+     "expected_units": 1.255762875934765,
      "simulated_units": 1
     },
     {
@@ -3247,7 +3247,7 @@
     },
     {
      "slot": "2017-12-16 20",
-     "expected_units": 1.1480911934999012,
+     "expected_units": 1.1480911934999016,
      "simulated_units": 1
     },
     {
@@ -3257,12 +3257,12 @@
     },
     {
      "slot": "2017-12-16 22",
-     "expected_units": 1.4792950174718782,
+     "expected_units": 1.4792950174718786,
      "simulated_units": 3
     },
     {
      "slot": "2017-12-16 23",
-     "expected_units": 1.347748584339467,
+     "expected_units": 1.3477485843394672,
      "simulated_units": 1
     },
     {
@@ -3417,7 +3417,7 @@
     },
     {
      "slot": "2017-12-18 11",
-     "expected_units": 0.18842404557832468,
+     "expected_units": 0.1884240455783247,
      "simulated_units": 1
     },
     {
@@ -3452,7 +3452,7 @@
     },
     {
      "slot": "2017-12-18 18",
-     "expected_units": 0.7771009610113107,
+     "expected_units": 0.7771009610113108,
      "simulated_units": 1
     },
     {
@@ -3467,7 +3467,7 @@
     },
     {
      "slot": "2017-12-18 21",
-     "expected_units": 2.029800366161894,
+     "expected_units": 2.0298003661618944,
      "simulated_units": 3
     },
     {
@@ -3577,7 +3577,7 @@
     },
     {
      "slot": "2017-12-19 19",
-     "expected_units": 1.0701798520035228,
+     "expected_units": 1.070179852003523,
      "simulated_units": 1
     },
     {
@@ -3612,7 +3612,7 @@
     },
     {
      "slot": "2017-12-20 02",
-     "expected_units": 1.4377452741665664,
+     "expected_units": 1.437745274166567,
      "simulated_units": 0
     },
     {
@@ -3812,7 +3812,7 @@
     },
     {
      "slot": "2017-12-21 20",
-     "expected_units": 2.276317039168086,
+     "expected_units": 2.2763170391680863,
      "simulated_units": 2
     },
     {
@@ -3892,7 +3892,7 @@
     },
     {
      "slot": "2017-12-22 15",
-     "expected_units": 1.0899381798318966,
+     "expected_units": 1.0899381798318968,
      "simulated_units": 1
     },
     {
@@ -3917,7 +3917,7 @@
     },
     {
      "slot": "2017-12-22 20",
-     "expected_units": 1.3607291848442389,
+     "expected_units": 1.360729184844239,
      "simulated_units": 2
     },
     {
@@ -3927,7 +3927,7 @@
     },
     {
      "slot": "2017-12-22 22",
-     "expected_units": 1.9712964988518316,
+     "expected_units": 1.9712964988518318,
      "simulated_units": 1
     },
     {
@@ -3962,7 +3962,7 @@
     },
     {
      "slot": "2017-12-23 05",
-     "expected_units": 0.28831881150698996,
+     "expected_units": 0.28831881150699,
      "simulated_units": 0
     },
     {
@@ -4047,7 +4047,7 @@
     },
     {
      "slot": "2017-12-23 23",
-     "expected_units": 2.9398971771309648,
+     "expected_units": 2.9398971771309657,
      "simulated_units": 3
     },
     {
@@ -4112,7 +4112,7 @@
     },
     {
      "slot": "2017-12-24 13",
-     "expected_units": 0.488315273749345,
+     "expected_units": 0.4883152737493451,
      "simulated_units": 0
     },
     {
@@ -4127,12 +4127,12 @@
     },
     {
      "slot": "2017-12-24 16",
-     "expected_units": 1.745506530043154,
+     "expected_units": 1.7455065300431545,
      "simulated_units": 0
     },
     {
      "slot": "2017-12-24 17",
-     "expected_units": 2.1877246532472996,
+     "expected_units": 2.1877246532473,
      "simulated_units": 4
     },
     {
@@ -4152,12 +4152,12 @@
     },
     {
      "slot": "2017-12-24 21",
-     "expected_units": 2.553090620364329,
+     "expected_units": 2.5530906203643293,
      "simulated_units": 4
     },
     {
      "slot": "2017-12-24 22",
-     "expected_units": 1.9387948542138362,
+     "expected_units": 1.9387948542138367,
      "simulated_units": 2
     },
     {
@@ -4297,7 +4297,7 @@
     },
     {
      "slot": "2017-12-27 16",
-     "expected_units": 0.8080049731890038,
+     "expected_units": 0.8080049731890039,
      "simulated_units": 0
     },
     {
@@ -4437,7 +4437,7 @@
     },
     {
      "slot": "2017-12-29 00",
-     "expected_units": 1.5395131639029183,
+     "expected_units": 1.5395131639029185,
      "simulated_units": 1
     },
     {
@@ -4527,7 +4527,7 @@
     },
     {
      "slot": "2017-12-29 20",
-     "expected_units": 1.5102951467818124,
+     "expected_units": 1.510295146781813,
      "simulated_units": 1
     },
     {
@@ -4537,12 +4537,12 @@
     },
     {
      "slot": "2017-12-29 22",
-     "expected_units": 2.4569988473300155,
+     "expected_units": 2.4569988473300164,
      "simulated_units": 3
     },
     {
      "slot": "2017-12-29 23",
-     "expected_units": 1.2781688322496276,
+     "expected_units": 1.2781688322496279,
      "simulated_units": 0
     },
     {
@@ -4642,12 +4642,12 @@
     },
     {
      "slot": "2017-12-30 22",
-     "expected_units": 2.2237392066029176,
+     "expected_units": 2.223739206602918,
      "simulated_units": 0
     },
     {
      "slot": "2017-12-30 23",
-     "expected_units": 2.5619151536894336,
+     "expected_units": 2.561915153689434,
      "simulated_units": 2
     },
     {
@@ -4657,7 +4657,7 @@
     },
     {
      "slot": "2017-12-31 01",
-     "expected_units": 1.822956598794955,
+     "expected_units": 1.8229565987949554,
      "simulated_units": 2
     },
     {
@@ -4737,7 +4737,7 @@
     },
     {
      "slot": "2017-12-31 20",
-     "expected_units": 1.2880537470957298,
+     "expected_units": 1.28805374709573,
      "simulated_units": 1
     },
     {
@@ -4919,7 +4919,7 @@
      "size": "17 OZ",
      "shelf_price": 3.1900000000000004,
      "decisions": 17533,
-     "expected_units": 20.20575541904704,
+     "expected_units": 20.205755419047044,
      "simulated_units": 20
     },
     {
@@ -5037,8 +5037,8 @@
     {
      "segment": "이 상품을 산 적 있는 가구",
      "decisions": 20579,
-     "expected_units": 213.09343913615132,
-     "per_1000_decisions": 10.354897669281856
+     "expected_units": 213.09343913615135,
+     "per_1000_decisions": 10.354897669281858
     },
     {
      "segment": "이 상품을 산 적 없는 가구",
@@ -5049,7 +5049,7 @@
     {
      "segment": "시리얼 자주 삼 (상위 1/3)",
      "decisions": 146275,
-     "expected_units": 395.4845684395115,
+     "expected_units": 395.4845684395116,
      "per_1000_decisions": 2.703705817395396
     },
     {

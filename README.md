@@ -21,13 +21,16 @@
 pip install -r requirements.txt
 python sim.py                       # 판단 상품 1개 · 48–53주 · 평소대로/엔드캡/전단/기타 진열
 python validate.py                  # 본 적 없는 6주 검증 → VALIDATION.md
+python cycle.py --dataset dunnhumby # 한 사이클: 데이터 → ① 맵 → ② 시뮬레이션 → ③ 검증 → ④ 최종 배치 → runs/dunnhumby/REPORT.md
+python cycle.py --data 내매장/ --weeks 4   # 내 CSV 3개: 마지막 주 배치 기준, 앞으로 4주 Poisson 방문 예측
 ```
+
+`runs/<이름>/`: `01_map.{json,svg,png}` 지금 배치 · `02_ledger.json` 전체 장부(커밋 안 함) · `03_validation.json` 그 매장 실제 vs 시뮬레이션 · `04_final_map.{json,svg,png}` 제안 배치(바뀌는 상품 강조) · `04_ledger.json` 실제/고정/제안 비교 · `REPORT.md`. 표와 모델 캐시는 `runs/<이름>/data/`.
 
 ## 남은 작업
 
-- `cycle.py`: 데이터 선택(`--dataset dunnhumby` 또는 `--data 폴더`) → 표 → ① 맵(47주 기준) → ② 시뮬레이션 → ③ 매장 단위 검증 → ④ 최종 맵(SVG·JSON, 바뀌는 상품 강조) → REPORT.md 를 한 번에. dunnhumby는 47주까지로 맵·배치를 정하고 48–53주로 백테스트, 내 데이터는 마지막 주 기준 Poisson 방문으로 앞으로 몇 주 예측.
-- `sim.load` / `train_engines`가 실행 폴더별 표·모델 캐시를 받도록(`runs/<이름>/data`).
-- 검증 재실행: 전단 효과가 대조 매장이 없을 때 `nan` 대신 "판정 불가"로 나오도록 고쳤으나 아직 다시 돌리지 않음.
+- 내 데이터(`--data`) 경로는 형식 검사와 코드 경로만 있고 실제 매장 CSV로 돌려본 적 없음.
+- 첫 사이클 결과(매장 367)는 `runs/dunnhumby/REPORT.md`. 이 매장은 6주 판매가 18건뿐이라 매장 단위 검증이 거칠다(총량 범위 밖, 6주 중 5주 범위 안).
 
 ## 검증 요약 (48–53주, 보정 모델)
 

@@ -121,14 +121,14 @@
    "stores": {
     "n": 109,
     "spearman": 0.7119951373506995,
-    "mean_abs_error_units": 2.4071495009055983
+    "mean_abs_error_units": 2.4071495009055974
    },
    "by_segment": [
     {
      "segment": "이 상품을 산 적 있는 가구",
      "decisions": 20579,
-     "expected_units": 213.09343913615132,
-     "per_1000_decisions": 10.354897669281856,
+     "expected_units": 213.09343913615135,
+     "per_1000_decisions": 10.354897669281858,
      "actual_units": 186
     },
     {
@@ -141,7 +141,7 @@
     {
      "segment": "시리얼 자주 삼 (상위 1/3)",
      "decisions": 146275,
-     "expected_units": 395.4845684395115,
+     "expected_units": 395.4845684395116,
      "per_1000_decisions": 2.703705817395396,
      "actual_units": 393
     },
@@ -552,13 +552,7 @@
   },
   "B_mailer_only": {
    "label": "전단",
-   "actual": {
-    "lift": NaN,
-    "lo": NaN,
-    "hi": NaN,
-    "cells": 3,
-    "buys_in_condition": 4
-   },
+   "actual": null,
    "simulated": {
     "calibrated": 1.6786181478068802,
     "no_promo": 1.0,

@@ -153,13 +153,13 @@ def replay_schedule(rows, weeks, products='all'):
     return s.reset_index(drop=True)
 
 
-def poisson_schedule(rows, horizon_weeks, products='all', seed=42, start_week=54):
-    """Future visits: each household visits Poisson(its weekly rate in weeks 27-47) times a week,
+def poisson_schedule(rows, horizon_weeks, products='all', seed=42, start_week=54, rate_weeks=(27, 47)):
+    """Future visits: each household visits Poisson(its weekly rate in `rate_weeks`) times a week,
     at its usual store, on a weekday and hour drawn from its own past visits. State is unchanged."""
-    past = rows[rows.week.between(27, 47)]
+    past = rows[rows.week.between(*rate_weeks)]
     visits = past.drop_duplicates('basket_id')[['basket_id', 'household_id', 'store_id', 'date', 'hour']]
     visits = visits.assign(weekday=pd.to_datetime(visits.date).dt.weekday)
-    rate = visits.groupby('household_id').size() / 21
+    rate = visits.groupby('household_id').size() / (rate_weeks[1] - rate_weeks[0] + 1)
     home = visits.groupby('household_id').store_id.agg(lambda s: s.mode().iloc[0])
     rng = np.random.default_rng(seed)
     last = pd.to_datetime(rows.date.max())

@@ -1,0 +1,154 @@
+{
+ "store_id": "367",
+ "weeks": [
+  48,
+  53
+ ],
+ "baseline": "current",
+ "plans": {
+  "actual": {
+   "label": "실제 진열 그대로",
+   "expected_units": 11.832735594426905,
+   "mc_p05": 7.0,
+   "mc_p95": 17.0,
+   "expected_revenue": 41.6455735068284,
+   "baseline": "current",
+   "lift": 0.878065761842093,
+   "extra_units": -1.6431748767922727,
+   "extra_revenue": -2.255532014362501,
+   "share_of_draws_above_baseline": 0.145
+  },
+  "current": {
+   "label": "47주 배치 고정",
+   "expected_units": 13.475910471219178,
+   "mc_p05": 8.0,
+   "mc_p95": 20.049999999999983,
+   "expected_revenue": 43.9011055211909,
+   "baseline": "current",
+   "lift": 1.0,
+   "extra_units": 0.0,
+   "extra_revenue": 0.0,
+   "share_of_draws_above_baseline": 0.0
+  },
+  "proposed": {
+   "label": "제안 배치",
+   "expected_units": 19.696508174037596,
+   "mc_p05": 13.0,
+   "mc_p95": 26.0,
+   "expected_revenue": 72.97833144744808,
+   "baseline": "current",
+   "lift": 1.4616087140163105,
+   "extra_units": 6.220597702818418,
+   "extra_revenue": 29.077225926257185,
+   "share_of_draws_above_baseline": 0.97
+  }
+ },
+ "moves": [
+  {
+   "product_id": "1071342",
+   "from": "none",
+   "to": "C_other_display",
+   "from_label": "평소대로",
+   "to_label": "기타 진열"
+  },
+  {
+   "product_id": "829001",
+   "from": "none",
+   "to": "A_front_endcap",
+   "from_label": "평소대로",
+   "to_label": "앞쪽 엔드캡"
+  },
+  {
+   "product_id": "1135222",
+   "from": "none",
+   "to": "C_other_display",
+   "from_label": "평소대로",
+   "to_label": "기타 진열"
+  },
+  {
+   "product_id": "960732",
+   "from": "none",
+   "to": "C_other_display",
+   "from_label": "평소대로",
+   "to_label": "기타 진열"
+  },
+  {
+   "product_id": "837751",
+   "from": "none",
+   "to": "C_other_display",
+   "from_label": "평소대로",
+   "to_label": "기타 진열"
+  },
+  {
+   "product_id": "1027068",
+   "from": "none",
+   "to": "C_other_display",
+   "from_label": "평소대로",
+   "to_label": "기타 진열"
+  },
+  {
+   "product_id": "1060408",
+   "from": "none",
+   "to": "C_other_display",
+   "from_label": "평소대로",
+   "to_label": "기타 진열"
+  },
+  {
+   "product_id": "1046587",
+   "from": "none",
+   "to": "C_other_display",
+   "from_label": "평소대로",
+   "to_label": "기타 진열"
+  },
+  {
+   "product_id": "1133254",
+   "from": "none",
+   "to": "C_other_display",
+   "from_label": "평소대로",
+   "to_label": "기타 진열"
+  },
+  {
+   "product_id": "1006878",
+   "from": "none",
+   "to": "C_other_display",
+   "from_label": "평소대로",
+   "to_label": "기타 진열"
+  },
+  {
+   "product_id": "1054262",
+   "from": "C_other_display",
+   "to": "none",
+   "from_label": "기타 진열",
+   "to_label": "평소대로"
+  },
+  {
+   "product_id": "1122568",
+   "from": "C_other_display",
+   "to": "none",
+   "from_label": "기타 진열",
+   "to_label": "평소대로"
+  },
+  {
+   "product_id": "923673",
+   "from": "C_other_display",
+   "to": "none",
+   "from_label": "기타 진열",
+   "to_label": "평소대로"
+  },
+  {
+   "product_id": "849003",
+   "from": "C_other_display",
+   "to": "none",
+   "from_label": "기타 진열",
+   "to_label": "평소대로"
+  }
+ ],
+ "definitions": {
+  "units": "이 상품을 산 방문 수 (방문 1회에 몇 개를 샀는지는 세지 않음)",
+  "expected_units": "모든 결정의 확률 합",
+  "simulated_units": "0번 추첨으로 실제로 굴린 하루하루의 기록. 대표 방문과 3D 재생이 이 기록을 읽는다",
+  "mc_p05_p95": "200번 추첨의 5–95% 범위. 손님 운에 의한 흔들림만 담고, 모델 자체의 오차는 담지 않는다",
+  "revenue": "판매 방문 수 × 상품별 할인 전 가격 중간값 (USD)",
+  "same_luck": "모든 안이 같은 방문과 같은 (방문, 상품, 추첨)별 난수를 쓴다"
+ }
+}

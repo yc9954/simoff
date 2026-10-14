@@ -1,0 +1,496 @@
+{
+ "schema": "offline-sim-map/1",
+ "store_id": "367",
+ "as_of_week": 47,
+ "window_weeks": [
+  35,
+  47
+ ],
+ "category": "COLD CEREAL",
+ "category_department": "GROCERY",
+ "store": {
+  "visits": 1014,
+  "visits_per_week": 78.0,
+  "households": 127,
+  "sales": 36460.35,
+  "departments_not_drawn_share": 0.0697
+ },
+ "aisles": [
+  {
+   "id": "aisle-1",
+   "department": "GROCERY",
+   "sales_share": 0.4756,
+   "category_home": true
+  },
+  {
+   "id": "aisle-2",
+   "department": "DRUG GM",
+   "sales_share": 0.1404,
+   "category_home": false
+  },
+  {
+   "id": "aisle-3",
+   "department": "FUEL",
+   "sales_share": 0.0941,
+   "category_home": false
+  },
+  {
+   "id": "aisle-4",
+   "department": "PRODUCE",
+   "sales_share": 0.0774,
+   "category_home": false
+  },
+  {
+   "id": "aisle-5",
+   "department": "MEAT",
+   "sales_share": 0.0539,
+   "category_home": false
+  },
+  {
+   "id": "aisle-6",
+   "department": "DELI",
+   "sales_share": 0.0387,
+   "category_home": false
+  },
+  {
+   "id": "aisle-7",
+   "department": "MEAT-PCKGD",
+   "sales_share": 0.0263,
+   "category_home": false
+  },
+  {
+   "id": "aisle-8",
+   "department": "NUTRITION",
+   "sales_share": 0.0241,
+   "category_home": false
+  }
+ ],
+ "displays": [
+  {
+   "code": "1",
+   "label": "매장 앞",
+   "condition": "C_other_display",
+   "slots_all_median": 50.0,
+   "slots_all_p90": 123.40000000000002,
+   "category_slots_median": 0.0,
+   "category_slots_p90": 0.0,
+   "category_weeks_used": 0
+  },
+  {
+   "code": "2",
+   "label": "매장 뒤",
+   "condition": "C_other_display",
+   "slots_all_median": 117.0,
+   "slots_all_p90": 212.80000000000004,
+   "category_slots_median": 0.0,
+   "category_slots_p90": 0.0,
+   "category_weeks_used": 1
+  },
+  {
+   "code": "3",
+   "label": "앞쪽 엔드캡",
+   "condition": "A_front_endcap",
+   "slots_all_median": 82.0,
+   "slots_all_p90": 178.00000000000006,
+   "category_slots_median": 0.0,
+   "category_slots_p90": 0.0,
+   "category_weeks_used": 0
+  },
+  {
+   "code": "4",
+   "label": "통로 중간 엔드캡",
+   "condition": "C_other_display",
+   "slots_all_median": 387.0,
+   "slots_all_p90": 700.4000000000001,
+   "category_slots_median": 0.0,
+   "category_slots_p90": 0.8000000000000007,
+   "category_weeks_used": 2
+  },
+  {
+   "code": "5",
+   "label": "뒤쪽 엔드캡",
+   "condition": "C_other_display",
+   "slots_all_median": 117.0,
+   "slots_all_p90": 162.60000000000002,
+   "category_slots_median": 1.0,
+   "category_slots_p90": 3.8000000000000007,
+   "category_weeks_used": 7
+  },
+  {
+   "code": "6",
+   "label": "옆 통로 엔드캡",
+   "condition": "C_other_display",
+   "slots_all_median": 152.0,
+   "slots_all_p90": 443.40000000000003,
+   "category_slots_median": 0.0,
+   "category_slots_p90": 0.0,
+   "category_weeks_used": 1
+  },
+  {
+   "code": "7",
+   "label": "통로 안 진열",
+   "condition": "C_other_display",
+   "slots_all_median": 225.0,
+   "slots_all_p90": 467.00000000000006,
+   "category_slots_median": 0.0,
+   "category_slots_p90": 0.0,
+   "category_weeks_used": 0
+  },
+  {
+   "code": "9",
+   "label": "보조 진열대",
+   "condition": "C_other_display",
+   "slots_all_median": 221.0,
+   "slots_all_p90": 297.40000000000003,
+   "category_slots_median": 0.0,
+   "category_slots_p90": 2.400000000000002,
+   "category_weeks_used": 2
+  },
+  {
+   "code": "A",
+   "label": "선반 안 강조",
+   "condition": "C_other_display",
+   "slots_all_median": 151.0,
+   "slots_all_p90": 249.4,
+   "category_slots_median": 0.0,
+   "category_slots_p90": 2.0,
+   "category_weeks_used": 3
+  }
+ ],
+ "products": [
+  {
+   "n": 1,
+   "product_id": "1071342",
+   "brand": "National",
+   "type": "ALL FAMILY CEREAL",
+   "size": "12.25 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 2
+  },
+  {
+   "n": 2,
+   "product_id": "1054262",
+   "brand": "National",
+   "type": "KIDS CEREAL",
+   "size": "13 OZ",
+   "display_code": "5",
+   "display_label": "뒤쪽 엔드캡",
+   "condition": "C_other_display",
+   "mailer": "A",
+   "mailer_label": "안쪽 면 특집",
+   "visits_with_purchase_window": 3
+  },
+  {
+   "n": 3,
+   "product_id": "923673",
+   "brand": "National",
+   "type": "ADULT CEREAL",
+   "size": "14.5 OZ",
+   "display_code": "5",
+   "display_label": "뒤쪽 엔드캡",
+   "condition": "C_other_display",
+   "mailer": "A",
+   "mailer_label": "안쪽 면 특집",
+   "visits_with_purchase_window": 5
+  },
+  {
+   "n": 4,
+   "product_id": "1122568",
+   "brand": "National",
+   "type": "KIDS CEREAL",
+   "size": "13 OZ",
+   "display_code": "5",
+   "display_label": "뒤쪽 엔드캡",
+   "condition": "C_other_display",
+   "mailer": "A",
+   "mailer_label": "안쪽 면 특집",
+   "visits_with_purchase_window": 1
+  },
+  {
+   "n": 5,
+   "product_id": "849003",
+   "brand": "National",
+   "type": "ADULT CEREAL",
+   "size": "16 OZ",
+   "display_code": "5",
+   "display_label": "뒤쪽 엔드캡",
+   "condition": "C_other_display",
+   "mailer": "A",
+   "mailer_label": "안쪽 면 특집",
+   "visits_with_purchase_window": 1
+  },
+  {
+   "n": 6,
+   "product_id": "960732",
+   "brand": "National",
+   "type": "ALL FAMILY CEREAL",
+   "size": "14 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 7
+  },
+  {
+   "n": 7,
+   "product_id": "837751",
+   "brand": "National",
+   "type": "KIDS CEREAL",
+   "size": "12.2 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 0
+  },
+  {
+   "n": 8,
+   "product_id": "5590613",
+   "brand": "Private",
+   "type": "KIDS CEREAL",
+   "size": "32 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 0
+  },
+  {
+   "n": 9,
+   "product_id": "1046587",
+   "brand": "National",
+   "type": "KIDS CEREAL",
+   "size": "17 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 1
+  },
+  {
+   "n": 10,
+   "product_id": "1006878",
+   "brand": "National",
+   "type": "ALL FAMILY CEREAL",
+   "size": "18 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 1
+  },
+  {
+   "n": 11,
+   "product_id": "1130458",
+   "brand": "National",
+   "type": "KIDS CEREAL",
+   "size": "12.2 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 5
+  },
+  {
+   "n": 12,
+   "product_id": "1102067",
+   "brand": "National",
+   "type": "ALL FAMILY CEREAL",
+   "size": "8.9 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 0
+  },
+  {
+   "n": 13,
+   "product_id": "1040346",
+   "brand": "Private",
+   "type": "ALL FAMILY CEREAL",
+   "size": "18 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 2
+  },
+  {
+   "n": 14,
+   "product_id": "1027068",
+   "brand": "National",
+   "type": "KIDS CEREAL",
+   "size": "15 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 1
+  },
+  {
+   "n": 15,
+   "product_id": "5587656",
+   "brand": "Private",
+   "type": "KIDS CEREAL",
+   "size": "32 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 0
+  },
+  {
+   "n": 16,
+   "product_id": "1135222",
+   "brand": "National",
+   "type": "ALL FAMILY CEREAL",
+   "size": "23 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 0
+  },
+  {
+   "n": 17,
+   "product_id": "829001",
+   "brand": "National",
+   "type": "KIDS CEREAL",
+   "size": "11.25 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 0
+  },
+  {
+   "n": 18,
+   "product_id": "1133254",
+   "brand": "National",
+   "type": "KIDS CEREAL",
+   "size": "17 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 0
+  },
+  {
+   "n": 19,
+   "product_id": "5570408",
+   "brand": "National",
+   "type": "KIDS CEREAL",
+   "size": "17 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "A",
+   "mailer_label": "안쪽 면 특집",
+   "visits_with_purchase_window": 1
+  },
+  {
+   "n": 20,
+   "product_id": "856827",
+   "brand": "National",
+   "type": "ALL FAMILY CEREAL",
+   "size": "17 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 0
+  },
+  {
+   "n": 21,
+   "product_id": "843898",
+   "brand": "Private",
+   "type": "KIDS CEREAL",
+   "size": "14 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 0
+  },
+  {
+   "n": 22,
+   "product_id": "905636",
+   "brand": "National",
+   "type": "KIDS CEREAL",
+   "size": "16 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 0
+  },
+  {
+   "n": 23,
+   "product_id": "1060408",
+   "brand": "National",
+   "type": "ALL FAMILY CEREAL",
+   "size": "21 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 0
+  },
+  {
+   "n": 24,
+   "product_id": "1121384",
+   "brand": "National",
+   "type": "ALL FAMILY CEREAL",
+   "size": "21 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 2
+  },
+  {
+   "n": 25,
+   "product_id": "1075175",
+   "brand": "National",
+   "type": "KIDS CEREAL",
+   "size": "22 OZ",
+   "display_code": "0",
+   "display_label": "진열 없음",
+   "condition": "none",
+   "mailer": "0",
+   "mailer_label": "전단 없음",
+   "visits_with_purchase_window": 1
+  }
+ ],
+ "capacity": {
+  "A_front_endcap": 1,
+  "C_other_display": 9
+ },
+ "provenance": {
+  "zones": "data: department sales share and display codes this store used",
+  "counts": "data: distinct products per display type per week (median, 90th pct)",
+  "positions": "template: no coordinates exist in the data"
+ }
+}
