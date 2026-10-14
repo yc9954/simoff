@@ -284,3 +284,14 @@ img[data-shot]:not([src]) { color: transparent; background: linear-gradient(100d
 .grid9 { gap: 10px; }
 .main.stepv .tbl .th { padding: 8px 16px; }
 .main.stepv .tbl .tr { padding: 8px 16px; }
+/* 기록 연결: the space built in the chat on the left, its records on the right */
+.cn-screen { grid-template-columns: minmax(0,1.15fr) minmax(420px,1fr); gap: 24px; }
+.cn-side { gap: 14px; }
+.cn-drop { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border: 1px dashed rgba(0,0,0,.25); background: var(--card); cursor: pointer; }
+.cn-drop.over { border-color: #171717; background: #fff; }
+.cn-map { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cn-map .fit-list { flex: 0 1 auto; min-height: 0; }
+.cn-job { padding: 12px 14px; display: flex; align-items: center; gap: 10px; font-size: 13px; line-height: 1.5; }
+@media (max-width: 1100px) { .cn-screen { grid-template-columns: 1fr; } }
+.chat-new { display: none; }
+.chatting .chat-new { display: inline-flex; margin-left: auto; background: rgba(255,255,255,.7); }
