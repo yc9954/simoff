@@ -182,11 +182,11 @@ const VIEWS = {};
 
 // 시작 · the landing chat: the agent (Claude, rules without a key) reads the business, asks if it must, and builds the
 // space with tools; its cards, the 3D space, the edits and the decisions are drawn inside the conversation
-const EXAMPLES = [   // placeholder prompts: large, real decisions people would pay to get right
-  '전국 300개 매장 커피 체인이 픽업대를 입구 쪽으로 옮기려 해요. 대기 줄과 매출이 어떻게 바뀔까요?',
-  '글로벌 뷰티 브랜드가 서울 · 도쿄 · LA 플래그십에 신제품 체험존을 열어요. 어디에 둬야 구매로 이어질까요?',
-  '대형마트 체인이 여름 시즌 음료를 입구 엔드캡에 둘지, 전단에 실을지 정해야 해요.',
-  '10만 명이 오는 음악 페스티벌의 푸드 · 굿즈 부스 배치를 정하려 해요. 줄이 어디서 막힐까요?',
+const EXAMPLES = [   // placeholder prompts: openings people would pay to get right before the doors open
+  '성수동에 30평 카페를 열려고 해요. 픽업대를 입구 쪽에 둘지 안쪽에 둘지 열기 전에 보고 싶어요.',
+  '글로벌 뷰티 브랜드가 서울 · 도쿄 · LA에 플래그십을 열어요. 신제품 체험존을 어디에 둬야 구매로 이어질까요?',
+  '동네에 60평 슈퍼마켓을 열 예정이에요. 시즌 음료를 입구 엔드캡에 둘지, 전단에 실을지 정하고 싶어요.',
+  '10만 명이 오는 음악 페스티벌에 푸드 · 굿즈 부스를 열어요. 문 열기 전에 줄이 어디서 막힐지 알고 싶어요.',
 ];
 const OPS_TXT = { duplicate: '추가', relabel: '행사 자리', stations: '계산 자리', remove: '뺌', move: '옮김' };
 const rich = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split(/\n{2,}/).map(p => {
