@@ -50,6 +50,7 @@ import service  # noqa: E402
 import world  # noqa: E402
 import chat  # noqa: E402
 import decision_models  # noqa: E402
+import decide_chat  # noqa: E402
 
 STATIC = Path(__file__).resolve().parent / 'static'
 
@@ -127,6 +128,7 @@ class Handler(SimpleHTTPRequestHandler):
             ('GET', '/api/grid/latest'): lambda: S.latest_grid(q.get('model') or 'simoff_retail'),
             ('POST', '/api/decide'): lambda: S.decide(body),
             ('GET', '/api/decide/products'): S.decide_products,
+            ('POST', '/api/decide/chat'): lambda: decide_chat.chat(body.get('history') or []),
             ('GET', '/api/models'): lambda: {'models': decision_models.MODELS, 'default': decision_models.DEFAULT},
             ('POST', '/api/agent'): lambda: world.run_agent(body.get('description', ''), body.get('category'), body.get('area'),
                                                             body.get('files') or [], body.get('pick')),

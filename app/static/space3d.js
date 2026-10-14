@@ -99,6 +99,10 @@ export function mountSpace(el, data, opts = {}) {
   Object.assign(controls, { enableDamping: true, dampingFactor: .08, minPolarAngle: .3, maxPolarAngle: Math.PI / 2.3, minZoom: .5, maxZoom: 8, screenSpacePanning: true });
   const target = new THREE.Vector3(cx, 0, -cy), dir = new THREE.Vector3(-.8, 1.05, 1.0).normalize();
   controls.target.copy(target); camera.position.copy(target).addScaledVector(dir, R * 3);
+  // a freshly built space turns slowly on its vertical axis until the person grabs it
+  const spinOk = opts.spin && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  Object.assign(controls, { autoRotate: !!spinOk, autoRotateSpeed: 1.6 });
+  controls.addEventListener('start', () => { controls.autoRotate = false; });
   function frustum(a) {
     const half = R * .5;
     Object.assign(camera, a > 1.2 ? { left: -half * a / 1.2, right: half * a / 1.2, top: half / 1.2, bottom: -half / 1.2 } : { left: -half, right: half, top: half / a, bottom: -half / a });
@@ -336,6 +340,7 @@ export function mountSpace(el, data, opts = {}) {
   return {
     advance(now) { update(now); },
     pace(b) { boost = b; },
+    spin(on) { controls.autoRotate = !!on; },
     setHighlight,
     drawInto(ctx, w, h, card) {
       setHighlight(card.fx);

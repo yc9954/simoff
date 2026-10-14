@@ -1,17 +1,12 @@
 <div class="hdr"><h1 class="ptitle">모델 체험</h1><span class="mpick-btn pg-model" style="cursor:default"><span class="mpick-dot"></span>SimOff-1</span></div>
 <section class="pg">
-<div class="card pg-in"><div class="pg-head"><div><div class="lbl">입력</div><h2>손님 · 상품 · 매장 조건</h2></div><div class="pg-presets" data-slot="presets"></div></div>
-<div class="pg-sec"><div class="lbl">손님</div><div data-slot="fields"></div></div>
-<div class="pg-sec"><div class="lbl">상품</div><select data-k="product" class="pg-select"></select></div>
-<div class="pg-sec"><div class="lbl">매장 조건</div>
-<div class="pg-seg-l">진열</div><div class="pg-seg" data-seg="display"><button type="button" data-v="shelf">평소 선반</button><button type="button" data-v="other">매장 안 보조 진열</button><button type="button" data-v="front">입구 엔드캡</button></div>
-<div class="pg-seg-l">전단</div><div class="pg-seg" data-seg="mailer"><button type="button" data-v="none">없음</button><button type="button" data-v="inner">안쪽 면</button><button type="button" data-v="front">1면</button></div></div>
+<div class="card pg-in"><div class="pg-head"><div><div class="lbl">입력</div><h2>손님 · 상품 · 매장 조건을 말로 적어 보세요</h2></div><button type="button" class="pg-reset" data-act="reset" hidden>새로 시작</button></div>
+<div class="pg-thread" data-slot="thread"><div class="pg-empty" data-slot="hello"><p>예를 들어 이렇게 물어보세요.</p><div class="pg-ex" data-slot="examples"></div></div></div>
+<div class="pg-compose"><label for="pgask" class="sr">모델에게 묻기</label><textarea id="pgask" data-k="ask" rows="2" placeholder="예: 주 2번 오는 시리얼 단골이 입구 엔드캡에 어린이 시리얼이 있으면 살까?"></textarea><button type="button" data-act="send" aria-label="보내기"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div>
 </div>
-<div class="card pg-out"><div class="pg-head"><div><div class="lbl">출력</div><h2>이번 방문에 이 상품을 살 확률</h2></div><div class="pg-tabs"><button type="button" data-out="view" class="on">결과</button><button type="button" data-out="json">JSON</button></div></div>
-<div data-slot="view"><div class="pg-big"><span data-k="p">—</span><span class="pg-big-s" data-k="pSub"></span></div>
-<div class="pg-stats"><div><span class="lbl">방문 1,000회당</span><b data-k="per1000">—</b></div><div><span class="lbl">평소 선반 · 전단 없음 대비</span><b data-k="lift">—</b></div><div><span class="lbl">상품</span><b data-k="prod" style="font-size:14px">—</b></div></div>
-<div class="lbl" style="margin-top:22px">같은 손님, 같은 상품 · 조건 아홉 가지</div><div class="pg-grid" data-slot="grid"></div>
-<p class="muted" style="font-size:12px;line-height:1.6;margin:12px 0 0">미국 식료품 체인 2,469가구의 1년 기록으로 학습하고, 본 적 없는 6주로 검증한 모델입니다. 확률은 이 손님이 한 번 들렀을 때 이 상품을 살 확률입니다.</p></div>
-<div data-slot="json" hidden><pre class="pg-json" data-k="json"></pre></div>
+<div class="card pg-out"><div class="pg-head"><div><div class="lbl">출력</div><h2 data-k="outTitle">SimOff-1의 답</h2></div><div class="pg-tabs"><button type="button" data-out="view" class="on">분석</button><button type="button" data-out="json">JSON</button></div></div>
+<div data-slot="cases" class="pg-cases" hidden></div>
+<div data-slot="view"><div class="pg-wait">왼쪽에 적으면, 모델이 받은 입력과 낸 출력, 그리고 그 결과를 움직이는 요인이 여기에 나옵니다.</div></div>
+<div data-slot="json" hidden><pre class="pg-json" data-k="json">아직 요청이 없습니다.</pre></div>
 </div>
 </section>

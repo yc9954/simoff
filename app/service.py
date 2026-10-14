@@ -378,6 +378,12 @@ DECIDE_FIELDS = {   # name: (default, lo, hi) — the household state SimOff-1 r
     'private_share': (.2, 0, 1), 'cereal_spend_share': (.013, 0, .2), 'hp_count': (0, 0, 13)}
 
 
+DECIDE_RANGE = {'visits': (10, 150), 'avg_spend': (12, 60), 'cereal_visit_rate': (.02, .3), 'cereal_spend_share': (.003, .035),
+                'disc_share': (.08, .25), 'private_share': (0, .8), 'hp_count': (0, 4)}
+DECIDE_LABEL = {'visits': '방문 횟수', 'avg_spend': '장볼 때 지출', 'cereal_visit_rate': '시리얼 사는 방문', 'cereal_spend_share': '지출 중 시리얼',
+                'disc_share': '할인 상품 비중', 'private_share': '자체 브랜드 비중', 'hp_count': '이 상품을 산 횟수'}
+
+
 def decide_products():
     s = state()
     base = s['rows'].groupby('product_id')[['prod_base', 'prod_private']].first()
@@ -406,7 +412,17 @@ def decide(inp):
     ref = next(c['p'] for c in cells if (c['display'], c['mailer']) == ('shelf', 'none'))
     pick = next((c for c in cells if (c['display'], c['mailer']) == want), cells[0])
     pr = s['products'].loc[pid]
+    # what moves it: each customer trait from a low to a high value, everything else as asked
+    flags = {**dict((g[0], g[2]) for g in GRID_DISPLAY)[pick['display']], **dict((g[0], g[2]) for g in GRID_MAILER)[pick['mailer']]}
+    one = {**hh, 'prod_base': float(base.prod_base[pid]), 'prod_private': float(base.prod_private[pid]), **flags}
+    V = [{**one, k: v} for k, (lo, hi) in DECIDE_RANGE.items() for v in (lo, hi)]
+    V.append({**one, **{k: d for k, (d, _, _) in DECIDE_FIELDS.items()}})                 # the average customer, same product and condition
+    Q = s['engines']['calibrated'].predict(pd.DataFrame(V))
+    drivers = [{'field': k, 'label': DECIDE_LABEL[k], 'low': lo, 'high': hi, 'p_low': float(Q[2 * i]), 'p_high': float(Q[2 * i + 1])}
+               for i, (k, (lo, hi)) in enumerate(DECIDE_RANGE.items())]
+    drivers.sort(key=lambda d: -abs(d['p_high'] - d['p_low']))
     return {'model': 'SimOff-1', 'input': {**hh, 'product_id': pid, 'display': pick['display'], 'mailer': pick['mailer']},
+            'average_customer_p': float(Q[-1]), 'drivers': drivers,
             'product': {'brand': pr.brand, 'type': pr.product_type, 'size': pr.package_size, 'price': float(pr.shelf_price)},
             'p_buy': pick['p'], 'per_1000_visits': pick['p'] * 1000, 'lift_vs_shelf': pick['p'] / ref if ref else None,
             'all_conditions': [{**c, 'lift': c['p'] / ref if ref else None} for c in cells]}

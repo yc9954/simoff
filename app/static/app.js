@@ -259,9 +259,9 @@ VIEWS.start.after = (el, params, cleanups) => {
       $$('.rec', body).forEach(b => { const on = b.dataset.pick === r.space.id; b.classList.toggle('on', on); });
       body.insertAdjacentHTML('beforeend', worldHTML(r));
       const host = $$('[data-slot="space"]', body).at(-1), st = Object.fromEntries(r.steps.map(x => [x.key, x]));
-      s3 = mountSpace(host, { glb: r.glb, space: r.space, ops: st.adapt.ops, people: st.place.people }, { maxPeople: 40 }); s3.__host = host;
+      s3 = mountSpace(host, { glb: r.glb, space: r.space, ops: st.adapt.ops, people: st.place.people }, { maxPeople: 40, spin: true }); s3.__host = host;
       const cur = s3;
-      $$('[data-focus]', body).forEach(b => b.onclick = () => { if (s3 !== cur) return; const on = !b.classList.contains('on'); $$('[data-focus]', body).forEach(x => x.classList.remove('on')); b.classList.toggle('on', on); cur.focus(on ? b.dataset.focus : null); });
+      $$('[data-focus]', body).forEach(b => b.onclick = () => { if (s3 !== cur) return; cur.spin(false); const on = !b.classList.contains('on'); $$('[data-focus]', body).forEach(x => x.classList.remove('on')); b.classList.toggle('on', on); cur.focus(on ? b.dataset.focus : null); });
     }
     if (art.type === 'mart') {
       freeze();
@@ -572,58 +572,87 @@ ${q(3, '누가 살지 먼저 짚나', '살 손님을 안 살 손님보다 높게
   if (chart) slot(root, 'chart').replaceWith(chart);
 };
 
-// 모델 체험: one customer, one product, one store condition in; SimOff-1's probability out, with all nine conditions beside it
-const PG_FIELDS = [   // [key, label, min, max, step, format]
-  ['visits', '26주 동안 방문', 1, 300, 1, v => `${v}회`], ['avg_spend', '한 번 장볼 때 지출', 5, 120, 1, v => `$${v}`],
-  ['cereal_visit_rate', '시리얼을 사는 방문', 0, .6, .01, v => `${Math.round(v * 100)}%`], ['cereal_spend_share', '지출 중 시리얼', 0, .1, .002, v => `${(v * 100).toFixed(1)}%`],
-  ['disc_share', '할인 상품 비중', 0, .4, .01, v => `${Math.round(v * 100)}%`], ['private_share', '자체 브랜드 비중', 0, 1, .05, v => `${Math.round(v * 100)}%`],
-  ['hp_count', '이 상품을 산 횟수', 0, 10, 1, v => `${v}회`]];
-const PG_PRESETS = {
-  '평균 손님': { visits: 50, avg_spend: 30, cereal_visit_rate: .1, cereal_spend_share: .012, disc_share: .15, private_share: .2, hp_count: 0 },
-  '시리얼 단골': { visits: 120, avg_spend: 45, cereal_visit_rate: .35, cereal_spend_share: .04, disc_share: .15, private_share: .1, hp_count: 4 },
-  '가끔 오는 손님': { visits: 10, avg_spend: 20, cereal_visit_rate: .05, cereal_spend_share: .008, disc_share: .12, private_share: .2, hp_count: 0 },
-  '할인 찾는 손님': { visits: 60, avg_spend: 28, cereal_visit_rate: .12, cereal_spend_share: .016, disc_share: .35, private_share: .6, hp_count: 1 }};
+// 모델 체험: say who, what and where in a sentence; the model's input, its output (JSON) and what moves the answer
 const PG_TYPE = { 'KIDS CEREAL': '어린이 시리얼', 'ALL FAMILY CEREAL': '가족용 시리얼', 'ADULT CEREAL': '성인용 시리얼' };
-const pgProd = p => `${PG_TYPE[p.type] || p.type} · ${p.size.toLowerCase()} · $${nf(p.price)}${p.private ? ' · 자체 브랜드' : ''}`;
-VIEWS.try = async (root) => {
-  const prods = await api('decide/products'); VIEWS.try._prods = prods;
-  K(root, 'product').innerHTML = prods.map((p, i) => `<option value="${p.product_id}">${i + 1}. ${esc(pgProd(p))}</option>`).join('');
-  slot(root, 'presets').innerHTML = Object.keys(PG_PRESETS).map(k => `<button type="button" data-preset="${k}">${k}</button>`).join('');
-  slot(root, 'fields').innerHTML = PG_FIELDS.map(([k, l, lo, hi, st]) => `<label class="pg-f"><span>${l}</span><input type="range" data-f="${k}" min="${lo}" max="${hi}" step="${st}"><output data-o="${k}"></output></label>`).join('');
-};
+const pgProd = p => p ? `${PG_TYPE[p.type] || p.type} ${p.size.toLowerCase()} · $${nf(p.price)}` : '';
+const PG_D = { shelf: '평소 선반', other: '매장 안 보조 진열', front: '입구 엔드캡' }, PG_M = { none: '전단 없음', inner: '전단 안쪽 면', front: '전단 1면' };
+const PG_IN = [['visits', v => `반년 방문 ${n0(v)}회`], ['avg_spend', v => `장볼 때 $${n0(v)}`], ['cereal_visit_rate', v => `시리얼 사는 방문 ${Math.round(v * 100)}%`],
+  ['cereal_spend_share', v => `지출 중 시리얼 ${nf(v * 100, 1)}%`], ['disc_share', v => `할인 상품 ${Math.round(v * 100)}%`], ['private_share', v => `자체 브랜드 ${Math.round(v * 100)}%`], ['hp_count', v => `이 상품 산 횟수 ${v}회`]];
+const PG_EXAMPLES = ['주 2번 오는 시리얼 단골이, 입구 엔드캡에 어린이 시리얼이 있으면 살까?',
+  '한 달에 한 번 오고 할인 상품만 찾는 손님에게 가족용 시리얼을 전단 1면에 실으면 어때?',
+  '같은 평균 손님에게 성인용 시리얼을 평소 선반에 둘 때와 입구 엔드캡에 둘 때를 비교해 줘.'];
+const PG = (() => { try { return JSON.parse(sessionStorage.getItem('oa:pg')) || { turns: [] }; } catch { return { turns: [] }; } })();
+const pgSave = () => { try { sessionStorage.setItem('oa:pg', JSON.stringify(PG)); } catch {} };
+VIEWS.try = async () => { VIEWS.try._prods = await api('decide/products'); };
 VIEWS.try.after = (el, params, cleanups) => {
-  const st = { ...PG_PRESETS['평균 손님'], ...store.get('pg', {}) };
-  st.product_id ??= VIEWS.try._prods[0].product_id; st.display ??= 'front'; st.mailer ??= 'none';
-  let t = null, seq = 0;
-  const paint = () => {
-    PG_FIELDS.forEach(([k, , , , , f]) => { $(`[data-f="${k}"]`, el).value = st[k]; $(`[data-o="${k}"]`, el).textContent = f(+st[k]); });
-    K(el, 'product').value = st.product_id;
-    $$('[data-seg]', el).forEach(g => $$('button', g).forEach(b => b.classList.toggle('on', b.dataset.v === st[g.dataset.seg])));
-    $$('[data-preset]', el).forEach(b => b.classList.toggle('on', PG_FIELDS.every(([k]) => +PG_PRESETS[b.dataset.preset][k] === +st[k])));
-  };
-  const ask = () => { clearTimeout(t); store.set('pg', st); t = setTimeout(async () => {
-    const my = ++seq, req = { ...st }; PG_FIELDS.forEach(([k]) => { req[k] = +req[k]; });
-    let r; try { r = await api('decide', req); } catch (e) { slot(el, 'view').innerHTML = errBox(e); return; }
-    if (my !== seq) return;
-    set(el, 'p', `${nf(r.p_buy * 100, 3)}%`); set(el, 'pSub', `${n0(1 / r.p_buy)}번 들르면 한 번꼴`);
-    set(el, 'per1000', `${nf(r.per_1000_visits, 2)}개`); set(el, 'lift', r.lift_vs_shelf == null ? '—' : `×${nf(r.lift_vs_shelf, 2)}`);
-    set(el, 'prod', pgProd(VIEWS.try._prods.find(p => p.product_id === r.input.product_id)));
-    const max = Math.max(...r.all_conditions.map(c => c.p)), D = [['shelf', '평소 선반'], ['other', '보조 진열'], ['front', '입구 엔드캡']], M = [['none', '전단 없음'], ['inner', '전단 안쪽 면'], ['front', '전단 1면']];
-    slot(el, 'grid').innerHTML = `<span></span>${D.map(d => `<span>${d[1]}</span>`).join('')}` + M.map(([m, ml]) => `<span>${ml}</span>` + D.map(([d]) => {
-      const c = r.all_conditions.find(x => x.display === d && x.mailer === m), a = .06 + .5 * c.p / max;
-      return `<button type="button" class="pg-cell${d === r.input.display && m === r.input.mailer ? ' on' : ''}" data-cell="${d}:${m}" style="background:rgba(15,118,110,${a.toFixed(3)})"><b>${nf(c.p * 1000, 2)}</b><span class="muted" style="font-size:11px">×${nf(c.lift, 2)}</span></button>`;
-    }).join('')).join('');
-    $$('[data-cell]', el).forEach(b => b.onclick = () => { [st.display, st.mailer] = b.dataset.cell.split(':'); paint(); ask(); });
-    const out = { ...r, all_conditions: r.all_conditions.map(c => ({ display: c.display, mailer: c.mailer, p: +c.p.toFixed(6), lift: +c.lift.toFixed(3) })), p_buy: +r.p_buy.toFixed(6), per_1000_visits: +r.per_1000_visits.toFixed(3), lift_vs_shelf: +r.lift_vs_shelf.toFixed(3) };
-    set(el, 'json', `POST /api/decide\n${JSON.stringify(req, null, 2)}\n\n→ 200\n${JSON.stringify(out, null, 2)}`);
-  }, 120); };
-  $$('[data-f]', el).forEach(i => i.oninput = () => { st[i.dataset.f] = +i.value; paint(); ask(); });
-  K(el, 'product').onchange = e => { st.product_id = e.target.value; ask(); };
-  $$('[data-seg]', el).forEach(g => $$('button', g).forEach(b => b.onclick = () => { st[g.dataset.seg] = b.dataset.v; paint(); ask(); }));
-  $$('[data-preset]', el).forEach(b => b.onclick = () => { Object.assign(st, PG_PRESETS[b.dataset.preset]); paint(); ask(); });
+  const thread = slot(el, 'thread'), ta = K(el, 'ask'), sendB = $('[data-act="send"]', el), prods = VIEWS.try._prods;
+  const prodOf = id => prods.find(p => p.product_id === id);
+  let history = [], busy = false, current = null;
+  slot(el, 'examples').innerHTML = PG_EXAMPLES.map(t => `<button type="button" data-ex>${esc(t)}</button>`).join('');
+  $$('[data-ex]', el).forEach(b => b.onclick = () => send(b.textContent));
+  const caseName = c => c.label || `${pgProd(prodOf(c.response.input.product_id))} · ${PG_D[c.response.input.display]}`;
+  function show(c, allCases) {
+    current = c; const r = c.response, i = r.input;
+    set(el, 'outTitle', `SimOff-1의 답 · ${caseName(c)}`);
+    const cs = slot(el, 'cases');
+    cs.hidden = !(allCases && allCases.length > 1);
+    if (allCases && allCases.length > 1) {
+      cs.innerHTML = allCases.map((x, k) => `<button type="button" class="pg-chip${x === c ? ' on' : ''}" data-case="${k}"><b>${esc(caseName(x))}</b>${nf(x.response.p_buy * 100, 2)}%</button>`).join('');
+      $$('[data-case]', cs).forEach(b => b.onclick = () => show(allCases[+b.dataset.case], allCases));
+    }
+    const said = new Set(Object.keys(c.request));
+    const chips = [...PG_IN.map(([k, f]) => [k, f(i[k])]), ['product_id', pgProd(prodOf(i.product_id))], ['display', PG_D[i.display]], ['mailer', PG_M[i.mailer]]]
+      .map(([k, t]) => `<span style="${said.has(k) ? 'background:#171717;color:#fff' : ''}">${esc(t)}</span>`).join('');
+    const top = Math.max(...r.drivers.flatMap(d => [d.p_low, d.p_high]), r.p_buy) * 1.08, X = p => (p / top * 100).toFixed(1);
+    const D = ['shelf', 'other', 'front'], M = ['none', 'inner', 'front'], gmax = Math.max(...r.all_conditions.map(x => x.p));
+    slot(el, 'view').innerHTML = `<div class="lbl">모델이 받은 입력 <span class="muted" style="text-transform:none;letter-spacing:0">· 검은 칸은 문장에서 읽은 값, 나머지는 평균 손님 값</span></div><div class="pg-in-row">${chips}</div>
+<div class="pg-big" style="margin-top:18px"><span>${nf(r.p_buy * 100, 3)}%</span><span class="pg-big-s">이번 방문에 살 확률 · ${n0(1 / r.p_buy)}번 들르면 한 번꼴</span></div>
+<div class="pg-stats"><div><span class="lbl">방문 1,000회당</span><b>${nf(r.per_1000_visits, 2)}개</b></div><div><span class="lbl">평소 선반 · 전단 없음 대비</span><b>×${nf(r.lift_vs_shelf, 2)}</b></div><div><span class="lbl">같은 조건의 평균 손님 대비</span><b>×${nf(r.p_buy / r.average_customer_p, 2)}</b></div></div>
+<div class="lbl" style="margin-top:22px">무엇이 확률을 움직이나 <span class="muted" style="text-transform:none;letter-spacing:0">· 한 가지만 낮게 → 높게 바꿨을 때, 세로선은 지금</span></div>
+<div style="margin-top:6px">${r.drivers.map(d => { const lo = Math.min(d.p_low, d.p_high), hi = Math.max(d.p_low, d.p_high);
+      return `<div class="pg-drv"><span>${esc(d.label)}</span><span class="trk"><i style="left:${X(lo)}%;width:${Math.max(.8, X(hi) - X(lo))}%"></i><em style="left:${X(r.p_buy)}%"></em></span><span class="v">${nf(d.p_low * 100, 2)} → ${nf(d.p_high * 100, 2)}%</span></div>`; }).join('')}</div>
+<div class="lbl" style="margin-top:22px">같은 손님 · 같은 상품, 매장 조건 아홉 가지 <span class="muted" style="text-transform:none;letter-spacing:0">· 방문 1,000회당</span></div>
+<div class="pg-grid"><span></span>${D.map(d => `<span>${PG_D[d]}</span>`).join('')}${M.map(m => `<span>${PG_M[m]}</span>` + D.map(d => {
+      const x = r.all_conditions.find(y => y.display === d && y.mailer === m);
+      return `<button type="button" class="pg-cell${d === i.display && m === i.mailer ? ' on' : ''}" data-cell="${d}:${m}" style="background:rgba(15,118,110,${(.06 + .5 * x.p / gmax).toFixed(3)})"><b>${nf(x.p * 1000, 2)}</b><span class="muted" style="font-size:11px">×${nf(x.lift, 2)}</span></button>`; }).join('')).join('')}</div>`;
+    $$('[data-cell]', el).forEach(b => b.onclick = async () => {
+      const [display, mailer] = b.dataset.cell.split(':'), req = { ...c.request, display, mailer };
+      show({ label: `${caseName(c).split(' · ')[0]} · ${PG_D[display]} · ${PG_M[mailer]}`, request: req, response: await api('decide', req) }, null);
+    });
+    const slim = { ...r, all_conditions: r.all_conditions.map(x => ({ display: x.display, mailer: x.mailer, p: +x.p.toFixed(6), lift: +x.lift.toFixed(3) })),
+      drivers: r.drivers.map(d => ({ field: d.field, low: d.low, high: d.high, p_low: +d.p_low.toFixed(6), p_high: +d.p_high.toFixed(6) })) };
+    set(el, 'json', `POST /api/decide\n${JSON.stringify(c.request, null, 2)}\n\n→ 200\n${JSON.stringify(slim, null, 2)}`);
+  }
+  function bubble(role, html) {
+    slot(el, 'hello')?.remove(); $('[data-act="reset"]', el).hidden = false;
+    const d = document.createElement('div'); d.className = `msg ${role}`;
+    d.innerHTML = role === 'user' ? `<div class="bub">${html}</div>` : `<span class="ava" aria-hidden="true"><i></i><i></i><i></i></span><div class="body">${html}</div>`;
+    thread.appendChild(d); thread.scrollTop = thread.scrollHeight; return d;
+  }
+  function answer(ai, t) {
+    $('.body', ai).innerHTML = rich(t.reply) + (t.calls.length ? `<div class="pg-chips">${t.calls.map((c, k) => `<button type="button" class="pg-chip" data-call="${k}"><b>${esc(caseName(c))}</b>${nf(c.response.p_buy * 100, 2)}%</button>`).join('')}</div>` : '');
+    $$('[data-call]', ai).forEach(b => b.onclick = () => { $$('.pg-chip', thread).forEach(x => x.classList.remove('on')); b.classList.add('on'); show(t.calls[+b.dataset.call], t.calls); });
+    $('[data-call]', ai)?.classList.add('on');
+    if (t.calls.length) show(t.calls[0], t.calls);
+  }
+  async function send(text) {
+    text = (text || '').trim(); if (!text || busy) return;
+    busy = true; sendB.disabled = true; ta.value = '';
+    bubble('user', esc(text)); history.push({ role: 'user', text });
+    const ai = bubble('ai', '<div class="typing" aria-label="생각하는 중"><i></i><i></i><i></i></div>');
+    try {
+      const r = await api('decide/chat', { history });
+      history.push({ role: 'assistant', text: r.reply });
+      PG.turns.push({ user: text, reply: r.reply, calls: r.calls }); pgSave();
+      answer(ai, r);
+    } catch (e) { $('.body', ai).innerHTML = errBox(e); history.pop(); }
+    busy = false; sendB.disabled = false; thread.scrollTop = thread.scrollHeight;
+  }
+  sendB.onclick = () => send(ta.value);
+  ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(ta.value); } };
+  $('[data-act="reset"]', el).onclick = () => { PG.turns = []; pgSave(); render(); };
   $$('[data-out]', el).forEach(b => b.onclick = () => { $$('[data-out]', el).forEach(x => x.classList.toggle('on', x === b)); slot(el, 'view').hidden = b.dataset.out !== 'view'; slot(el, 'json').hidden = b.dataset.out !== 'json'; });
-  cleanups.push(() => clearTimeout(t));
-  paint(); ask();
+  for (const t of PG.turns) { bubble('user', esc(t.user)); history.push({ role: 'user', text: t.user }, { role: 'assistant', text: t.reply }); answer(bubble('ai', ''), t); }
 };
 
 // 최종 배치 (3D)

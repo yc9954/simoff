@@ -327,3 +327,30 @@ img[data-shot]:not([src]) { color: transparent; background: linear-gradient(100d
 .pg-cell b { font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .pg-cell.on { border-color: #171717; box-shadow: 0 0 0 1px #171717; }
 .pg-json { margin: 0; padding: 14px; background: #f6f7f8; border: 1px solid var(--border); font: 12px/1.55 "GeistMono", monospace; white-space: pre-wrap; word-break: break-all; }
+/* 모델 체험 · chat in, model out */
+.pg-in { overflow: hidden !important; }
+.pg-thread { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding: 2px; }
+.pg-empty p { margin: 0 0 10px; font-size: 13px; color: var(--mfg); }
+.pg-ex { display: flex; flex-direction: column; gap: 8px; }
+.pg-ex button { text-align: left; padding: 10px 12px; border: 1px solid var(--border); background: #fff; font: inherit; font-size: 13px; line-height: 1.5; cursor: pointer; }
+.pg-ex button:hover { border-color: #171717; }
+.pg-thread .msg.user .bub { font-size: 14px; }
+.pg-thread .msg.ai .body { font-size: 14px; line-height: 1.7; }
+.pg-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pg-chip { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; padding: 6px 10px; border: 1px solid var(--border); background: #fff; font: inherit; font-size: 12px; cursor: pointer; text-align: left; }
+.pg-chip.on { border-color: #171717; box-shadow: 0 0 0 1px #171717; }
+.pg-chip b { font-weight: 600; }
+.pg-compose { display: flex; gap: 8px; align-items: flex-end; border: 1px solid var(--border); background: #fff; padding: 10px 10px 10px 14px; }
+.pg-compose textarea { flex: 1; border: 0; outline: none; resize: none; font: inherit; font-size: 14px; line-height: 1.5; background: transparent; }
+.pg-compose button { width: 32px; height: 32px; flex: none; background: #171717; color: #fff; border: 0; display: grid; place-items: center; cursor: pointer; }
+.pg-compose button:disabled { opacity: .5; cursor: progress; }
+.pg-reset { height: 28px; padding: 0 10px; border: 1px solid var(--border); background: #fff; font: inherit; font-size: 12px; cursor: pointer; }
+.pg-wait { padding: 28px 0; color: var(--mfg); font-size: 14px; line-height: 1.7; }
+.pg-cases { display: flex; flex-wrap: wrap; gap: 6px; }
+.pg-in-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.pg-in-row span { padding: 3px 8px; background: var(--muted-2); font-size: 12px; }
+.pg-drv { display: grid; grid-template-columns: 120px minmax(0,1fr) 120px; gap: 12px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.pg-drv .trk { position: relative; height: 8px; background: rgba(0,0,0,.05); }
+.pg-drv .trk i { position: absolute; top: 0; height: 100%; background: #0F766E; opacity: .35; }
+.pg-drv .trk em { position: absolute; top: -3px; width: 2px; height: 14px; background: #171717; }
+.pg-drv .v { font-family: "GeistMono", monospace; font-size: 11px; text-align: right; color: var(--mfg); }
