@@ -13,3 +13,6 @@ eval/results/von_full/
 # built by app/build_vercel.py
 deploy/
 .vercel-link/
+
+.omc/
+.DS_Store

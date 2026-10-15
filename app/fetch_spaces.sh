@@ -13,3 +13,4 @@ git -C "$TMP/cj" checkout -q "$REF"
 mkdir -p "$DST"
 cp "$TMP"/cj/artifacts/sim3d-demos-20260929/spaces/arch_*.{glb,png,space.json} "$DST"/
 echo "copied $(ls "$DST" | wc -l | tr -d ' ') files into $DST"
+python3 "$(dirname "$0")/spaces_en.py" "$DST"   # English labels for the app

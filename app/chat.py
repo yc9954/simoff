@@ -101,9 +101,27 @@ def _run_tool(name, inp, files):
     return {'error': f'unknown tool {name}'}, None
 
 
+GROCERY = ('supermarket', 'grocery', 'mart', 'food store', '마트', '슈퍼', '식료품')
+
+
+def _no_maps_turn(history, files):
+    """The archetype spaces come from a private repo (app/fetch_spaces.sh). Without them the grocery case still runs
+    end to end on the real store; anything else gets told what is missing instead of failing."""
+    text = ' '.join(h['text'] for h in history if h['role'] == 'user').lower()
+    if any(w in text for w in GROCERY):
+        _, art = _run_tool('build_space', {'space_id': 'arch_supermarket', 'business': text}, files)
+        return {'reply': f'Built from a real supermarket (Store {MART_STORE}). The decision to test is where cold cereal goes next week: '
+                         'front endcap, flyer, secondary display, or as usual. This store has records, so you can go straight on to Connect records.',
+                'artifacts': [art], 'by': 'rules'}
+    return {'reply': "This copy of SimOff doesn't have the 3D archetype spaces installed (see app/fetch_spaces.sh), so only the grocery "
+                     "case runs here. Try: \"We're opening a neighborhood supermarket.\"", 'artifacts': [], 'by': 'rules'}
+
+
 def chat(history, files=None, model=None):
     """history: [{role: 'user'|'assistant', text}] as the browser shows it. Returns {reply, artifacts, by}."""
     files = files or []
+    if not world.catalog():
+        return _no_maps_turn(history, files)
     dm = decision_models.get(model)
     msgs = [{'role': h['role'], 'content': h['text']} for h in history if h.get('text')]
     if msgs and msgs[0]['role'] == 'user':

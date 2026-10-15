@@ -1,52 +1,129 @@
-# SimOff 시뮬레이터
+# SimOff
 
-실제 가구가 에이전트로 매장에 오고, 매 방문 상품마다 "살까"를 **실제 매장 데이터로 보정한 결정 모델**의 확률로 추첨하는 시뮬레이터. gs2500의 흐름(손님 일정 → 결정 → 공유 장부 → 같은 조건 비교 → 승인)을 따르되, 결정 자리에 작성한 계수나 보정 안 된 AI 대신 보정 모델을 쓴다.
+**A decision model for offline world simulation.** Tell SimOff what you want to open — a supermarket, a café, a pop-up — and an agent builds the space in 3D, lets shoppers walk it, and tests the layout and promotion decisions on a decision model calibrated to real purchases, before day one.
 
-## 사이클
+**Live demo:** https://simoff.vercel.app
 
-```
-데이터 넣기 ──▶ ① 공간맵 ──▶ ② 시뮬레이션 ──▶ ③ 검증 ──▶ ④ 최적 배치 · 최종 공간맵
-(datasets.py)   (spacemap.py)   (sim.py)        (validate.py)  (optimize.py)
-```
+The landing chat starts with our own case typed in ("We're opening a 20,000 sq ft neighborhood supermarket. For next week's cold cereal, should it go on the entrance endcap, a secondary display, or the flyer?"). Press Enter and follow the steps in the sidebar.
 
-- **데이터:** 내장 테스트셋 `dunnhumby`(Complete Journey, 2,469가구, 1년) 또는 내 매장 CSV 3개(`datasets.py` 맨 위에 형식). `table.py`가 방문 × 상품 결정 표를 만든다. dunnhumby에서는 평가 때 표(1,996,300행)를 열 21개 모두 차이 0으로 재현함.
-- **① 공간맵:** 매장별 부서 판매 비중으로 통로, 그 매장이 실제로 쓴 진열 코드(앞쪽·중간·뒤쪽 엔드캡, 통로 안, 보조 진열대 …)로 진열 구역과 자리 수, 대상 상품의 현재 위치. 데이터에 좌표가 없어 위치는 템플릿, 구역·자리 수·배치는 데이터. SVG로 그림.
-- **② 시뮬레이션:** `sim.py`. 손님 = 실제 가구(1–26주 영수증에서 계산한 상태), 결정 = 보정 모델(27–44주 학습, 45–47주 보정). 모든 안이 같은 방문·같은 난수(같은 손님, 같은 운). 장부: 총계·주·일·시간·상품·가구층·대표 방문.
-- **③ 검증:** `validate.py`. 모델이 본 적 없는 48–53주를 실제 진열 그대로 돌려 실제 판매와 비교. 결과는 `VALIDATION.md`.
-- **④ 최적 배치:** `optimize.py`. 상품별 (선반 / 앞쪽 엔드캡 / 기타 진열) 기대 매출을 시뮬레이션으로 구하고, 그 매장의 진열 자리 수 제약 안에서 배정 문제를 풀어 최종 배치를 고른다. 전단은 공간이 아니라 그대로 둔다.
+---
 
-## 앱
+## Why
 
-`python app/server.py` → http://localhost:8790. 스토리보드의 화면(결정 브리프 → 엔드포인트 → 매장 월드 → 엔진 비교 → 결정 안 → 실행 → 검증 → 최종 배치 3D → 리포트 → 매장 연결)이 실제 데이터와 시뮬레이터로 돌아간다. 자세한 건 `app/README.md`.
+Most "AI shopper" simulations ask a language model to role-play a customer. The answer sounds plausible, but it is not a probability of anything: on held-out grocery data, language-model personas overstated purchase rates by **14–192×**, and an uncalibrated decision-model API by **40–256×**, and both underestimated what an endcap actually does.
 
-## 실행
+SimOff's position is **calibrated to people, not to answers**: every buy/no-buy in the simulation is drawn from a model whose probabilities were fitted to — and checked against — what real shoppers did. Swap in your own records and the same model is recalibrated to your shoppers.
+
+## What it does
+
+The app is one flow, each step one screen:
+
+| Step | What happens |
+|---|---|
+| **Build the space** | A chat agent (Claude, with tools) reads the business, recommends one of 27 archetype spaces, edits it (moves the pickup counter to the entrance, adds checkout lanes, adds a photo spot — every edit checked against aisle width, overlaps and doors), and puts walking shoppers in it. A grocery store is built from the real store (Store 367) in the data. |
+| **Connect records** | Upload POS exports (receipts, products, display schedule). Columns are auto-mapped to endpoints (`POST /visit`, `/basket/add`, `/checkout`, …), and the decision model is recalibrated to that store's shoppers. A sample store is one click away. |
+| **Plans to test** | Nine plans: where the item goes (regular shelf / secondary display / entrance endcap) × the flyer (none / inside page / front page). |
+| **Run** | One chosen decision model runs all nine plans on the **same shoppers and the same luck** — 438,325 visit × product decisions — so any difference between plans comes from the plan alone. Nothing is shown until it has run. |
+| **Final layout** | The best plan placed on the 3D space, with the ranked alternatives. |
+| **Report** | The recommendation, its size per 1,000 visits and in dollars, who moved (household segments), and the plans that were ruled out and why. |
+| **Model check** | Three questions asked of every model on six weeks it never saw: *How many will buy? How much does a display add? Who will buy?* |
+| **Try the model** | Describe a shopper, a product and a store condition in a sentence. Claude turns it into the model's input; you see the exact JSON request and response, what moves the probability most, and all nine store conditions for that shopper. |
+
+## The decision model
+
+**SimOff-1** = gradient boosting (`HistGradientBoostingClassifier`) on household state + product + store condition, followed by isotonic calibration.
+
+- **Data:** dunnhumby / 84.51° *The Complete Journey* — 2,469 US households, one year, 1,469,307 receipt lines, 20.9M display/flyer records. Unit: one store visit × one cold-cereal product (top 25) → bought on that visit or not (1,996,300 rows).
+- **Household state** (from weeks 1–26 only): visits, spend per trip, share of trips with cereal, cereal share of spend, discount share, store-brand share, times bought this product. **Product:** base purchase rate, store brand flag. **Store condition:** front endcap, other display, flyer, flyer front page.
+- **Time split:** train weeks 27–44 · calibrate 45–47 · **test 48–53, never seen by any fitting step**.
+
+### Results on the held-out weeks (48–53)
+
+| Question | Actual | SimOff-1 | Jev (uncalibrated API) | Language-model persona |
+|---|---|---|---|---|
+| Chance a shopper buys on one visit (regular shelf) | 0.108% | **0.091%** (close) | 4.3% (40× too high) | 21% (192× too high) |
+| Endcap lift vs. regular shelf | 3.99× (95%: 2.48–8.56) | **3.0×** (within range) | 1.3× (too small) | 1.5× (too small) |
+| Ranking who will buy (AUC) | — | **0.78** | 0.71 | not measured |
+
+The simulator itself, run on the actual displays of those six weeks: endcap effect 3.66× vs. actual 3.18× (1.91–15.70) ✓, secondary display 2.59× vs. 2.27× (1.55–3.60) ✓, store ranking correlation 0.71. It predicts 617 purchases against 684 actual (about 10% low) and under-predicts sales on endcap visits (80 vs. 133). Full tables in [`VALIDATION.md`](VALIDATION.md) and [`eval/REPORT.md`](eval/REPORT.md).
+
+### What we learned about calibration
+
+We also fine-tuned **[Von](https://github.com/wfzyx/von)** (an open-weight 395M decision model) on the same receipts, on Modal GPUs. Out of the box Von answered 39% for a 0.16% event and did not react to an endcap at all. Trained on this store's purchases it matched SimOff-1 on ranking (AUC 0.785) and was closer on per-condition sales — and simply averaging the two models' logits beat both on every held-out row (AUC 0.795, log loss 0.01044). The calibration comes from the domain's data, not from the model family. See results 6–7 in [`eval/REPORT.md`](eval/REPORT.md).
+
+## Limitations
+
+- **Flyer effects are not validated.** In the data, no store skipped the flyer in the same week, so there is no control.
+- **Discounts are left out of the store condition**: the price of a visit where nothing was bought is not in the records.
+- **Within product-and-week comparisons are still not a randomized experiment**: stores choose what goes on the endcap. That is one reason the endcap's confidence interval is wide.
+- One US grocery chain, data labelled 2017. There is no evidence yet that the calibration transfers to other countries or categories.
+- For non-grocery spaces (café, pop-up, festival …) the space, the edits and the walking shoppers are real, but the numbers come from the grocery model until that space's own records are connected. The app says so wherever it shows them.
+- The hosted demo precomputes the read-only answers (see *Deploy*). Uploading your own CSV and recalibrating needs the local server.
+
+## Run it locally
 
 ```bash
 pip install -r requirements.txt
-python sim.py                       # 판단 상품 1개 · 48–53주 · 평소대로/엔드캡/전단/기타 진열
-python validate.py                  # 본 적 없는 6주 검증 → VALIDATION.md
-python cycle.py --dataset dunnhumby # 한 사이클: 데이터 → ① 맵 → ② 시뮬레이션 → ③ 검증 → ④ 최종 배치 → runs/dunnhumby/REPORT.md
-python cycle.py --data 내매장/ --weeks 4   # 내 CSV 3개: 마지막 주 배치 기준, 앞으로 4주 Poisson 방문 예측
+python3 app/server.py            # http://localhost:8790  (PORT overrides)
 ```
 
-`runs/<이름>/`: `01_map.{json,svg,png}` 지금 배치 · `02_ledger.json` 전체 장부(커밋 안 함) · `03_validation.json` 그 매장 실제 vs 시뮬레이션 · `04_final_map.{json,svg,png}` 제안 배치(바뀌는 상품 강조) · `04_final_3d.html` 같은 배치를 3D 매장 위에, 47주 배치에서 제안 배치로 상품이 옮겨가는 애니메이션(`viewer3d.py`) · `04_ledger.json` 실제/고정/제안 비교 · `REPORT.md`. 표와 모델 캐시는 `runs/<이름>/data/`.
+- Optional: put `ANTHROPIC_API_KEY=...` in `app/.env` (gitignored) for the Claude chat. Without a key both chats answer from rules on the same tools.
+- The first start fits SimOff-1 from `data/rows.parquet` and caches it in `data/engines.pkl` (about 20 seconds).
+- The 27 archetype spaces (GLB, thumbnail, `space.json`) come from a private repository and are **not** in this repo. `app/fetch_spaces.sh` pulls them (needs access) and `app/spaces_en.py` gives them English labels. Without them the grocery case runs end to end on the real store, and the other businesses tell you the spaces are missing.
 
-## 남은 작업
+### The simulator and the evaluation from the command line
 
-- 내 데이터(`--data`) 경로는 형식 검사와 코드 경로만 있고 실제 매장 CSV로 돌려본 적 없음.
-- 첫 사이클 결과(매장 367)는 `runs/dunnhumby/REPORT.md`. 이 매장은 6주 판매가 18건뿐이라 매장 단위 검증이 거칠다(실제 18 vs 기대 11.9, 90% 7–18의 경계, 6주 중 5주 범위 안).
-- dunnhumby에서 `cycle.py`는 평가 때의 표·모델(`data/`)을 그대로 써서 `validate.py`·앱과 같은 모델로 계산한다(다시 만든 표는 내용은 같고 행 순서만 달라, 부스팅의 조기 종료 때문에 모델이 조금 달라졌었다).
+```bash
+python3 sim.py                          # one product · weeks 48–53 · as usual / endcap / flyer / secondary display
+python3 validate.py                     # the six-week check → VALIDATION.md
+python3 cycle.py --dataset dunnhumby    # one cycle: data → space map → simulation → validation → final layout → runs/dunnhumby/REPORT.md
+python3 cycle.py --data my_store/ --weeks 4   # your own three CSVs (format at the top of datasets.py)
+```
 
-## 검증 요약 (48–53주, 보정 모델)
+The evaluation scripts are in `eval/scripts/` (order and requirements at the end of `eval/REPORT.md`; the persona and Jev runs need their own API access, Von needs Modal).
 
-- 리포트 숫자 재현: 1,000결정당 0.94 → 3.45 그대로.
-- 효과: 앞쪽 엔드캡 시뮬레이션 3.66배 (실제 3.18배, 95% 1.91–15.70) ✓, 기타 진열 2.59배 (실제 2.27배, 1.55–3.60) ✓.
-- 총량: 실제 684 vs 기대 617 (약 10% 낮음), 6주 중 3주만 90% 손님 운 범위 안. 엔드캡이었던 방문의 판매를 낮게 봄(실제 133 vs 기대 80).
-- 매장 순위 상관 0.71.
+## Deploy (Vercel)
 
-## 폴더
+The local server uses numpy, pandas, pyarrow and scikit-learn, which a serverless function cannot carry. So the hosted build splits the work:
 
-- `datasets/dunnhumby/` 내장 테스트셋 원본(parquet)
-- `data/` 평가 때 결정 표와 상품 가격 (`prepare.py`가 만듦)
-- `eval/` 이 시뮬레이터의 근거가 된 첫 실측 평가(페르소나·Jev·보정 모델 비교, `REPORT.md`)
-- `results/` 시뮬레이션 장부와 검증 결과
+- **SimOff-1 without scikit-learn.** `app/simoff_model.py export` writes the fitted trees and the isotonic map to `app/model.json`; `predict()` walks them in pure Python. `python3 app/simoff_model.py check` confirms it matches the fitted model (max difference ~4e-14).
+- **Read-only answers are precomputed** into `public/static-api/*.json` (grid, layout, validation, report, catalog, the sample calibration job). The front end reads them whenever it is not on localhost.
+- **Three stdlib-only functions** run live: `api/chat` (the landing agent), `api/decide_chat` (Try the model) and `api/decide` (one visit through SimOff-1, via `app/decide_core.py`, shared with the local server).
+
+```bash
+python3 app/build_vercel.py      # writes deploy/ (gitignored)
+cd deploy && vercel link && vercel env add ANTHROPIC_API_KEY production && vercel deploy --prod
+```
+
+## Repository layout
+
+```
+app/
+  server.py            stdlib HTTP server: static files + /api/*
+  service.py           data, the decision models, runs, layouts, the records upload job
+  world.py             the space agent: understand → recommend → adapt (checked edits) → place shoppers → decisions
+  chat.py              landing chat: Claude with recommend_spaces / build_space tools (rules without a key)
+  decide_chat.py       Try the model: a sentence → SimOff-1's input (decide tool)
+  decide_core.py       one visit through SimOff-1, no numpy/pandas
+  simoff_model.py      SimOff-1 exported to JSON and scored in pure Python
+  decision_models.py   the models you can pick: SimOff-1, Jev, language-model persona
+  llm.py               language-model helpers (stdlib)
+  build_vercel.py      the hosted build; vercel/ holds its function handlers
+  fetch_spaces.sh      pulls the archetype spaces (private); spaces_en.py labels them in English
+  static/              the app: app.js (views), space3d.js (archetype spaces, three.js), store3d.js (the real store), screens/
+sim.py                 the agent-based simulator: same shoppers, same luck; ledger
+table.py · prepare.py  receipts → the visit × product decision table
+datasets.py            the built-in dataset and the format for your own CSVs
+spacemap.py · optimize.py · cycle.py · viewer3d.py   space map, layout optimisation, one full cycle, 3D export
+validate.py            the held-out six-week validation
+eval/                  the evaluation behind the model choice (personas, Jev, Von, calibration) — REPORT.md
+data/ · datasets/      the decision table and the source parquet files
+results/ · runs/       simulator ledgers and a full cycle on Store 367
+```
+
+## Data and credits
+
+- **Shopper data:** dunnhumby / 84.51° *The Complete Journey* ([84.51° area51](https://www.8451.com/area51)). Use it under its terms.
+- **3D:** [three.js](https://threejs.org) 0.180 (MIT); shopper and checkout models from gs2500; archetype spaces from a private repository (not included).
+- **Models:** Von by wfzyx (Apache-2.0); Jev by TypeSafe (API); Claude by Anthropic for the two chats.
+- **Fonts:** Instrument Sans, Host Grotesk, Geist Mono, Pretendard (all OFL).

@@ -1,5 +1,4 @@
-# For a Repl made from this folder alone. Importing the whole repo: set the run command to
-#   cd sim && pip install -r requirements.txt && python app/server.py
+# Replit: run the app server (port 8790)
 run = "pip install -q -r requirements.txt && python app/server.py"
 modules = ["python-3.12"]
 

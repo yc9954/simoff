@@ -54,7 +54,7 @@ def main():
     if OUT.exists():
         shutil.rmtree(OUT)
     # static site
-    shutil.copytree(APP / 'static', OUT / 'public')
+    shutil.copytree(APP / 'static', OUT / 'public', ignore=shutil.ignore_patterns('.omc', '.DS_Store', '__pycache__'))
     if link:
         shutil.move(link, OUT / '.vercel')
     # functions and what they import
