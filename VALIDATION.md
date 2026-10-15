@@ -1,18 +1,18 @@
-# 시뮬레이터 검증 · 본 적 없는 6주 (48–53주)
+# Simulator validation · six unseen weeks (weeks 48–53)
 
-실제 방문 17,533회 · 가구 2,123곳 · 매장 109곳 · 방문×상품 결정 438,325건 · 실제 판매 방문 684건. 매장 조건은 실제 그대로 두고, 손님 운은 200번 추첨으로 흔들었다. 90% 범위는 손님 운만 담고 모델 오차는 담지 않는다.
+17,533 real visits · 2,123 households · 109 stores · 438,325 visit×product decisions · 684 real visits with a sale. Store conditions are kept exactly as they really were; shopper luck is varied with 200 draws. The 90% range captures shopper luck only, not model error.
 
-## 1. 총량 · 주별
+## 1. Totals · by week
 
-| 엔진 | 실제 | 시뮬레이션 기대 | 90% 범위 | 실제가 범위 안 | 범위 안 주 (6주 중) | 매장 순위 상관 | AUC |
+| Engine | Actual | Simulated expectation | 90% range | Actual within range | Weeks within range (of 6) | Store rank correlation | AUC |
 |---|---|---|---|---|---|---|---|
-| 보정 모델 | 684 | 616.7 | 581–657 | ✗ | 3 | 0.71 | 0.781 |
-| 평소대로 예측 | 684 | 606.5 | 560–648 | ✗ | 2 | 0.72 | 0.699 |
-| 평균 효과 | 684 | 849.4 | 806–900 | ✗ | 1 | 0.57 | 0.655 |
+| Calibrated model | 684 | 616.7 | 581–657 | ✗ | 3 | 0.71 | 0.781 |
+| As-usual prediction | 684 | 606.5 | 560–648 | ✗ | 2 | 0.72 | 0.699 |
+| Average lift | 684 | 849.4 | 806–900 | ✗ | 1 | 0.57 | 0.655 |
 
-보정 모델의 주별:
+Calibrated model, by week:
 
-| 주 | 방문 | 실제 | 기대 | 90% 범위 |
+| Week | Visits | Actual | Expected | 90% range |
 |---|---|---|---|---|
 | 48 | 3,044 | 69 | 103.7 | 87–118 ✗ |
 | 49 | 2,858 | 90 | 84.8 | 70–102 ✓ |
@@ -21,41 +21,41 @@
 | 52 | 3,321 | 129 | 119.3 | 102–137 ✓ |
 | 53 | 2,521 | 108 | 88.2 | 74–104 ✗ |
 
-## 2. 조건별 (보정 모델)
+## 2. By condition (calibrated model)
 
-| 조건 | 결정 | 실제 | 기대 |
+| Condition | Decisions | Actual | Expected |
 |---|---|---|---|
-| 평소대로 | 383,847 | 415 | 447.5 |
-| 앞쪽 엔드캡 | 19,483 | 133 | 80.5 |
-| 전단 | 13,721 | 48 | 20.9 |
-| 기타 진열 | 21,274 | 88 | 67.8 |
+| As usual | 383,847 | 415 | 447.5 |
+| Front endcap | 19,483 | 133 | 80.5 |
+| Flyer | 13,721 | 48 | 20.9 |
+| Secondary display | 21,274 | 88 | 67.8 |
 
-## 3. 가구층별 (보정 모델)
+## 3. By household segment (calibrated model)
 
-| 가구층 | 결정 | 실제 | 기대 |
+| Household segment | Decisions | Actual | Expected |
 |---|---|---|---|
-| 이 상품을 산 적 있는 가구 | 20,579 | 186 | 213.1 |
-| 이 상품을 산 적 없는 가구 | 417,746 | 498 | 403.6 |
-| 시리얼 자주 삼 (상위 1/3) | 146,275 | 393 | 395.5 |
-| 시리얼 드물게 삼 (하위 1/3) | 146,550 | 100 | 74.2 |
-| 할인 민감 (상위 1/3) | 146,525 | 263 | 212.6 |
-| 할인 덜 민감 (하위 1/3) | 146,200 | 182 | 177.7 |
+| Households that have bought this product before | 20,579 | 186 | 213.1 |
+| Households that have never bought this product | 417,746 | 498 | 403.6 |
+| Frequent cereal buyers (top third) | 146,275 | 393 | 395.5 |
+| Infrequent cereal buyers (bottom third) | 146,550 | 100 | 74.2 |
+| Discount-sensitive (top third) | 146,525 | 263 | 212.6 |
+| Less discount-sensitive (bottom third) | 146,200 | 182 | 177.7 |
 
-## 4. 리포트 숫자 재현
+## 4. Reproducing the report number
 
-실제로 엔드캡이었던 19,483건에서 엔드캡을 뺀 경우와 둔 경우를 같은 손님·같은 운으로 시뮬레이션: 1,000결정당 **0.94 → 3.45** (리포트 0.94 → 3.45), ×3.66.
+On the 19,483 decisions that really were on a front endcap, simulating with the endcap removed vs. kept, with the same shoppers and the same luck: per 1,000 decisions **0.94 → 3.45** (report: 0.94 → 3.45), ×3.66.
 
-## 5. 효과 크기 · 시뮬레이터 vs 실제 (같은 상품·같은 주, 48–53주만)
+## 5. Effect size · simulator vs. actual (same product, same week, weeks 48–53 only)
 
-| 조건 | 실제 효과 | 95% 범위 | 보정 모델 | 평소대로 예측 | 평균 효과 |
+| Condition | Actual effect | 95% range | Calibrated model | As-usual prediction | Average lift |
 |---|---|---|---|---|---|
-| 앞쪽 엔드캡 | 3.18 | 1.91–15.70 | 3.66 ✓ | 1.00 ✗ | 5.69 ✓ |
-| 기타 진열 | 2.27 | 1.55–3.60 | 2.59 ✓ | 1.00 ✗ | 3.41 ✓ |
-| 전단 | — | 판정 불가 | 1.68 ✗ | 1.00 ✗ | 1.89 ✗ |
+| Front endcap | 3.18 | 1.91–15.70 | 3.66 ✓ | 1.00 ✗ | 5.69 ✓ |
+| Secondary display | 2.27 | 1.55–3.60 | 2.59 ✓ | 1.00 ✗ | 3.41 ✓ |
+| Flyer | — | Cannot be determined | 1.68 ✗ | 1.00 ✗ | 1.89 ✗ |
 
-## 읽을 때 주의
+## Caveats when reading
 
-- 실제 효과의 범위는 한 기간(48–53주)만으로 잰 것이라 3개 기간을 합친 리포트 값(3.99배, 2.48–8.56)보다 넓거나 다를 수 있다.
-- 전단은 체인 전체에 같은 주에 나가 같은 주 대조 매장이 거의 없다. 범위가 나와도 표본이 작다.
-- 판매 수는 "그 상품을 산 방문 수"다. 수량이 아니다.
-- 90% 범위는 같은 확률에서의 손님 운만 반영한다. 모델이 틀릴 가능성은 위 실제 비교로만 확인한다.
+- The actual-effect range is measured on a single period (weeks 48–53) only, so it can be wider than, or differ from, the report's value pooled over three periods (3.99×, 2.48–8.56).
+- Flyers run chain-wide in the same week, so there are almost no same-week control stores. Even when a range comes out, the sample is small.
+- The sales count is "the number of visits that bought that product". It is not quantity.
+- The 90% range reflects only shopper luck at the same probabilities. The possibility that the model is wrong is checked only by the comparison with actuals above.

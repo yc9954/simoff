@@ -1,13 +1,13 @@
-# 이어서 작업하기
+# Picking up the work
 
-구조는 `README.md`의 Front end 절에 정리돼 있습니다.
+The structure is laid out in the Front end section of `README.md`.
 
-## 확인된 것 (로컬 브라우저, 2026-10-14)
-- 10개 화면 모두 콘솔 오류 없이 렌더.
-- 최종 배치: 시리얼 근접 전환, 목록에서 상품 선택(카메라 이동 + 행 강조).
-- 실행: 다시 실행(새 실행 번호·시드로 카드 다시 채움). 엔진은 스토리보드처럼 3개, 비교 기준 2개(평소대로 예측·평균 효과)는 아래 접힌 칸.
-- 매장 연결: 예시 파일로 해보기 → 매핑 → cycle → REPORT.md + 3D 배치, 약 1분.
-- 400px 폰 폭: 10개 화면 모두 가로 스크롤 없음.
+## Verified (local browser, 2026-10-14)
+- All 10 screens render with no console errors.
+- Final layout: switching to the cereal close-up; selecting a product from the list (camera moves + row highlighted).
+- Run: run again (refills the cards with a new run number and seed). As in the storyboard, there are 3 engines; the 2 comparison baselines (as-usual prediction, average lift) are in a folded section underneath.
+- Connect records: try it with the example file → mapping → cycle → REPORT.md + 3D layout, about 1 minute.
+- 400px phone width: no horizontal scrolling on any of the 10 screens.
 
-## 남은 일
-- 없음. 다음에 손볼 만한 것: 카드용 3D 스냅샷이 첫 로딩에 약 10초(모델 로드 + 렌더) 걸림.
+## Remaining work
+- None. Worth touching next: the 3D snapshots for the cards take about 10 seconds on first load (model load + render).

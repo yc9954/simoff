@@ -1,196 +1,196 @@
-# SimOff · 첫 실측 평가
+# SimOff · first measured evaluation
 
-2026-10-11 · dunnhumby Complete Journey (84.51°) · 콜드 시리얼 상위 25개 상품
+2026-10-11 · dunnhumby Complete Journey (84.51°) · top 25 cold-cereal products
 
-## 한 줄 결론
+## One-line conclusion
 
-**보정된 결정 모델은 처음 보는 주의 실제 구매를 맞혔다. 페르소나 에이전트는 구매 확률을 14~192배, 학습 없이 쓴 Jev는 40~256배 부풀렸고, 둘 다 엔드캡 효과를 실제 범위보다 작게 봤다.**
-Jev는 확률 수준은 틀렸지만 "누가 더 살 것 같은가"의 순위는 언어 모델 엔진 중 가장 잘 맞혔다. 보정은 모델이 아니라 그 도메인의 데이터에서 온다는 것이 이번 결과의 요지다.
-미리 정한 성공 기준 3개 중 2개는 분명히 통과했고, 3번째(1위 안 맞히기)는 모든 엔진이 통과해 엔진을 가르는 기준이 되지 못했다.
+**The calibrated decision model predicted real purchases in weeks it had never seen. The persona agents inflated purchase probability 14–192×, and Jev used without training inflated it 40–256×; both saw the endcap effect as smaller than the actual range.**
+Jev got the probability level wrong, but among the language-model engines it got the ranking of "who is more likely to buy" most right. The point of this result is that calibration comes not from the model but from that domain's data.
+Of the three success criteria set in advance, two were clearly passed; the third (picking the top plan) was passed by every engine, so it did not separate the engines.
 
-## 무엇을 했나
+## What was done
 
-| 항목 | 내용 |
+| Item | Detail |
 |---|---|
-| 데이터 | 2,469가구 · 1년 · 거래 1,469,307줄 · 진열/전단 기록 20,940,529줄 (R 패키지 문서상 84.51° Customer Journey 연구의 실제 거래) |
-| 단위 | 매장 방문 1회 × 시리얼 상품 1개 → 그 방문에서 그 상품을 샀나 (1,996,300행) |
-| 조건 (매장이 한 일) | A 앞쪽 엔드캡(진열 코드 3) · B 전단만 · C 기타 진열 · 평소대로 |
-| 시간 분리 | 1–26주: 가구 상태 계산에만 사용 · 27–44주 학습 · 45–47주 보정 · **48–53주 시험 (모델이 본 적 없음)** · 추가로 36–41주, 42–47주 시험 구간을 더한 3구간 검증 |
-| 엔진 | ① 보정된 결정 모델 (그래디언트 부스팅 + 등위 보정) ② 평소대로 예측 (조건 정보 없음) ③ 평균 효과 (상품 기본 구매율 × 전체 평균 효과) ④ 페르소나 에이전트 (OpenAI gpt-6.1-sol, codex CLI) — 인구통계만 / 인구통계 + 구매 이력 |
-| 페르소나 표본 | 가구 정보가 있는 가구-상품 80쌍 × 조건 4개 = 320문항씩 (기본 버전은 1묶음 실패로 312문항) |
+| Data | 2,469 households · 1 year · 1,469,307 transaction lines · 20,940,529 display/flyer records (per the R package documentation, real transactions from the 84.51° Customer Journey study) |
+| Unit | 1 store visit × 1 cereal product → did that visit buy that product (1,996,300 rows) |
+| Conditions (what the store did) | A front endcap (display code 3) · B flyer only · C secondary display · as usual |
+| Time split | Weeks 1–26: used only to compute household state · weeks 27–44 training · weeks 45–47 calibration · **weeks 48–53 test (never seen by the model)** · plus a three-window validation adding test windows at weeks 36–41 and 42–47 |
+| Engines | ① Calibrated decision model (gradient boosting + isotonic calibration) ② As-usual prediction (no condition information) ③ Average lift (product base purchase rate × overall average lift) ④ Persona agents (OpenAI gpt-6.1-sol, codex CLI) — demographics only / demographics + purchase history |
+| Persona sample | 80 household-product pairs with household information × 4 conditions = 320 questions each (the basic version has 312 because one batch failed) |
 
-## 결과 1 · 처음 보는 주의 개별 구매 예측
+## Result 1 · Predicting individual purchases in unseen weeks
 
-시험 구간 48–53주 · 438,325행 · 실제 구매 684건
+Test window weeks 48–53 · 438,325 rows · 684 actual purchases
 
-| 엔진 | 로그 손실 ↓ | AUC ↑ | 보정 오차(ECE) ↓ | 평균 예측 / 실제 |
+| Engine | Log loss ↓ | AUC ↑ | Calibration error (ECE) ↓ | Mean prediction / actual |
 |---|---|---|---|---|
-| **보정 모델** | **0.01050** | **0.781** | **0.00027** | 0.141% / 0.156% |
-| 평소대로 예측 | 0.01132 | 0.699 | 0.00041 | 0.138% / 0.156% |
-| 평균 효과 | 0.01138 | 0.655 | 0.00041 | 0.194% / 0.156% |
+| **Calibrated model** | **0.01050** | **0.781** | **0.00027** | 0.141% / 0.156% |
+| As-usual prediction | 0.01132 | 0.699 | 0.00041 | 0.138% / 0.156% |
+| Average lift | 0.01138 | 0.655 | 0.00041 | 0.194% / 0.156% |
 
-3개 시험 구간 모두에서 보정 모델이 두 기준선보다 로그 손실이 낮고 AUC가 높았다 (AUC 0.801 / 0.805 / 0.781).
+In all three test windows the calibrated model had lower log loss and higher AUC than both baselines (AUC 0.801 / 0.805 / 0.781).
 
-보정 곡선 (시험 구간, 예측 확률 구간별 · %):
+Calibration curve (test window, by predicted-probability bin · %):
 
-| 예측 | 0.015 | 0.034 | 0.038 | 0.048 | 0.071 | 0.12 | 0.21 | 0.90 |
+| Predicted | 0.015 | 0.034 | 0.038 | 0.048 | 0.071 | 0.12 | 0.21 | 0.90 |
 |---|---|---|---|---|---|---|---|---|
-| 실제 | 0.021 | 0.062 | 0.082 | 0.069 | 0.099 | 0.13 | 0.25 | 0.84 |
+| Actual | 0.021 | 0.062 | 0.082 | 0.069 | 0.099 | 0.13 | 0.25 | 0.84 |
 
-낮은 구간에서 약간 과소 예측하지만, 예측 순서와 실제 순서가 일치한다.
+It under-predicts slightly in the low bins, but the order of predictions matches the order of actuals.
 
-## 결과 2 · 결정 효과 (가장 중요한 질문)
+## Result 2 · Decision effects (the most important question)
 
-진열은 무작위가 아니다(잘 팔릴 때 진열한다). 그래서 실제 효과는 **같은 상품 · 같은 주 안에서 진열한 매장과 안 한 매장을 비교**해 추정했다. 3개 시험 구간 합산, 95% 범위는 상품-주 단위 부트스트랩.
+Displays are not random (stores display a product when it is selling well). So the actual effect was estimated by **comparing stores that displayed and stores that did not, within the same product and the same week**. Pooled over the three test windows; 95% range by product-week bootstrap.
 
-| 조건 | 실제 효과 | 95% 범위 | 보정 모델 | 평균 효과 | 평소대로 | 페르소나 기본 | 페르소나 + 이력 |
+| Condition | Actual effect | 95% range | Calibrated model | Average lift | As usual | Persona basic | Persona + history |
 |---|---|---|---|---|---|---|---|
-| A 앞쪽 엔드캡 | **3.99배** | 2.48 – 8.56 | 2.52배 ✅ | 5.61배 ✅ | 1.00 ❌ | 1.51배 ❌ | 1.93배 ❌ |
-| C 기타 진열 | **1.64배** | 1.23 – 2.40 | 2.25배 ✅ | 3.03배 ❌ | 1.00 ❌ | 1.37배 ✅ | 1.55배 ✅ |
-| B 전단만 | 판정 불가 | — | 1.61배 | 1.84배 | 1.00 | 1.35배 | 1.53배 |
+| A front endcap | **3.99×** | 2.48 – 8.56 | 2.52× ✅ | 5.61× ✅ | 1.00 ❌ | 1.51× ❌ | 1.93× ❌ |
+| C secondary display | **1.64×** | 1.23 – 2.40 | 2.25× ✅ | 3.03× ❌ | 1.00 ❌ | 1.37× ✅ | 1.55× ✅ |
+| B flyer only | Cannot be determined | — | 1.61× | 1.84× | 1.00 | 1.35× | 1.53× |
 
-- 범위 안에 두 조건 모두 들어온 것은 **보정 모델뿐**이다.
-- 전단은 체인 전체에 같은 주에 나가서 같은 주 대조 매장이 없다. 이 데이터로는 전단 효과를 검증할 수 없다.
-- 보정 모델은 엔드캡 효과를 실제보다 낮게 본다 (2.5 vs 4.0). 범위 안이지만 하한에 가깝다.
-- 페르소나 80쌍에서 계산한 보정 모델 효과는 엔드캡 2.98배(범위 안), 기타 진열 2.95배(**범위 밖, 과대**)였다. 표본이 작아 흔들린다.
+- **Only the calibrated model** lands within range on both conditions.
+- Flyers run chain-wide in the same week, so there are no same-week control stores. The flyer effect cannot be validated with this data.
+- The calibrated model sees the endcap effect as lower than actual (2.5 vs 4.0). It is within range, but close to the lower bound.
+- On the 80 persona pairs, the calibrated model's effects were 2.98× for the endcap (within range) and 2.95× for secondary display (**out of range, overestimated**). The sample is small, so these numbers are unstable.
 
-## 결과 3 · 페르소나 에이전트
+## Result 3 · Persona agents
 
-| | 실제 | 보정 모델 | 페르소나 기본 | 페르소나 + 이력 |
+| | Actual | Calibrated model | Persona basic | Persona + history |
 |---|---|---|---|---|
-| 평소 조건 구매 확률 | 0.108% | 0.091% | **20.7%** (192배) | 1.5% (14배) |
-| 80쌍의 실제 시험 방문 1,000회 → 예측 구매 수 | **1건** | 0.87건 | **209건** | 13건 |
-| 가구 간 퍼짐 (변동계수, 평소 조건) | — | 1.42 | 0.55 | 0.84 |
-| 실제 구매 이력과의 순위 상관 | — | 0.27 | 0.19 | 0.11 |
-| 엔드캡 효과 | 3.99배 | 2.98배 | 1.51배 | 1.93배 |
+| Purchase probability under the as-usual condition | 0.108% | 0.091% | **20.7%** (192×) | 1.5% (14×) |
+| 1,000 real test visits of the 80 pairs → predicted purchases | **1** | 0.87 | **209** | 13 |
+| Spread across households (coefficient of variation, as-usual condition) | — | 1.42 | 0.55 | 0.84 |
+| Rank correlation with actual purchase history | — | 0.27 | 0.19 | 0.11 |
+| Endcap effect | 3.99× | 2.98× | 1.51× | 1.93× |
 
-읽는 법:
-1. **수준을 모른다.** 페르소나는 "이 상품을 이번 장보기에 살까"를 20% 안팎으로 답했다. 실제는 0.1%. 시뮬레이션을 그대로 굴리면 판매량을 200배 가까이 부풀린다. 구매 이력을 숫자로 넣어도 14배다.
-2. **조건 차이를 눌러 버린다.** 엔드캡, 전단, 기타 진열이 모두 비슷하게 "조금 더 산다"(1.4–1.9배)로 수렴한다. 실제 엔드캡 효과(4배)를 범위 밖으로 과소평가했다. 사용자 가설인 "예측 가능한 답으로의 회귀"는 이 형태로 확인됐다.
-3. **사람 간 차이가 좁다.** 같은 조건에서 가구별 확률의 퍼짐이 보정 모델보다 훨씬 작다 (0.55 vs 1.42). Bisbee 외(2024)의 "퍼짐이 좁다"와 같은 방향이다.
-4. 반대로 페르소나가 맞힌 것도 있다. 기타 진열 효과는 범위 안이었고, 조건의 순위(엔드캡 > 기타 진열)도 맞혔다.
+How to read it:
+1. **They do not know the level.** Asked "would you buy this product on this shopping trip", the personas answered around 20%. The actual rate is 0.1%. Running the simulation as-is would inflate sales nearly 200×. Even with purchase history given as numbers, it is 14×.
+2. **They flatten the differences between conditions.** Endcap, flyer and secondary display all converge on a similar "buys a bit more" (1.4–1.9×). They underestimated the actual endcap effect (4×) to outside the range. The user's hypothesis, "regression toward the predictable answer", was confirmed in this form.
+3. **The differences between people are narrow.** Under the same condition, the spread of per-household probabilities is much smaller than the calibrated model's (0.55 vs 1.42). This points the same way as the "narrow spread" of Bisbee et al. (2024).
+4. Conversely, there are things the personas got right. The secondary-display effect was within range, and they got the ranking of conditions (endcap > secondary display) right.
 
-## 결과 4 · Jev (TypeSafe, jev-1.13.0, 학습 없이)
+## Result 4 · Jev (TypeSafe, jev-1.13.0, without training)
 
-공개 문서에는 사용자 데이터로 학습시키는 엔드포인트가 없어 학습 없이 시험했다. 같은 80쌍 × 조건 4개, 한 요청에 상태 하나, 예/아니오(`noul`) 질문의 확률. 640회 호출, 실패 0.
+The public documentation has no endpoint for training on user data, so it was tested without training. The same 80 pairs × 4 conditions, one state per request, probability of a yes/no (`noul`) question. 640 calls, 0 failures.
 
-- **Jev·글**: 페르소나와 같은 인구통계 설명을 상태로
-- **Jev·상태**: 엔드포인트에서 계산한 숫자 상태(26주 방문 수, 시리얼 구매 방문 비율, 이 상품 구매 횟수, 상품 기본 구매율 등)를 JSON으로
+- **Jev·text**: the same demographic description as the personas, as the state
+- **Jev·state**: numeric state computed from the endpoint (visits over 26 weeks, share of visits that bought cereal, times this product was bought, product base purchase rate, etc.) as JSON
 
-| | 실제 | 보정 모델 | Jev·상태 | Jev·글 | 페르소나 | 페르소나+이력 |
+| | Actual | Calibrated model | Jev·state | Jev·text | Persona | Persona+history |
 |---|---|---|---|---|---|---|
-| 평소 조건 구매 확률 | 0.108% | 0.091% | 4.3% (40배) | 27.7% (256배) | 20.7% (192배) | 1.5% (14배) |
-| 실제 방문 1,000회 → 예측 구매 (실제 1건) | | 0.87 | 44 | 265 | 209 | 13 |
-| 엔드캡 효과 (실제 3.99, 2.48–8.56) | | 2.98 ✓ | 1.25 ✗ | 0.86 ✗ 반대 방향 | 1.51 ✗ | 1.93 ✗ |
-| 기타 진열 효과 (실제 1.64, 1.23–2.40) | | 2.95 ✗ | 1.25 ✓ | 1.01 ✗ | 1.37 ✓ | 1.55 ✓ |
-| 가구 간 퍼짐 (변동계수) | | 1.42 | 0.54 | 0.52 | 0.55 | 0.84 |
-| 구매 이력과의 순위 상관 | | 0.27 | **0.31** | 0.11 | 0.19 | 0.11 |
+| Purchase probability under the as-usual condition | 0.108% | 0.091% | 4.3% (40×) | 27.7% (256×) | 20.7% (192×) | 1.5% (14×) |
+| 1,000 real visits → predicted purchases (actual: 1) | | 0.87 | 44 | 265 | 209 | 13 |
+| Endcap effect (actual 3.99, 2.48–8.56) | | 2.98 ✓ | 1.25 ✗ | 0.86 ✗ wrong direction | 1.51 ✗ | 1.93 ✗ |
+| Secondary-display effect (actual 1.64, 1.23–2.40) | | 2.95 ✗ | 1.25 ✓ | 1.01 ✗ | 1.37 ✓ | 1.55 ✓ |
+| Spread across households (coefficient of variation) | | 1.42 | 0.54 | 0.52 | 0.55 | 0.84 |
+| Rank correlation with purchase history | | 0.27 | **0.31** | 0.11 | 0.19 | 0.11 |
 
-(이 표의 보정 모델 효과는 80쌍 기준. 시험 구간 전체 기준은 결과 2의 2.52 / 2.25.)
+(The calibrated-model effects in this table are on the 80 pairs. On the full test window they are 2.52 / 2.25, from Result 2.)
 
-읽는 법:
-1. Jev의 RLCD 보정은 Jev가 학습한 과제에서의 확신도-정확도 일치다. 이 매장 손님의 구매 비율로 옮겨 오지 않았다. 숫자 상태를 줬을 때 40배, 글을 줬을 때 256배 과대.
-2. Jev는 확률을 0.01 단위로 낸다 (관측 최솟값 0.03). 0.1% 같은 드문 사건은 표현 자체가 안 된다.
-3. 대신 숫자 상태를 받은 Jev는 가구 순위를 가장 잘 맞혔다 (0.31). **Jev를 순위 엔진으로 두고 우리 데이터로 확률을 보정하는 조합**이 다음 실험 후보다. 이번에는 라벨이 있는 표본이 320행(실제 구매 1건)뿐이라 보정 층을 학습시킬 수 없었다.
-4. 글로 된 인구통계를 받은 Jev는 엔드캡에서 오히려 덜 산다고 답했다 (0.86배).
+How to read it:
+1. Jev's RLCD calibration is confidence-accuracy agreement on the tasks Jev was trained on. It did not carry over to the purchase rate of this store's shoppers. Given the numeric state it overestimated 40×; given text, 256×.
+2. Jev outputs probabilities in steps of 0.01 (observed minimum 0.03). A rare event such as 0.1% cannot be expressed at all.
+3. On the other hand, Jev given the numeric state ranked households best (0.31). **Using Jev as the ranking engine and calibrating its probabilities on our data** is the candidate for the next experiment. This time there were only 320 labelled rows (1 actual purchase), so a calibration layer could not be trained.
+4. Jev given the demographics as text answered that people buy *less* on an endcap (0.86×).
 
-## 결과 5 · Jev + 매장 데이터 보정 (사례-대조 표본, 6,497회 호출, 약 $0.13)
+## Result 5 · Jev + calibration on store data (case-control sample, 6,497 calls, about $0.13)
 
-질문: Jev(숫자 상태)로 순위를 매기고, 45–47주 실제 구매로 확률만 보정하면(등위 회귀) 보정 모델만큼 맞히는가?
+Question: if Jev (numeric state) does the ranking and only the probabilities are calibrated on actual purchases from weeks 45–47 (isotonic regression), does it predict as well as the calibrated model?
 
-표본: 보정용 45–47주 실제 구매 313건 전부 + 비구매 1,500건 / 시험용 48–53주 실제 구매 684건 전부 + 조건별 비구매 750건씩. 비구매는 원래 비율로 가중치를 되돌려 평가했다.
+Sample: for calibration, all 313 actual purchases in weeks 45–47 + 1,500 non-purchases / for test, all 684 actual purchases in weeks 48–53 + 750 non-purchases per condition. Non-purchases were reweighted back to their original proportion for evaluation.
 
-| 엔진 | 로그 손실 ↓ | AUC ↑ | 보정 오차 ↓ | 평균 예측 (실제 0.156%) | 엔드캡 효과 (실제 3.99, 2.48–8.56) |
+| Engine | Log loss ↓ | AUC ↑ | Calibration error ↓ | Mean prediction (actual 0.156%) | Endcap effect (actual 3.99, 2.48–8.56) |
 |---|---|---|---|---|---|
-| Jev 그대로 | 0.0644 | 0.714 | 0.0567 | 5.83% | 1.35 ✗ |
-| Jev + 매장 데이터 보정 | 0.0135 | 0.714 | 0.0013 | 0.156% | 2.24 ✗ (하한 바로 아래) |
-| 보정 모델 | **0.0103** | **0.784** | **0.0006** | 0.125% | 2.52 ✓ |
-| 평소대로 예측 | 0.0112 | 0.700 | 0.0006 | 0.130% | 1.00 ✗ |
+| Jev as-is | 0.0644 | 0.714 | 0.0567 | 5.83% | 1.35 ✗ |
+| Jev + store-data calibration | 0.0135 | 0.714 | 0.0013 | 0.156% | 2.24 ✗ (just below the lower bound) |
+| Calibrated model | **0.0103** | **0.784** | **0.0006** | 0.125% | 2.52 ✓ |
+| As-usual prediction | 0.0112 | 0.700 | 0.0006 | 0.130% | 1.00 ✗ |
 
-읽는 법:
-1. **매장 데이터로 보정하자 Jev의 수준 오류가 사라졌다.** 평균 예측이 5.83%에서 정확히 0.156%로, 로그 손실이 0.064에서 0.0135로. 사람의 행동 비율에 대한 보정은 모델이 아니라 데이터에서 온다는 것을 직접 보여준다.
-2. **그래도 엔드포인트 데이터로 처음부터 학습한 모델이 낫다.** 보정으로는 순위가 바뀌지 않아 AUC가 0.714에 머문다 (보정 모델 0.784). 로그 손실은 조건을 무시하는 평소대로 예측(0.0112)보다도 나쁘다.
-3. 80쌍에서 Jev가 순위를 가장 잘 맞힌 것(0.31)은 작은 표본의 결과였다. 시험 표본 전체에서는 보정 모델의 순위가 더 정확하다.
-4. 조건별 수준은 Jev+보정이 엔드캡(0.48% vs 실제 0.68%)과 기타 진열(0.38% vs 0.41%)에서 보정 모델(0.36%, 0.30%)보다 실제에 가까웠다. 반면 전단(0.16% vs 0.35%)은 둘 다 낮다.
-5. 등위 보정의 맨 위 구간(Jev 0.32 이상 → 거의 100%)은 보정 표본의 소수 사례에 과적합된 것이다. 실제 서비스라면 구간을 묶거나 로지스틱 보정을 써야 한다.
+How to read it:
+1. **Calibrating on store data removed Jev's level error.** Mean prediction went from 5.83% to exactly 0.156%, and log loss from 0.064 to 0.0135. This directly shows that calibration to the rates of human behaviour comes from the data, not from the model.
+2. **Even so, the model trained from scratch on the endpoint data is better.** Calibration does not change the ranking, so AUC stays at 0.714 (calibrated model 0.784). Log loss is worse even than the as-usual prediction, which ignores conditions (0.0112).
+3. Jev ranking best on the 80 pairs (0.31) was a small-sample result. On the full test sample the calibrated model's ranking is more accurate.
+4. On per-condition levels, Jev+calibration was closer to actual than the calibrated model (0.36%, 0.30%) for the endcap (0.48% vs actual 0.68%) and secondary display (0.38% vs 0.41%). For flyers (0.16% vs 0.35%), however, both are low.
+5. The top bin of the isotonic calibration (Jev 0.32 or higher → nearly 100%) is overfitted to a handful of cases in the calibration sample. A real service would need to merge bins or use logistic calibration.
 
-요약: **RLCD로 보정된 Jev도 사람의 구매 비율로는 보정되어 있지 않았다. 매장 데이터로 한 층을 얹으면 수준은 맞지만, 결정을 가르는 순위와 효과 크기는 엔드포인트 데이터로 학습한 모델이 더 정확하다.**
+Summary: **Jev, calibrated by RLCD, was not calibrated to human purchase rates either. Adding one layer on store data fixes the level, but the ranking and effect sizes that decide between plans are more accurate from a model trained on the endpoint data.**
 
-## 결과 6 · Von: open-weight 결정 모델을 이 매장 데이터로 RLCD 학습 (2026-10-14)
+## Result 6 · Von: RLCD training of an open-weight decision model on this store's data (2026-10-14)
 
-질문: Jev는 학습시킬 수 없었다. 가중치가 공개된 결정 모델이라면, RLCD 목표로 이 매장의 영수증을 학습시켰을 때 순위와 효과 크기까지 맞는가?
+Question: Jev could not be trained. If the decision model has published weights, does training it on this store's receipts with the RLCD objective get the ranking and effect sizes right as well?
 
-- **모델:** [Von](https://github.com/wfzyx/von) 1.3 (395M, ModernBERT 인코더, Apache-2.0, 커밋 `9319ced`). Jev와 같은 형식(상태 + 예/아니오 질문 → 확률)이라 같은 상태와 질문을 그대로 넣었다.
-- **Von 저장소의 "RLCD":** 강화학습이 아니다. `training/train_rlcd.py`와 `train_option_marker.py`는 보기 확률의 교차 엔트로피 + 0.5 × Brier 손실로 지도학습하고, 끝에 온도 하나를 맞춘다. 같은 손실을 썼다.
-- **학습:** 27–44주 구매 2,220건 전부 + 구매 1건당 비구매 4건. 28층 전체, 18주 2바퀴 / 3주(42–44주) 4바퀴, 시드 3개씩. 비구매를 덜 뽑은 만큼 확률은 사전확률 보정(log 표본 비율)으로 되돌렸다. 보관할 체크포인트는 45–47주 로그 손실로 골랐다(정확도로 고르면 "항상 아니오"가 99.8%다). Modal L40S, 실험당 4–10분, 6개 합계 약 45분.
-- **시험:** 결과 5와 같은 설계의 표본(48–53주 구매 684건 + 조건별 비구매 750건, 가중치로 실제 비율 복원). 엔드캡 효과는 엔드캡이었던 시험 행 500개를 엔드캡 / 평소 진열로 두 번 물은 비율.
+- **Model:** [Von](https://github.com/wfzyx/von) 1.3 (395M, ModernBERT encoder, Apache-2.0, commit `9319ced`). It has the same format as Jev (state + yes/no question → probability), so the same states and questions were fed in unchanged.
+- **"RLCD" in the Von repository:** it is not reinforcement learning. `training/train_rlcd.py` and `train_option_marker.py` do supervised learning with cross-entropy on option probabilities + 0.5 × Brier loss, and fit a single temperature at the end. The same loss was used.
+- **Training:** all 2,220 purchases from weeks 27–44 + 4 non-purchases per purchase. All 28 layers; 18 weeks for 2 epochs / 3 weeks (weeks 42–44) for 4 epochs, 3 seeds each. Probabilities were corrected back for the under-sampling of non-purchases with a prior correction (log of the sampling ratio). The checkpoint to keep was chosen by log loss on weeks 45–47 (choosing by accuracy gives "always no" at 99.8%). Modal L40S, 4–10 minutes per experiment, about 45 minutes in total for the 6.
+- **Test:** a sample with the same design as Result 5 (684 purchases in weeks 48–53 + 750 non-purchases per condition, actual proportions restored by weights). The endcap effect is the ratio from asking about 500 test rows that were on an endcap twice, once as endcap and once as regular shelf.
 
-| 엔진 | AUC ↑ | 로그 손실 ↓ | 보정 오차 ↓ | 평균 예측 (실제 0.156%) | 엔드캡 방문 수준 (실제 0.68%) | 엔드캡 효과 |
+| Engine | AUC ↑ | Log loss ↓ | Calibration error ↓ | Mean prediction (actual 0.156%) | Endcap-visit level (actual 0.68%) | Endcap effect |
 |---|---|---|---|---|---|---|
-| Von 그대로 | 0.553 | 0.4971 | 0.390 | 39.1% (250배) | 38.9% | 0.99 |
-| Von 그대로 + 등위 보정 | 0.578 | 0.0114 | 0.0024 | 0.144% | 0.13% | 0.99 |
-| Jev 그대로 / + 보정 (결과 5) | 0.714 | 0.0644 / 0.0135 | 0.057 / 0.0013 | 5.83% / 0.156% | 6.9% / 0.48% | 1.35 / 2.24 |
-| **Von + RLCD 학습 · 18주** (시드 3개) | **0.774–0.791** (평균 0.785) | 0.0107–0.0109 | 0.0003–0.0010 | 0.145–0.186% | **0.46–0.79%** (평균 0.62%) | 4.6–5.8 |
-| 보정 모델 · 18주 (시뮬레이터) | 0.777 | **0.0104** | 0.0009 | 0.127% | 0.36% | 4.35 |
-| Von + RLCD 학습 · 3주 (시드 3개) | 0.755–0.774 | 0.0109–0.0111 | 0.0005–0.0006 | 0.108–0.116% | 0.15–0.33% | 1.7 / 2.0 / 4.6 |
-| 보정 모델 · 3주 | 0.765 | 0.0107 | 0.0006 | 0.125% | 0.18% | 1.83 |
+| Von as-is | 0.553 | 0.4971 | 0.390 | 39.1% (250×) | 38.9% | 0.99 |
+| Von as-is + isotonic calibration | 0.578 | 0.0114 | 0.0024 | 0.144% | 0.13% | 0.99 |
+| Jev as-is / + calibration (Result 5) | 0.714 | 0.0644 / 0.0135 | 0.057 / 0.0013 | 5.83% / 0.156% | 6.9% / 0.48% | 1.35 / 2.24 |
+| **Von + RLCD training · 18 weeks** (3 seeds) | **0.774–0.791** (mean 0.785) | 0.0107–0.0109 | 0.0003–0.0010 | 0.145–0.186% | **0.46–0.79%** (mean 0.62%) | 4.6–5.8 |
+| Calibrated model · 18 weeks (simulator) | 0.777 | **0.0104** | 0.0009 | 0.127% | 0.36% | 4.35 |
+| Von + RLCD training · 3 weeks (3 seeds) | 0.755–0.774 | 0.0109–0.0111 | 0.0005–0.0006 | 0.108–0.116% | 0.15–0.33% | 1.7 / 2.0 / 4.6 |
+| Calibrated model · 3 weeks | 0.765 | 0.0107 | 0.0006 | 0.125% | 0.18% | 1.83 |
 
-실제 엔드캡 효과: 3구간 합산 3.99배(2.48–8.56), 48–53주만 3.18배(1.91–15.70).
+Actual endcap effect: 3.99× pooled over three windows (2.48–8.56), 3.18× for weeks 48–53 only (1.91–15.70).
 
-읽는 법:
-1. **학습 전 Von은 이 과제에서 쓸 수 없었다.** 구매 확률을 39%로 답했고(실제의 250배), 순위는 거의 무작위(AUC 0.553), 엔드캡에 반응하지 않았다(0.99배). Jev보다 못하다. 등위 보정을 얹어도 수준만 맞을 뿐 나머지는 그대로다.
-2. **같은 모델을 이 매장 데이터로 RLCD 학습하자 결정 모델이 됐다.** 순위는 보정 모델과 같은 수준(시드 평균 0.785 vs 0.777, 시드 간 차이 0.02 안), 확률 수준은 학습만으로 맞았다(보정 오차 0.001 이하, 별도 보정 층 없이). 엔드캡 효과 4.6–5.8배는 실제 범위 안이다.
-3. **조건별 수준은 학습한 Von이 더 실제에 가깝다.** 엔드캡이었던 방문의 판매 확률이 실제 0.68%, Von 평균 0.62%, 보정 모델 0.36%. 시뮬레이터가 검증에서 보인 약점(엔드캡 방문 판매를 실제 133건에 기대 79건으로 낮게 봄)을 정확히 이 지점에서 메운다. 전단도 Von 0.19–0.24% vs 보정 모델 0.14% (실제 0.35%).
-4. **로그 손실은 아직 보정 모델이 낫다** (0.0104 vs 0.0107–0.0109). 전체 확률의 정밀도는 부스팅이, 진열 조건에 따른 수준 차이는 Von이 더 잘 잡는다.
-5. **라벨이 3주뿐일 때 Von의 이점은 없었다.** 순위는 보정 모델과 비슷하고, 엔드캡 효과는 시드에 따라 1.7–4.6배로 흔들렸다(보정 모델 1.83배). 사전학습이 적은 라벨을 메워 준다는 가설은 이 실험에서 확인되지 않았다.
-6. 학습한 Von 위에 등위 보정을 또 얹으면 일부 시드에서 나빠졌다(로그 손실 0.0139). 학습이 이미 보정을 했으니 덧붙일 필요가 없다.
+How to read it:
+1. **Before training, Von was unusable on this task.** It answered a purchase probability of 39% (250× actual), its ranking was nearly random (AUC 0.553), and it did not respond to the endcap (0.99×). It is worse than Jev. Adding isotonic calibration only fixes the level; everything else stays the same.
+2. **RLCD training of the same model on this store's data turned it into a decision model.** Ranking is on the same level as the calibrated model (seed mean 0.785 vs 0.777, seeds within 0.02 of each other), and the probability level was right from training alone (calibration error 0.001 or lower, with no separate calibration layer). Its endcap effect of 4.6–5.8× is within the actual range.
+3. **On per-condition levels, the trained Von is closer to actual.** The probability of a sale on visits that were on an endcap is 0.68% actual, 0.62% Von mean, 0.36% calibrated model. This fills exactly the weakness the simulator showed in validation (it saw sales on endcap visits as low: expected 79 against an actual 133). For flyers too: Von 0.19–0.24% vs calibrated model 0.14% (actual 0.35%).
+4. **On log loss the calibrated model is still better** (0.0104 vs 0.0107–0.0109). Boosting captures overall probability precision better; Von captures the level differences between display conditions better.
+5. **With only three weeks of labels, Von had no advantage.** Its ranking is similar to the calibrated model's, and its endcap effect swung between 1.7 and 4.6× depending on the seed (calibrated model 1.83×). The hypothesis that pretraining makes up for few labels was not confirmed in this experiment.
+6. Adding isotonic calibration again on top of the trained Von made some seeds worse (log loss 0.0139). Training already did the calibration, so there is no need to add it.
 
-요약: **RLCD식 학습은 효과가 있었다. 단, 그 효과는 모델이 원래 가진 RLCD 보정에서 오지 않고, 이 매장의 실제 구매로 학습하는 데서 왔다.** 학습 전 Von과 Jev는 둘 다 이 매장 손님의 구매 비율을 몰랐고, 학습한 Von은 순위와 수준에서 시뮬레이터의 보정 모델과 맞먹으면서 진열 조건별 수준은 더 정확했다. 시뮬레이터 엔진으로 쓰려면 다음 단계는 두 모델의 앙상블(부스팅의 정밀도 + Von의 조건 반응)과, 전체 시험 구간(43만 행) 평가다.
+Summary: **RLCD-style training worked. But the gain did not come from the RLCD calibration the model originally had; it came from training on this store's actual purchases.** Before training, neither Von nor Jev knew the purchase rate of this store's shoppers; the trained Von matched the simulator's calibrated model on ranking and level, and was more accurate on per-display-condition levels. To use it as a simulator engine, the next steps are an ensemble of the two models (boosting's precision + Von's response to conditions) and an evaluation on the full test window (430,000 rows).
 
-한계: 시험 표본은 사례-대조(3,684행)라 AUC에 ±0.01 정도의 표본 오차가 있다. Von은 시드 3개, 비구매 비율 1:4 한 가지만 시험했다. 상태는 숫자 9개 남짓이라 Von의 글 읽는 능력이 쓰일 자리가 거의 없었다.
+Limitations: the test sample is case-control (3,684 rows), so AUC carries a sampling error of about ±0.01. Von was tested with only 3 seeds and a single non-purchase ratio, 1:4. The state is roughly 9 numbers, so there was almost no room for Von's ability to read text to be used.
 
-## 결과 7 · 시험 구간 전체에서 보정 모델 + Von (2026-10-14)
+## Result 7 · Calibrated model + Von on the full test window (2026-10-14)
 
-결과 6은 사례-대조 표본(3,684행)이었다. 이번에는 학습한 Von(18주, 시드 3개)으로 **48–53주의 모든 행(438,325행, 실제 구매 684건)**과 45–47주를 채점하고(Modal L40S 12대), 진열됐던 행은 평소 진열로도 한 번 더 물어 효과 크기를 쟀다. Von은 시드 3개의 확률을 평균했다.
+Result 6 was a case-control sample (3,684 rows). This time the trained Von (18 weeks, 3 seeds) scored **every row in weeks 48–53 (438,325 rows, 684 actual purchases)** and weeks 45–47 (12 Modal L40S machines), and rows that were on display were asked once more as regular shelf to measure the effect size. Von's probabilities are averaged over the 3 seeds.
 
-| 엔진 | AUC ↑ | 로그 손실 ↓ | 보정 오차 ↓ | 기대 판매 (실제 684) | 엔드캡 (실제 133) | 전단 (실제 48) | 기타 진열 (실제 88) | 평소 (실제 415) | 엔드캡 효과 | 기타 진열 효과 |
+| Engine | AUC ↑ | Log loss ↓ | Calibration error ↓ | Expected sales (actual 684) | Endcap (actual 133) | Flyer (actual 48) | Secondary display (actual 88) | As usual (actual 415) | Endcap effect | Secondary-display effect |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 보정 모델 | 0.774 | 0.01056 | 0.00032 | 616 | 79 | 20 | 69 | 448 | 4.51 | 2.70 |
-| Von (RLCD 학습, 시드 평균) | 0.785 | 0.01062 | 0.00053 | 726 | 119 | 32 | 86 | 489 | 5.41 | 3.21 |
-| 합치기 · 45–47주에 맞춤 | 0.785 | 0.01055 | 0.00035 | 614 | 78 | 20 | 68 | 447 | 4.48 | 2.69 |
-| 합치기 · 로짓 단순 평균 | 0.795 | 0.01044 | 0.00034 | 608 | 86 | 23 | 69 | 429 | 4.79 | 2.95 |
-| 합치기 · 시험 구간 교차 맞춤 | 0.794 | 0.01042 | 0.00029 | 702 | 95 | 26 | 78 | 502 | 4.63 | 2.87 |
+| Calibrated model | 0.774 | 0.01056 | 0.00032 | 616 | 79 | 20 | 69 | 448 | 4.51 | 2.70 |
+| Von (RLCD-trained, seed mean) | 0.785 | 0.01062 | 0.00053 | 726 | 119 | 32 | 86 | 489 | 5.41 | 3.21 |
+| Combined · fitted on weeks 45–47 | 0.785 | 0.01055 | 0.00035 | 614 | 78 | 20 | 68 | 447 | 4.48 | 2.69 |
+| Combined · simple logit average | 0.795 | 0.01044 | 0.00034 | 608 | 86 | 23 | 69 | 429 | 4.79 | 2.95 |
+| Combined · cross-fitted on the test window | 0.794 | 0.01042 | 0.00029 | 702 | 95 | 26 | 78 | 502 | 4.63 | 2.87 |
 
-같은 기간 실제 효과(같은 상품 · 같은 주 비교): 엔드캡 3.18배 (1.91–15.70), 기타 진열 2.27배 (1.55–3.60). 전단은 같은 주 대조 매장이 없어 판정 불가.
+Actual effects in the same period (same product, same week comparison): endcap 3.18× (1.91–15.70), secondary display 2.27× (1.55–3.60). Flyer cannot be determined because there are no same-week control stores.
 
-읽는 법:
-1. **표본에서 본 것이 전체에서도 그대로였다.** Von은 순위(AUC 0.785 vs 0.774)와 진열 조건별 수준(엔드캡 방문 판매 119 vs 79, 실제 133)에서 보정 모델보다 낫고, 확률 정밀도(로그 손실)와 평소 조건 수준은 보정 모델이 낫다. Von은 평소 조건을 높게 봐서 전체를 6% 과대한다.
-2. **45–47주에 맞춘 합치기는 공정하지 않았다.** 그 주는 보정 모델이 등위 보정에 쓴 주라서 거기서는 보정 모델이 완벽해 보이고, 가중치가 보정 모델에 0.98, Von에 0.01로 쏠렸다.
-3. **맞추지 않고 로짓만 평균해도 둘보다 낫다.** AUC 0.795, 로그 손실 0.01044로 두 모델 각각보다 좋다. 시험 구간을 반으로 나눠 교차로 맞춘 합치기도 같은 수준(0.794 / 0.01042)이고, 총량(701 / 684)과 엔드캡 수준(95 / 133)이 가장 실제에 가깝다.
-4. **효과 크기는 모든 엔진이 실제보다 크게 본다**(엔드캡 4.5–5.4배 vs 실제 3.18배, 다만 모두 95% 범위 안). 이 기간만의 실제 효과는 3개 기간 합산(3.99배)보다 낮게 나왔다.
+How to read it:
+1. **What the sample showed held on the full data.** Von is better than the calibrated model on ranking (AUC 0.785 vs 0.774) and on per-display-condition levels (sales on endcap visits 119 vs 79, actual 133); the calibrated model is better on probability precision (log loss) and on the as-usual level. Von sees the as-usual condition as high and overestimates the total by 6%.
+2. **The combination fitted on weeks 45–47 was not fair.** Those are the weeks the calibrated model used for its isotonic calibration, so the calibrated model looks perfect there, and the weights tilted to 0.98 on the calibrated model and 0.01 on Von.
+3. **Simply averaging the logits, without fitting, beats both.** AUC 0.795 and log loss 0.01044, better than either model alone. The combination cross-fitted on two halves of the test window is at the same level (0.794 / 0.01042), and is closest to actual on the total (701 / 684) and on the endcap level (95 / 133).
+4. **Every engine sees effect sizes as larger than actual** (endcap 4.5–5.4× vs actual 3.18×, though all within the 95% range). The actual effect for this period alone came out lower than the three-period pooled value (3.99×).
 
-요약: **보정 모델과 Von은 서로 다른 것을 잘한다. 둘을 평균하면 이 데이터의 어느 단일 모델보다 낫다.** 시뮬레이터 엔진으로는 로짓 평균이 가장 단순하고 맞추는 데이터도 필요 없다. 남은 문제는 Von이 시뮬레이터 안에서 안마다 다시 물을 때 드는 계산(43.8만 행 × 안 4개, GPU로 약 15분)이라, 시뮬레이터에 넣으려면 안별 확률을 미리 채점해 두는 방식이 맞다.
+Summary: **The calibrated model and Von are good at different things. Averaging the two beats any single model on this data.** As a simulator engine, the logit average is the simplest and needs no data to fit. The remaining problem is the compute Von needs to be asked again for every plan inside the simulator (438K rows × 4 plans, about 15 minutes on GPU), so the right way to put it in the simulator is to pre-score the per-plan probabilities.
 
-## 미리 정한 성공 기준
+## Success criteria set in advance
 
-| 기준 | 결과 |
+| Criterion | Result |
 |---|---|
-| 1. 보정 모델이 평소대로 예측보다 정확 | ✅ 3개 구간 모두 로그 손실·AUC 우위, 결정 효과는 평소대로 예측이 범위 밖 |
-| 2. 보정 모델이 페르소나보다 정확 | ✅ 수준(0.84배 vs 14–192배), 예측 구매 수(0.87 vs 13–209, 실제 1), 엔드캡 효과(범위 안 vs 밖) |
-| 3. 실제 1위 안을 1위로 맞힘 | ✅ 단, 평소대로 예측을 제외한 모든 엔진이 맞혀서 엔진을 구별하지 못함 |
+| 1. The calibrated model is more accurate than the as-usual prediction | ✅ Ahead on log loss and AUC in all three windows; on decision effects the as-usual prediction is out of range |
+| 2. The calibrated model is more accurate than the personas | ✅ Level (0.84× vs 14–192×), predicted purchases (0.87 vs 13–209, actual 1), endcap effect (in range vs out of range) |
+| 3. Picks the actual top plan as top | ✅ However, every engine except the as-usual prediction got it right, so it does not distinguish the engines |
 
-## 한계 (발표에서 먼저 말할 것)
+## Limitations (state these first in a presentation)
 
-- **전단 효과는 검증하지 못했다.** 같은 주 대조군이 없다.
-- **할인은 조건에서 뺐다.** 할인액은 산 사람의 영수증에만 남아, 사지 않은 방문의 가격을 알 수 없다.
-- **같은 상품·주 안 비교도 인과 추정으로는 불완전하다.** 매장이 진열 위치를 고르는 기준(매장 규모, 동네)이 남아 있다. 엔드캡 범위가 넓은(2.5–8.6) 이유 중 하나다.
-- **페르소나 표본이 작다.** 80쌍 × 4조건, 실제 구매 1건. 수준 비교는 시험 구간 전체 실제 구매율(38만 행)과 했다.
-- **페르소나는 한 번에 8명씩 묶어 물었다.** 비용 때문이다. 묶음이 답을 서로 닮게 했을 가능성이 있다.
-- **Jev는 학습 없이만 시험했다.** 학습 엔드포인트가 문서에 없다. 80쌍 표본이라 Jev 위에 보정 층을 얹는 실험은 아직 못 했다.
-- 데이터는 2017년으로 표기된 미국 마트 1곳 체인이다. 한국 매장으로 일반화할 근거는 아직 없다.
+- **The flyer effect could not be validated.** There is no same-week control group.
+- **Discounts were left out of the conditions.** The discount amount appears only on the receipts of people who bought, so the price on visits that did not buy is unknown.
+- **Even the within-product, within-week comparison is incomplete as causal estimation.** The criteria a store uses to choose display placement (store size, neighbourhood) remain. This is one reason the endcap range is wide (2.5–8.6).
+- **The persona sample is small.** 80 pairs × 4 conditions, 1 actual purchase. Level comparisons were made against the actual purchase rate over the full test window (380,000 rows).
+- **The personas were asked in batches of 8 at a time.** This was for cost. The batching may have made the answers resemble each other.
+- **Jev was tested only without training.** A training endpoint is not in the documentation. Because the sample was 80 pairs, the experiment of putting a calibration layer on top of Jev has not been done yet.
+- The data is from a single US supermarket chain, labelled 2017. There is not yet any basis for generalising to Korean stores.
 
-## 다시 돌리는 법
+## How to re-run
 
-`scripts/` 순서대로: `build.py` → `model_eval.py` → `robust.py` → `persona.py`(codex CLI 로그인 필요) → `jev.py`(TypeSafe 키를 작업 폴더의 `.jev_key`에) → `persona_eval.py`. 결과 JSON은 `results/`.
+In order, under `scripts/`: `build.py` → `model_eval.py` → `robust.py` → `persona.py` (requires a codex CLI login) → `jev.py` (TypeSafe key in `.jev_key` in the working folder) → `persona_eval.py`. Result JSON goes to `results/`.
 
-결과 6(Von)은 `sim/data/rows.parquet` 위에서 돈다. `von-sdk`가 설치된 가상환경에서 `scripts/von_zeroshot.py`(로컬, Apple 칩이면 약 6분), `modal run scripts/von_modal.py`(Modal GPU에서 `von_finetune.py` 6개 동시, 약 10분), `python3 scripts/gbdt_weeks.py 42 44`(보정 모델 3주 기준선). 결과 7: `modal run scripts/von_modal.py --mode train` → `--mode score` → `python3 scripts/von_ensemble.py`. Von 공식 학습 스크립트는 기본값이 결과를 남의 S3 버킷에 올리게 되어 있어 쓰지 않았다(`von_finetune.py`가 같은 손실을 직접 구현한다).
+Result 6 (Von) runs on top of `sim/data/rows.parquet`. In a virtual environment with `von-sdk` installed: `scripts/von_zeroshot.py` (local, about 6 minutes on Apple silicon), `modal run scripts/von_modal.py` (6 runs of `von_finetune.py` in parallel on Modal GPUs, about 10 minutes), `python3 scripts/gbdt_weeks.py 42 44` (3-week calibrated-model baseline). Result 7: `modal run scripts/von_modal.py --mode train` → `--mode score` → `python3 scripts/von_ensemble.py`. Von's official training script was not used because by default it uploads results to someone else's S3 bucket (`von_finetune.py` implements the same loss directly).
