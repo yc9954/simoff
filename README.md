@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="docs/img/store-spin.gif" alt="The real store the agent builds from the data, turning, with shoppers walking" width="760">
-</p>
-
 <h1 align="center">SimOff</h1>
 
 <p align="center">
@@ -17,15 +13,15 @@
 </p>
 
 <p align="center">
+  <img src="docs/img/01-landing.jpg" alt="Landing: What offline business do you want to open?" width="900">
+</p>
+
+<p align="center">
   <a href="#the-flow">The flow</a> ·
   <a href="#the-decision-model">The decision model</a> ·
   <a href="#limitations">Limitations</a> ·
   <a href="#run-it-locally">Run it locally</a> ·
   <a href="#deploy-vercel">Deploy</a>
-</p>
-
-<p align="center">
-  <img src="docs/img/01-landing.jpg" alt="Landing: What offline business do you want to open?" width="900">
 </p>
 
 The landing chat starts with our own case typed in — *"We're opening a 20,000 sq ft neighborhood supermarket. For next week's cold cereal, should it go on the entrance endcap, a secondary display, or the flyer?"* Press Enter and follow the sidebar.
@@ -168,7 +164,7 @@ validate.py            the held-out six-week validation
 eval/                  the evaluation behind the model choice (personas, Jev, Von, calibration) — REPORT.md
 data/ · datasets/      the decision table and the source parquet files
 results/ · runs/       simulator ledgers and a full cycle on Store 367
-docs/                  the pictures in this README; shoot.py and spin_gif.py retake them from a running server
+docs/                  the pictures in this README; shoot.py retakes them from a running server
 ```
 
 ## Data and credits
