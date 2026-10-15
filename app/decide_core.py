@@ -1,4 +1,4 @@
-"""One visit through SimOff-1, with no numpy or pandas: the 모델 체험 / Try-the-model answer.
+"""One visit through SimOff-1, with no numpy or pandas: the Try the model answer.
 
 Used by the local server (service.decide) and by the serverless function, so both give the same JSON.
 The product table (base purchase rate and store-brand flag per product) comes from decide_products.json,

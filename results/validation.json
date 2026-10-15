@@ -11,7 +11,7 @@
  "actual_units": 684,
  "engines": {
   "calibrated": {
-   "label": "보정 모델",
+   "label": "Calibrated model",
    "total": {
     "actual": 684,
     "expected": 616.6722491655189,
@@ -91,28 +91,28 @@
    "by_condition": [
     {
      "condition": "none",
-     "label": "평소대로",
+     "label": "As usual",
      "decisions": 383847,
      "actual_units": 415,
      "expected_units": 447.4618253467247
     },
     {
      "condition": "A_front_endcap",
-     "label": "앞쪽 엔드캡",
+     "label": "Front endcap",
      "decisions": 19483,
      "actual_units": 133,
      "expected_units": 80.54076985092742
     },
     {
      "condition": "B_mailer_only",
-     "label": "전단",
+     "label": "Flyer",
      "decisions": 13721,
      "actual_units": 48,
      "expected_units": 20.85164486410588
     },
     {
      "condition": "C_other_display",
-     "label": "기타 진열",
+     "label": "Secondary display",
      "decisions": 21274,
      "actual_units": 88,
      "expected_units": 67.81800910376086
@@ -125,42 +125,42 @@
    },
    "by_segment": [
     {
-     "segment": "이 상품을 산 적 있는 가구",
+     "segment": "Households that have bought this product before",
      "decisions": 20579,
      "expected_units": 213.09343913615135,
      "per_1000_decisions": 10.354897669281858,
      "actual_units": 186
     },
     {
-     "segment": "이 상품을 산 적 없는 가구",
+     "segment": "Households that have never bought this product",
      "decisions": 417746,
      "expected_units": 403.57881002936756,
      "per_1000_decisions": 0.9660865933590449,
      "actual_units": 498
     },
     {
-     "segment": "시리얼 자주 삼 (상위 1/3)",
+     "segment": "Frequent cereal buyers (top third)",
      "decisions": 146275,
      "expected_units": 395.4845684395116,
      "per_1000_decisions": 2.703705817395396,
      "actual_units": 393
     },
     {
-     "segment": "시리얼 드물게 삼 (하위 1/3)",
+     "segment": "Infrequent cereal buyers (bottom third)",
      "decisions": 146550,
      "expected_units": 74.22763652932841,
      "per_1000_decisions": 0.5065004198521215,
      "actual_units": 100
     },
     {
-     "segment": "할인 민감 (상위 1/3)",
+     "segment": "Discount-sensitive (top third)",
      "decisions": 146525,
      "expected_units": 212.58604215380655,
      "per_1000_decisions": 1.4508516782378882,
      "actual_units": 263
     },
     {
-     "segment": "할인 덜 민감 (하위 1/3)",
+     "segment": "Less discount-sensitive (bottom third)",
      "decisions": 146200,
      "expected_units": 177.71231036885487,
      "per_1000_decisions": 1.2155424785831386,
@@ -173,7 +173,7 @@
    }
   },
   "no_promo": {
-   "label": "평소대로 예측",
+   "label": "As-usual prediction",
    "total": {
     "actual": 684,
     "expected": 606.4878557810547,
@@ -253,28 +253,28 @@
    "by_condition": [
     {
      "condition": "none",
-     "label": "평소대로",
+     "label": "As usual",
      "decisions": 383847,
      "actual_units": 415,
      "expected_units": 540.6047121173267
     },
     {
      "condition": "A_front_endcap",
-     "label": "앞쪽 엔드캡",
+     "label": "Front endcap",
      "decisions": 19483,
      "actual_units": 133,
      "expected_units": 18.656504069559123
     },
     {
      "condition": "B_mailer_only",
-     "label": "전단",
+     "label": "Flyer",
      "decisions": 13721,
      "actual_units": 48,
      "expected_units": 13.780764520126759
     },
     {
      "condition": "C_other_display",
-     "label": "기타 진열",
+     "label": "Secondary display",
      "decisions": 21274,
      "actual_units": 88,
      "expected_units": 33.445875074042064
@@ -287,42 +287,42 @@
    },
    "by_segment": [
     {
-     "segment": "이 상품을 산 적 있는 가구",
+     "segment": "Households that have bought this product before",
      "decisions": 20579,
      "expected_units": 193.90377798358622,
      "per_1000_decisions": 9.422410126030721,
      "actual_units": 186
     },
     {
-     "segment": "이 상품을 산 적 없는 가구",
+     "segment": "Households that have never bought this product",
      "decisions": 417746,
      "expected_units": 412.5840777974684,
      "per_1000_decisions": 0.9876433952628353,
      "actual_units": 498
     },
     {
-     "segment": "시리얼 자주 삼 (상위 1/3)",
+     "segment": "Frequent cereal buyers (top third)",
      "decisions": 146275,
      "expected_units": 377.1290700050907,
      "per_1000_decisions": 2.5782195864302904,
      "actual_units": 393
     },
     {
-     "segment": "시리얼 드물게 삼 (하위 1/3)",
+     "segment": "Infrequent cereal buyers (bottom third)",
      "decisions": 146550,
      "expected_units": 79.76176568107765,
      "per_1000_decisions": 0.5442631571550847,
      "actual_units": 100
     },
     {
-     "segment": "할인 민감 (상위 1/3)",
+     "segment": "Discount-sensitive (top third)",
      "decisions": 146525,
      "expected_units": 221.02439345088015,
      "per_1000_decisions": 1.5084415181769675,
      "actual_units": 263
     },
     {
-     "segment": "할인 덜 민감 (하위 1/3)",
+     "segment": "Less discount-sensitive (bottom third)",
      "decisions": 146200,
      "expected_units": 170.68019474623858,
      "per_1000_decisions": 1.1674431925187319,
@@ -335,7 +335,7 @@
    }
   },
   "avg_lift": {
-   "label": "평균 효과",
+   "label": "Average lift",
    "total": {
     "actual": 684,
     "expected": 849.3755033810273,
@@ -415,28 +415,28 @@
    "by_condition": [
     {
      "condition": "none",
-     "label": "평소대로",
+     "label": "As usual",
      "decisions": 383847,
      "actual_units": 415,
      "expected_units": 594.84878750458
     },
     {
      "condition": "A_front_endcap",
-     "label": "앞쪽 엔드캡",
+     "label": "Front endcap",
      "decisions": 19483,
      "actual_units": 133,
      "expected_units": 117.77880830111975
     },
     {
      "condition": "B_mailer_only",
-     "label": "전단",
+     "label": "Flyer",
      "decisions": 13721,
      "actual_units": 48,
      "expected_units": 31.28530689466752
     },
     {
      "condition": "C_other_display",
-     "label": "기타 진열",
+     "label": "Secondary display",
      "decisions": 21274,
      "actual_units": 88,
      "expected_units": 105.46260068066005
@@ -449,42 +449,42 @@
    },
    "by_segment": [
     {
-     "segment": "이 상품을 산 적 있는 가구",
+     "segment": "Households that have bought this product before",
      "decisions": 20579,
      "expected_units": 41.19345435507171,
      "per_1000_decisions": 2.001722841492381,
      "actual_units": 186
     },
     {
-     "segment": "이 상품을 산 적 없는 가구",
+     "segment": "Households that have never bought this product",
      "decisions": 417746,
      "expected_units": 808.1820490259556,
      "per_1000_decisions": 1.9346254638607088,
      "actual_units": 498
     },
     {
-     "segment": "시리얼 자주 삼 (상위 1/3)",
+     "segment": "Frequent cereal buyers (top third)",
      "decisions": 146275,
      "expected_units": 282.6436992304137,
      "per_1000_decisions": 1.9322761868426848,
      "actual_units": 393
     },
     {
-     "segment": "시리얼 드물게 삼 (하위 1/3)",
+     "segment": "Infrequent cereal buyers (bottom third)",
      "decisions": 146550,
      "expected_units": 282.7882001039553,
      "per_1000_decisions": 1.9296363023128988,
      "actual_units": 100
     },
     {
-     "segment": "할인 민감 (상위 1/3)",
+     "segment": "Discount-sensitive (top third)",
      "decisions": 146525,
      "expected_units": 284.8363295556415,
      "per_1000_decisions": 1.9439435560869578,
      "actual_units": 263
     },
     {
-     "segment": "할인 덜 민감 (하위 1/3)",
+     "segment": "Less discount-sensitive (bottom third)",
      "decisions": 146200,
      "expected_units": 281.8965219045297,
      "per_1000_decisions": 1.9281567845727068,
@@ -511,7 +511,7 @@
  },
  "effects": {
   "A_front_endcap": {
-   "label": "앞쪽 엔드캡",
+   "label": "Front endcap",
    "actual": {
     "lift": 3.1767531578706807,
     "lo": 1.9124949819927022,
@@ -531,7 +531,7 @@
    }
   },
   "C_other_display": {
-   "label": "기타 진열",
+   "label": "Secondary display",
    "actual": {
     "lift": 2.2748226250364576,
     "lo": 1.5501985270341552,
@@ -551,7 +551,7 @@
    }
   },
   "B_mailer_only": {
-   "label": "전단",
+   "label": "Flyer",
    "actual": null,
    "simulated": {
     "calibrated": 1.6786181478068802,

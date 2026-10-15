@@ -31,11 +31,11 @@ def seg(name, mask):
     g = E[mask]
     return {'segment': name, 'rows': int(len(g)), 'p_without_pct': round(float(g.p_without.mean()*100), 4), 'p_with_pct': round(float(g.p_with.mean()*100), 4),
             'lift': round(float(g.p_with.sum()/g.p_without.sum()), 2), 'extra_per_1000': round(float((g.p_with - g.p_without).mean()*1000), 2), 'share_of_extra': None}
-segs = [seg('이 상품을 산 적 있는 가구', E.hp_count > 0), seg('산 적 없는 가구', E.hp_count == 0),
-        seg('시리얼 자주 사는 가구 (상위 1/3)', E.cereal_visit_rate >= E.cereal_visit_rate.quantile(2/3)),
-        seg('시리얼 드물게 사는 가구 (하위 1/3)', E.cereal_visit_rate <= E.cereal_visit_rate.quantile(1/3)),
-        seg('할인 민감 가구 (상위 1/3)', E.disc_share >= E.disc_share.quantile(2/3)),
-        seg('할인 덜 민감 (하위 1/3)', E.disc_share <= E.disc_share.quantile(1/3))]
+segs = [seg('Households that bought it before', E.hp_count > 0), seg('Households that never bought it', E.hp_count == 0),
+        seg('Frequent cereal buyers (top third)', E.cereal_visit_rate >= E.cereal_visit_rate.quantile(2/3)),
+        seg('Rare cereal buyers (bottom third)', E.cereal_visit_rate <= E.cereal_visit_rate.quantile(1/3)),
+        seg('Discount-sensitive (top third)', E.disc_share >= E.disc_share.quantile(2/3)),
+        seg('Less discount-sensitive (bottom third)', E.disc_share <= E.disc_share.quantile(1/3))]
 tot = (E.p_with - E.p_without).sum()
 for s, mask in zip(segs, [E.hp_count > 0, E.hp_count == 0]):
     s['share_of_extra'] = round(float((E[mask].p_with - E[mask].p_without).sum() / tot), 3)

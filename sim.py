@@ -39,8 +39,8 @@ CONDS = {'none': (0, 0, 0, 0), 'A_front_endcap': (1, 0, 0, 0), 'B_mailer_only': 
 LABEL = {'none': 'As usual', 'A_front_endcap': 'Front endcap', 'B_mailer_only': 'Flyer', 'C_other_display': 'Secondary display', 'actual': 'Actual displays'}
 ENGINE_TEXT = {   # (label, note) shown for each live engine
     'calibrated': ('Calibrated model', 'Trained on household state, product and store condition (weeks 27–44), isotonic-calibrated on real purchases in weeks 45–47'),
-    'no_promo': ('As-usual forecast', 'The same model without the store condition. A baseline that treats display effects as zero'),
-    'avg_lift': ('Average effect', 'Product base purchase rate × the overall average effect of each condition. A baseline that ignores household differences'),
+    'no_promo': ('As-usual prediction', 'The same model without the store condition. A baseline that treats display effects as zero'),
+    'avg_lift': ('Average lift', 'Product base purchase rate × the overall average effect of each condition. A baseline that ignores household differences'),
 }
 STATE_FIELDS = ['visits', 'avg_spend', 'cereal_visit_rate', 'disc_share', 'private_share', 'hp_count']
 
@@ -236,10 +236,10 @@ def run(sched, plans, engine, products, draws=100, seed=42, sample_per_day=12, b
 
     n_visits = int(sched.basket_id.nunique())
     seg_masks = {
-        'Households that bought this product before': sched.hp_count.to_numpy() > 0,
-        'Households that never bought this product': sched.hp_count.to_numpy() == 0,
+        'Households that have bought this product before': sched.hp_count.to_numpy() > 0,
+        'Households that have never bought this product': sched.hp_count.to_numpy() == 0,
         'Frequent cereal buyers (top third)': (sched.cereal_visit_rate >= sched.cereal_visit_rate.quantile(2 / 3)).to_numpy(),
-        'Rare cereal buyers (bottom third)': (sched.cereal_visit_rate <= sched.cereal_visit_rate.quantile(1 / 3)).to_numpy(),
+        'Infrequent cereal buyers (bottom third)': (sched.cereal_visit_rate <= sched.cereal_visit_rate.quantile(1 / 3)).to_numpy(),
         'Discount-sensitive (top third)': (sched.disc_share >= sched.disc_share.quantile(2 / 3)).to_numpy(),
         'Less discount-sensitive (bottom third)': (sched.disc_share <= sched.disc_share.quantile(1 / 3)).to_numpy(),
     }

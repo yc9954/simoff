@@ -88,7 +88,8 @@ def store_validation(sched, ledger, products):
 def render_png(svg_path):
     """Chromium headless screenshot of the SVG at its own size (no Python SVG renderer is needed)."""
     import subprocess
-    exe = next((p for p in [Path('/opt/pw-browsers/chromium-1194/chrome-linux/chrome')] + sorted(Path('/opt/pw-browsers').glob('chromium-*/chrome-linux/chrome')) if p.exists()), None)
+    exe = next((p for p in [Path('/opt/pw-browsers/chromium-1194/chrome-linux/chrome')] + sorted(Path('/opt/pw-browsers').glob('chromium-*/chrome-linux/chrome'))
+                + [Path('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')] if p.exists()), None)
     if exe is None:
         return None
     png = svg_path.with_suffix('.png')
@@ -127,14 +128,14 @@ def main():
     horizon = tuple(split['test']) if backtest else (as_of + 1, as_of + a.weeks)
     store = pick_store(rows, pl, horizon if backtest else (split['calib'][0], as_of)) if a.store == 'auto' else a.store
     top = list(rows[rows.week <= as_of].groupby('product_id').y.sum().sort_values(ascending=False).index)
-    print(f"data: {info['name']} · 표 {len(rows):,}행 · 상품 {len(top)} · 매장 {store} · 결정 기준 {as_of}주 · "
-          f"{'백테스트' if backtest else '예측'} {horizon[0]}–{horizon[1]}주")
+    print(f"data: {info['name']} · table {len(rows):,} rows · products {len(top)} · store {store} · decided as of week {as_of} · "
+          f"{'backtest' if backtest else 'forecast'} weeks {horizon[0]}–{horizon[1]}")
 
     # ---- (1) space map as of the decision week
     m = spacemap.build_map(t, p, pl, store, a.category, top, as_of)
     current = {pr['product_id']: pr['condition'] for pr in m['products']}
     (out / '01_map.json').write_text(json.dumps(m, ensure_ascii=False, indent=1))
-    (out / '01_map.svg').write_text(spacemap.render_svg(m, f'① 지금 배치 · {as_of}주 기준'))
+    (out / '01_map.svg').write_text(spacemap.render_svg(m, f'① Current layout · as of week {as_of}'))
 
     # ---- (2) schedule for the horizon at this store
     if backtest:
@@ -148,10 +149,10 @@ def main():
 
     # ---- (4) the optimizer runs on the same schedule; (2) is then one ledger of all plans
     layout, table, moves = choose_layout(sched, engine, products, m['capacity'], current, objective=a.objective)
-    plans = [Plan('current', 'layout', layout=current, label=f'{as_of}주 배치 고정'),
-             Plan('proposed', 'layout', layout=layout, label='제안 배치')]
+    plans = [Plan('current', 'layout', layout=current, label=f'Week-{as_of} layout held fixed'),
+             Plan('proposed', 'layout', layout=layout, label='Proposed layout')]
     if backtest:
-        plans.insert(0, Plan('actual', 'actual', label='실제 진열 그대로'))
+        plans.insert(0, Plan('actual', 'actual', label='Actual displays as they were'))
     ledger = run(sched, plans, engine, products, draws=a.draws, seed=a.seed, baseline='current')
     ledger['store_id'] = store
     (out / '02_ledger.json').write_text(json.dumps(ledger, ensure_ascii=False, indent=1))
@@ -167,7 +168,7 @@ def main():
              'products': [{**pr, 'proposed': layout[pr['product_id']], 'proposed_label': LABEL[layout[pr['product_id']]],
                            'moved': layout[pr['product_id']] != pr['condition']} for pr in m['products']]}
     (out / '04_final_map.json').write_text(json.dumps(final, ensure_ascii=False, indent=1))
-    (out / '04_final_map.svg').write_text(spacemap.render_svg(m, f'④ 제안 배치 · {len(moves)}개 이동', changes=[x['product_id'] for x in moves], layout=layout))
+    (out / '04_final_map.svg').write_text(spacemap.render_svg(m, f'④ Proposed layout · {len(moves)} moves', changes=[x['product_id'] for x in moves], layout=layout))
     by = {x['id']: x for x in ledger['plans']}
     summary = {pid: {'label': x['label'], **{k: x['totals'][k] for k in ['expected_units', 'mc_p05', 'mc_p95', 'expected_revenue']},
                      **x['vs_baseline']} for pid, x in by.items()}
@@ -179,57 +180,57 @@ def main():
 
     # ---- report
     mk = lambda pid: next(f"{pr['n']}. {pr['brand']} {pr['type'].title()} {pr['size']}".strip() for pr in m['products'] if pr['product_id'] == pid)
-    L = [f'# 한 사이클 · {info["name"]} · 매장 {store}', '',
-         f"데이터: {info['source']} · 가구 {info['households']:,} · 매장 {info['stores']} · 영수증 줄 {info['receipt_lines']:,}. "
-         f"결정 표 {len(rows):,}행 (상태 {split['state'][0]}–{split['state'][1]}주, 학습 {split['train'][0]}–{split['train'][1]}주, "
-         f"보정 {split['calib'][0]}–{split['calib'][1]}주, {'시험' if backtest else '예측'} {horizon[0]}–{horizon[1]}주).", '',
-         f"매장 선택: {'진열 기록이 있고 시험 주 방문이 가장 많은 매장' if a.store == 'auto' else '지정'} → **{store}** "
-         f"(주당 방문 {m['store']['visits_per_week']}, 가구 {m['store']['households']:,}).", '',
-         '## ① 공간맵', '', f"![지금 배치](01_map.svg)", '',
-         f"{m['window_weeks'][0]}–{m['window_weeks'][1]}주 데이터. 통로 {len(m['aisles'])}개(부서 매출 비중), 이 매장이 쓴 진열 {len(m['displays'])}종. "
-         f"카테고리에 쓸 수 있는 자리(바쁜 주 90%): 앞쪽 엔드캡 {m['capacity']['A_front_endcap']}, 기타 진열 {m['capacity']['C_other_display']}. "
-         f"{as_of}주 현재: 앞쪽 엔드캡 {sum(c == 'A_front_endcap' for c in current.values())}개, 기타 진열 {sum(c == 'C_other_display' for c in current.values())}개, "
-         f"선반 {sum(c == 'none' for c in current.values())}개. 좌표는 템플릿이고 구역·자리 수·위치만 데이터.", '',
-         '## ② 시뮬레이션 · 같은 손님, 같은 운', '',
-         f"{'실제 ' if backtest else 'Poisson '}방문 {sched.basket_id.nunique():,}회 · 가구 {ledger['run']['households']:,} · "
-         f"결정 {len(sched):,}건 · 추첨 {a.draws}번. 기준선 = {as_of}주 배치 고정.", '',
-         '| 안 | 기대 판매 방문 | 90% 범위(손님 운) | 매출 | 기준선 대비 | 기준선보다 많은 추첨 |', '|---|---|---|---|---|---|']
+    L = [f'# One cycle · {info["name"]} · store {store}', '',
+         f"Data: {info['source']} · {info['households']:,} households · {info['stores']} stores · {info['receipt_lines']:,} receipt lines. "
+         f"Decision table of {len(rows):,} rows (state weeks {split['state'][0]}–{split['state'][1]}, training weeks {split['train'][0]}–{split['train'][1]}, "
+         f"calibration weeks {split['calib'][0]}–{split['calib'][1]}, {'test' if backtest else 'forecast'} weeks {horizon[0]}–{horizon[1]}).", '',
+         f"Store choice: {'the store with display records and the most visits in the test weeks' if a.store == 'auto' else 'specified'} → **{store}** "
+         f"({m['store']['visits_per_week']} visits per week, {m['store']['households']:,} households).", '',
+         '## ① Space map', '', f"![Current layout](01_map.svg)", '',
+         f"Data from weeks {m['window_weeks'][0]}–{m['window_weeks'][1]}. {len(m['aisles'])} aisles (share of department sales), {len(m['displays'])} display types used by this store. "
+         f"Slots available to the category (a busy week: the 90th-percentile week): front endcap {m['capacity']['A_front_endcap']}, secondary display {m['capacity']['C_other_display']}. "
+         f"As of week {as_of}: {sum(c == 'A_front_endcap' for c in current.values())} front endcaps, {sum(c == 'C_other_display' for c in current.values())} secondary displays, "
+         f"{sum(c == 'none' for c in current.values())} shelf positions. Coordinates are a template; only the zones, slot counts and positions are data.", '',
+         '## ② Simulation · same shoppers, same luck', '',
+         f"{sched.basket_id.nunique():,} {'real' if backtest else 'Poisson'} visits · {ledger['run']['households']:,} households · "
+         f"{len(sched):,} decisions · {a.draws} draws. Baseline = week-{as_of} layout held fixed.", '',
+         '| Plan | Expected sale visits | 90% range (shopper luck) | Revenue | vs. baseline | Draws above baseline |', '|---|---|---|---|---|---|']
     for x in ledger['plans']:
         tt, v = x['totals'], x['vs_baseline']
         L.append(f"| {x['label']} | {tt['expected_units']:.1f} | {tt['mc_p05']:.0f}–{tt['mc_p95']:.0f} | ${tt['expected_revenue']:,.2f} | "
                  f"×{v['lift']:.2f} ({v['extra_units']:+.1f}, ${v['extra_revenue']:+,.2f}) | {v['share_of_draws_above_baseline'] * 100:.1f}% |")
     if val:
         st = val['store_total']
-        L += ['', '## ③ 검증 · 이 매장, 본 적 없는 주', '',
-              f"실제 진열 그대로 돌린 시뮬레이션 vs 실제 판매: 총 **실제 {st['actual']} vs 기대 {st['expected']:.1f}** "
-              f"(90% {st['mc_p05']:.0f}–{st['mc_p95']:.0f} {'✓' if st['in_band'] else '✗'}), 주별 {val['weeks_in_band']}/{len(val['weekly'])}주 범위 안, "
-              f"상품 순위 상관 {val['product_rank_spearman']:.2f}.", '',
-              '| 주 | 방문 | 실제 | 기대 | 90% 범위 |', '|---|---|---|---|---|']
+        L += ['', '## ③ Validation · this store, unseen weeks', '',
+              f"Simulation run with the actual displays as they were vs. actual sales: total **actual {st['actual']} vs. expected {st['expected']:.1f}** "
+              f"(90% {st['mc_p05']:.0f}–{st['mc_p95']:.0f} {'✓' if st['in_band'] else '✗'}), {val['weeks_in_band']} of {len(val['weekly'])} weeks within range, "
+              f"product rank correlation {val['product_rank_spearman']:.2f}.", '',
+              '| Week | Visits | Actual | Expected | 90% range |', '|---|---|---|---|---|']
         for w in val['weekly']:
             L.append(f"| {w['week']} | {w['visits']} | {w['actual_units']} | {w['expected_units']:.1f} | {w['mc_p05']:.0f}–{w['mc_p95']:.0f} {'✓' if w['in_band'] else '✗'} |")
-        L += ['', '전체 매장 검증은 `VALIDATION.md`(`python validate.py`).']
-    L += ['', '## ④ 최종 배치', '', '![제안 배치](04_final_map.svg)', '',
-          f"목표: {'매출' if a.objective == 'revenue' else '판매 방문 수'} 최대. 상품마다 선반·앞쪽 엔드캡·기타 진열의 기대값을 같은 방문으로 시뮬레이션하고, "
-          f"이 매장 자리 수(앞쪽 엔드캡 {m['capacity']['A_front_endcap']}, 기타 진열 {m['capacity']['C_other_display']}) 안에서 배정 문제로 고름. 전단은 공간이 아니라 그대로.", '',
-          f"바뀌는 상품 {len(moves)}개:", '', '| 상품 | 지금 | 제안 | 선반 대비 기대 매출 |', '|---|---|---|---|']
+        L += ['', 'Validation across all stores is in `VALIDATION.md` (`python validate.py`).']
+    L += ['', '## ④ Final layout', '', '![Proposed layout](04_final_map.svg)', '',
+          f"Objective: maximise {'revenue' if a.objective == 'revenue' else 'sale visits'}. For each product, the expected value on shelf, front endcap and secondary display is simulated over the same visits, "
+          f"and the choice is made as an assignment problem within this store's slot counts (front endcap {m['capacity']['A_front_endcap']}, secondary display {m['capacity']['C_other_display']}). Flyers are not a space, so they are left as they were.", '',
+          f"{len(moves)} products change:", '', '| Product | Now | Proposed | Expected revenue vs. shelf |', '|---|---|---|---|']
     gain = {r['product_id']: r['gain_revenue_vs_shelf'] for r in table}
     for x in moves:
         L.append(f"| {mk(x['product_id'])} | {x['from_label']} | {x['to_label']} | ${gain[x['product_id']]:+,.2f} |")
     pr_, cu = by['proposed'], by['current']
-    L += ['', f"제안 vs {as_of}주 배치 고정: 기대 {cu['totals']['expected_units']:.1f} → {pr_['totals']['expected_units']:.1f} 판매 방문 "
-          f"(×{pr_['vs_baseline']['lift']:.2f}), 매출 ${pr_['vs_baseline']['extra_revenue']:+,.2f}, "
-          f"추첨 {a.draws}번 중 {pr_['vs_baseline']['share_of_draws_above_baseline'] * 100:.1f}%에서 기준선보다 많음.", '',
-          '## 읽을 때 주의', '',
-          '- 판매 단위는 "그 상품을 산 방문 수"다. 수량이 아니다.',
-          '- 제안 배치의 효과는 시뮬레이션 값이다. 실제로 그 배치를 한 적이 없으니 실제 판매와 직접 비교할 수 없고, 근거는 ③과 전체 검증의 효과 크기 비교뿐이다.',
-          *(["- 백테스트에서 최적화는 시험 주에 실제로 온 방문(누가 언제 왔는지)을 쓴다. 구매 결과(y)는 보지 않지만, 결정 시점에 이 방문 목록을 알 수는 없다.",
-             '- 90% 범위는 손님 운만 담는다. 모델 오차는 ③과 `VALIDATION.md`의 실제 비교로만 확인한다.',
-             '- 전체 검증에서 모델은 총량을 약 10% 낮게 보고(684 vs 617), 엔드캡이었던 방문의 판매를 낮게 봤다(133 vs 80). 엔드캡 효과 크기(3.66배, 실제 3.18배)는 실제 범위 안이다.']
+    L += ['', f"Proposed vs. week-{as_of} layout held fixed: expected {cu['totals']['expected_units']:.1f} → {pr_['totals']['expected_units']:.1f} sale visits "
+          f"(×{pr_['vs_baseline']['lift']:.2f}), revenue ${pr_['vs_baseline']['extra_revenue']:+,.2f}, "
+          f"above the baseline in {pr_['vs_baseline']['share_of_draws_above_baseline'] * 100:.1f}% of {a.draws} draws.", '',
+          '## Caveats when reading', '',
+          '- The unit of sales is "the number of visits that bought that product". It is not quantity.',
+          '- The effect of the proposed layout is a simulated value. That layout was never actually used, so it cannot be compared directly with real sales; the only evidence is ③ and the effect-size comparison in the full validation.',
+          *(['- In the backtest, the optimisation uses the visits that actually came in the test weeks (who came and when). It does not see the purchase outcomes (y), but this list of visits could not be known at decision time.',
+             '- The 90% range captures shopper luck only. Model error is checked only by the comparisons with actuals in ③ and `VALIDATION.md`.',
+             '- In the full validation, the model put the total about 10% low (684 vs 617) and put sales on visits that were on an endcap low (133 vs 80). The endcap effect size (3.66×, actual 3.18×) is within the actual range.']
             if backtest else
-            ['- 앞으로의 방문은 가구마다 과거 주당 방문 수로 Poisson 추첨한 것이다. 90% 범위는 손님 운만 담는다.',
-             '- 이 매장 데이터로 학습한 모델의 검증은 아직 없다. dunnhumby 테스트셋 검증 숫자를 이 매장에 옮겨 쓰면 안 된다.']),
-          '- 맵 좌표는 템플릿이다. 데이터에 도면이 없다. 구역·자리 수·현재 위치만 데이터.',
-          '- 진열 코드는 앞쪽 엔드캡(3)만 따로 보고, 나머지 진열은 모델에서 "기타 진열" 하나로 묶인다.']
+            ["- Future visits are Poisson draws from each household's past visits per week. The 90% range captures shopper luck only.",
+             "- There is no validation yet of a model trained on this store's data. The dunnhumby test-set validation numbers must not be carried over to this store."]),
+          '- Map coordinates are a template. The data has no floor plan. Only the zones, slot counts and current positions are data.',
+          '- Of the display codes, only the front endcap (3) is treated separately; the other displays are grouped in the model into a single "secondary display".']
     (out / 'REPORT.md').write_text('\n'.join(L) + '\n')
     print('\n'.join(L))
     print(f"\n-> {out}  png: {[str(x) for x in pngs if x]}")

@@ -1,4 +1,4 @@
-<title>매장 367 진열 3D</title>
+<title>Store 367 displays in 3D</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
 <style>
@@ -68,21 +68,21 @@ aside { display: grid; gap: 14px; min-width: 0; }
       <div class="eyebrow" id="eyebrow"></div>
       <h1 id="h1"></h1>
     </div>
-    <div class="seg" role="group" aria-label="배치 선택">
+    <div class="seg" role="group" aria-label="Choose layout">
       <button id="b-now" type="button" aria-pressed="false"></button>
-      <button id="b-next" type="button" aria-pressed="true">제안 배치</button>
+      <button id="b-next" type="button" aria-pressed="true">Proposed layout</button>
     </div>
   </header>
   <div class="main">
     <div class="stage" id="stage">
-      <canvas id="gl" aria-label="매장 3D 배치도"></canvas>
-      <div class="hint">드래그 회전 · 휠 확대 · 상자에 마우스</div>
+      <canvas id="gl" aria-label="3D store layout"></canvas>
+      <div class="hint">Drag to rotate · scroll to zoom · hover a box</div>
       <div class="hud">
-        <span class="key"><span class="sw" style="background:var(--endcap)"></span>앞쪽 엔드캡</span>
-        <span class="key"><span class="sw" style="background:var(--display)"></span>기타 진열</span>
-        <span class="key"><span class="sw" style="background:var(--shelf)"></span>일반 선반</span>
-        <span class="key"><span class="sw dot"></span>전단</span>
-        <span class="key"><span class="sw ring"></span>바뀌는 상품</span>
+        <span class="key"><span class="sw" style="background:var(--endcap)"></span>Front endcap</span>
+        <span class="key"><span class="sw" style="background:var(--display)"></span>Secondary display</span>
+        <span class="key"><span class="sw" style="background:var(--shelf)"></span>Regular shelf</span>
+        <span class="key"><span class="sw dot"></span>Flyer</span>
+        <span class="key"><span class="sw ring"></span>Product that moves</span>
       </div>
       <div id="tip" hidden></div>
     </div>
@@ -95,7 +95,7 @@ aside { display: grid; gap: 14px; min-width: 0; }
       <section class="panel">
         <h2 id="mv-h"></h2>
         <ul class="moves" id="moves"></ul>
-        <p class="note">좌표는 템플릿입니다. 통로·부서 비중·진열 자리 수·상품의 현재 위치는 데이터에서 왔습니다.</p>
+        <p class="note">Coordinates are a template. The aisles, department shares, display slot counts and the products' current positions come from the data.</p>
       </section>
     </aside>
   </div>
@@ -104,7 +104,7 @@ aside { display: grid; gap: 14px; min-width: 0; }
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
-const D = {"store": "367", "asOf": 47, "weeks": [48, 53], "category": "COLD CEREAL", "visitsPerWeek": 78.0, "capacity": {"A_front_endcap": 1, "C_other_display": 9}, "aisles": [{"name": "GROCERY", "share": 0.4756, "home": true}, {"name": "DRUG GM", "share": 0.1404, "home": false}, {"name": "FUEL", "share": 0.0941, "home": false}, {"name": "PRODUCE", "share": 0.0774, "home": false}, {"name": "MEAT", "share": 0.0539, "home": false}, {"name": "DELI", "share": 0.0387, "home": false}, {"name": "MEAT-PCKGD", "share": 0.0263, "home": false}, {"name": "NUTRITION", "share": 0.0241, "home": false}], "products": [{"n": 1, "id": "1071342", "name": "National All Family Cereal", "size": "12.25 OZ", "now": "none", "next": "A_front_endcap", "moved": true, "mailer": false, "units": {"none": 0.68, "A_front_endcap": 2.83, "C_other_display": 2.01}, "gain": 8.8}, {"n": 2, "id": "1054262", "name": "National Kids Cereal", "size": "13 OZ", "now": "C_other_display", "next": "C_other_display", "moved": false, "mailer": true, "units": {"none": 0.71, "A_front_endcap": 1.28, "C_other_display": 1.75}, "gain": 2.28}, {"n": 3, "id": "923673", "name": "National Adult Cereal", "size": "14.5 OZ", "now": "C_other_display", "next": "none", "moved": true, "mailer": true, "units": {"none": 0.49, "A_front_endcap": 1.61, "C_other_display": 1.2}, "gain": 0.0}, {"n": 4, "id": "1122568", "name": "National Kids Cereal", "size": "13 OZ", "now": "C_other_display", "next": "none", "moved": true, "mailer": true, "units": {"none": 0.34, "A_front_endcap": 0.96, "C_other_display": 0.91}, "gain": 0.0}, {"n": 5, "id": "849003", "name": "National Adult Cereal", "size": "16 OZ", "now": "C_other_display", "next": "none", "moved": true, "mailer": true, "units": {"none": 0.27, "A_front_endcap": 1.22, "C_other_display": 0.72}, "gain": 0.0}, {"n": 6, "id": "960732", "name": "National All Family Cereal", "size": "14 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.72, "A_front_endcap": 1.27, "C_other_display": 1.7}, "gain": 3.92}, {"n": 7, "id": "837751", "name": "National Kids Cereal", "size": "12.2 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.49, "A_front_endcap": 1.3, "C_other_display": 1.08}, "gain": 0.0}, {"n": 8, "id": "5590613", "name": "Private Kids Cereal", "size": "32 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.22, "A_front_endcap": 0.66, "C_other_display": 0.68}, "gain": 0.0}, {"n": 9, "id": "1046587", "name": "National Kids Cereal", "size": "17 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.48, "A_front_endcap": 1.46, "C_other_display": 1.0}, "gain": 0.0}, {"n": 10, "id": "1006878", "name": "National All Family Cereal", "size": "18 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.33, "A_front_endcap": 1.28, "C_other_display": 0.87}, "gain": 2.35}, {"n": 11, "id": "1130458", "name": "National Kids Cereal", "size": "12.2 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.34, "A_front_endcap": 1.01, "C_other_display": 0.85}, "gain": 0.0}, {"n": 12, "id": "1102067", "name": "National All Family Cereal", "size": "8.9 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.41, "A_front_endcap": 1.32, "C_other_display": 1.05}, "gain": 0.0}, {"n": 13, "id": "1040346", "name": "Private All Family Cereal", "size": "18 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.33, "A_front_endcap": 0.86, "C_other_display": 0.74}, "gain": 0.0}, {"n": 14, "id": "1027068", "name": "National Kids Cereal", "size": "15 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.58, "A_front_endcap": 1.07, "C_other_display": 1.77}, "gain": 4.73}, {"n": 15, "id": "5587656", "name": "Private Kids Cereal", "size": "32 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.2, "A_front_endcap": 0.63, "C_other_display": 0.58}, "gain": 0.0}, {"n": 16, "id": "1135222", "name": "National All Family Cereal", "size": "23 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.66, "A_front_endcap": 1.76, "C_other_display": 1.39}, "gain": 3.52}, {"n": 17, "id": "829001", "name": "National Kids Cereal", "size": "11.25 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.63, "A_front_endcap": 1.87, "C_other_display": 1.17}, "gain": 0.0}, {"n": 18, "id": "1133254", "name": "National Kids Cereal", "size": "17 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.35, "A_front_endcap": 1.1, "C_other_display": 0.93}, "gain": 2.35}, {"n": 19, "id": "5570408", "name": "National Kids Cereal", "size": "17 OZ", "now": "none", "next": "none", "moved": false, "mailer": true, "units": {"none": 0.37, "A_front_endcap": 1.11, "C_other_display": 1.04}, "gain": 0.0}, {"n": 20, "id": "856827", "name": "National All Family Cereal", "size": "17 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.36, "A_front_endcap": 1.03, "C_other_display": 0.91}, "gain": 0.0}, {"n": 21, "id": "843898", "name": "Private Kids Cereal", "size": "14 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.22, "A_front_endcap": 0.79, "C_other_display": 0.63}, "gain": 0.0}, {"n": 22, "id": "905636", "name": "National Kids Cereal", "size": "16 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.47, "A_front_endcap": 1.13, "C_other_display": 1.04}, "gain": 2.27}, {"n": 23, "id": "1060408", "name": "National All Family Cereal", "size": "21 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.38, "A_front_endcap": 1.36, "C_other_display": 0.95}, "gain": 2.27}, {"n": 24, "id": "1121384", "name": "National All Family Cereal", "size": "21 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.39, "A_front_endcap": 1.34, "C_other_display": 0.97}, "gain": 2.33}, {"n": 25, "id": "1075175", "name": "National Kids Cereal", "size": "22 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.2, "A_front_endcap": 0.74, "C_other_display": 0.52}, "gain": 0.0}], "labels": {"none": "평소대로", "A_front_endcap": "앞쪽 엔드캡", "B_mailer_only": "전단", "C_other_display": "기타 진열", "actual": "실제 진열 그대로"}, "plans": {"actual": {"label": "실제 진열 그대로", "expected_units": 11.863357550767596, "mc_p05": 7.0, "mc_p95": 18.0, "expected_revenue": 41.95909723893659, "baseline": "current", "lift": 0.8864655793996241, "extra_units": -1.5194040887788418, "extra_revenue": -1.972625839904886, "share_of_draws_above_baseline": 0.115}, "current": {"label": "47주 배치 고정", "expected_units": 13.382761639546437, "mc_p05": 8.0, "mc_p95": 20.0, "expected_revenue": 43.93172307884148, "baseline": "current", "lift": 1.0, "extra_units": 0.0, "extra_revenue": 0.0, "share_of_draws_above_baseline": 0.0}, "proposed": {"label": "제안 배치", "expected_units": 19.5449573005715, "mc_p05": 12.950000000000001, "mc_p95": 27.0, "expected_revenue": 72.12233892596467, "baseline": "current", "lift": 1.4604577012576836, "extra_units": 6.162195661025063, "extra_revenue": 28.19061584712319, "share_of_draws_above_baseline": 0.985}}, "draws": null, "validation": {"actual": 18, "expected": 11.86, "mc_p05": 7.0, "mc_p95": 18.0, "in_band": true}};
+const D = {"store": "367", "asOf": 47, "weeks": [48, 53], "category": "COLD CEREAL", "visitsPerWeek": 78.0, "capacity": {"A_front_endcap": 1, "C_other_display": 9}, "aisles": [{"name": "GROCERY", "share": 0.4756, "home": true}, {"name": "DRUG GM", "share": 0.1404, "home": false}, {"name": "FUEL", "share": 0.0941, "home": false}, {"name": "PRODUCE", "share": 0.0774, "home": false}, {"name": "MEAT", "share": 0.0539, "home": false}, {"name": "DELI", "share": 0.0387, "home": false}, {"name": "MEAT-PCKGD", "share": 0.0263, "home": false}, {"name": "NUTRITION", "share": 0.0241, "home": false}], "products": [{"n": 1, "id": "1071342", "name": "National All Family Cereal", "size": "12.25 OZ", "now": "none", "next": "A_front_endcap", "moved": true, "mailer": false, "units": {"none": 0.68, "A_front_endcap": 2.83, "C_other_display": 2.01}, "gain": 8.8}, {"n": 2, "id": "1054262", "name": "National Kids Cereal", "size": "13 OZ", "now": "C_other_display", "next": "C_other_display", "moved": false, "mailer": true, "units": {"none": 0.71, "A_front_endcap": 1.28, "C_other_display": 1.75}, "gain": 2.28}, {"n": 3, "id": "923673", "name": "National Adult Cereal", "size": "14.5 OZ", "now": "C_other_display", "next": "none", "moved": true, "mailer": true, "units": {"none": 0.49, "A_front_endcap": 1.61, "C_other_display": 1.2}, "gain": 0.0}, {"n": 4, "id": "1122568", "name": "National Kids Cereal", "size": "13 OZ", "now": "C_other_display", "next": "none", "moved": true, "mailer": true, "units": {"none": 0.34, "A_front_endcap": 0.96, "C_other_display": 0.91}, "gain": 0.0}, {"n": 5, "id": "849003", "name": "National Adult Cereal", "size": "16 OZ", "now": "C_other_display", "next": "none", "moved": true, "mailer": true, "units": {"none": 0.27, "A_front_endcap": 1.22, "C_other_display": 0.72}, "gain": 0.0}, {"n": 6, "id": "960732", "name": "National All Family Cereal", "size": "14 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.72, "A_front_endcap": 1.27, "C_other_display": 1.7}, "gain": 3.92}, {"n": 7, "id": "837751", "name": "National Kids Cereal", "size": "12.2 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.49, "A_front_endcap": 1.3, "C_other_display": 1.08}, "gain": 0.0}, {"n": 8, "id": "5590613", "name": "Private Kids Cereal", "size": "32 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.22, "A_front_endcap": 0.66, "C_other_display": 0.68}, "gain": 0.0}, {"n": 9, "id": "1046587", "name": "National Kids Cereal", "size": "17 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.48, "A_front_endcap": 1.46, "C_other_display": 1.0}, "gain": 0.0}, {"n": 10, "id": "1006878", "name": "National All Family Cereal", "size": "18 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.33, "A_front_endcap": 1.28, "C_other_display": 0.87}, "gain": 2.35}, {"n": 11, "id": "1130458", "name": "National Kids Cereal", "size": "12.2 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.34, "A_front_endcap": 1.01, "C_other_display": 0.85}, "gain": 0.0}, {"n": 12, "id": "1102067", "name": "National All Family Cereal", "size": "8.9 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.41, "A_front_endcap": 1.32, "C_other_display": 1.05}, "gain": 0.0}, {"n": 13, "id": "1040346", "name": "Private All Family Cereal", "size": "18 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.33, "A_front_endcap": 0.86, "C_other_display": 0.74}, "gain": 0.0}, {"n": 14, "id": "1027068", "name": "National Kids Cereal", "size": "15 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.58, "A_front_endcap": 1.07, "C_other_display": 1.77}, "gain": 4.73}, {"n": 15, "id": "5587656", "name": "Private Kids Cereal", "size": "32 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.2, "A_front_endcap": 0.63, "C_other_display": 0.58}, "gain": 0.0}, {"n": 16, "id": "1135222", "name": "National All Family Cereal", "size": "23 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.66, "A_front_endcap": 1.76, "C_other_display": 1.39}, "gain": 3.52}, {"n": 17, "id": "829001", "name": "National Kids Cereal", "size": "11.25 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.63, "A_front_endcap": 1.87, "C_other_display": 1.17}, "gain": 0.0}, {"n": 18, "id": "1133254", "name": "National Kids Cereal", "size": "17 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.35, "A_front_endcap": 1.1, "C_other_display": 0.93}, "gain": 2.35}, {"n": 19, "id": "5570408", "name": "National Kids Cereal", "size": "17 OZ", "now": "none", "next": "none", "moved": false, "mailer": true, "units": {"none": 0.37, "A_front_endcap": 1.11, "C_other_display": 1.04}, "gain": 0.0}, {"n": 20, "id": "856827", "name": "National All Family Cereal", "size": "17 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.36, "A_front_endcap": 1.03, "C_other_display": 0.91}, "gain": 0.0}, {"n": 21, "id": "843898", "name": "Private Kids Cereal", "size": "14 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.22, "A_front_endcap": 0.79, "C_other_display": 0.63}, "gain": 0.0}, {"n": 22, "id": "905636", "name": "National Kids Cereal", "size": "16 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.47, "A_front_endcap": 1.13, "C_other_display": 1.04}, "gain": 2.27}, {"n": 23, "id": "1060408", "name": "National All Family Cereal", "size": "21 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.38, "A_front_endcap": 1.36, "C_other_display": 0.95}, "gain": 2.27}, {"n": 24, "id": "1121384", "name": "National All Family Cereal", "size": "21 OZ", "now": "none", "next": "C_other_display", "moved": true, "mailer": false, "units": {"none": 0.39, "A_front_endcap": 1.34, "C_other_display": 0.97}, "gain": 2.33}, {"n": 25, "id": "1075175", "name": "National Kids Cereal", "size": "22 OZ", "now": "none", "next": "none", "moved": false, "mailer": false, "units": {"none": 0.2, "A_front_endcap": 0.74, "C_other_display": 0.52}, "gain": 0.0}], "labels": {"none": "As usual", "A_front_endcap": "Front endcap", "B_mailer_only": "Flyer", "C_other_display": "Secondary display", "actual": "Actual displays"}, "plans": {"actual": {"label": "Actual displays as they were", "expected_units": 11.863357550767596, "mc_p05": 7.0, "mc_p95": 18.0, "expected_revenue": 41.95909723893659, "baseline": "current", "lift": 0.8864655793996241, "extra_units": -1.5194040887788418, "extra_revenue": -1.972625839904886, "share_of_draws_above_baseline": 0.115}, "current": {"label": "Week-47 layout held fixed", "expected_units": 13.382761639546437, "mc_p05": 8.0, "mc_p95": 20.0, "expected_revenue": 43.93172307884148, "baseline": "current", "lift": 1.0, "extra_units": 0.0, "extra_revenue": 0.0, "share_of_draws_above_baseline": 0.0}, "proposed": {"label": "Proposed layout", "expected_units": 19.5449573005715, "mc_p05": 12.950000000000001, "mc_p95": 27.0, "expected_revenue": 72.12233892596467, "baseline": "current", "lift": 1.4604577012576836, "extra_units": 6.162195661025063, "extra_revenue": 28.19061584712319, "share_of_draws_above_baseline": 0.985}}, "draws": null, "validation": {"actual": 18, "expected": 11.86, "mc_p05": 7.0, "mc_p95": 18.0, "in_band": true}};
 const $ = id => document.getElementById(id);
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const COND_VAR = { A_front_endcap: '--endcap', C_other_display: '--display', none: '--shelf' };
@@ -112,25 +112,25 @@ const P = D.plans, cur = P.current, nxt = P.proposed;
 const fmt = (x, d = 1) => x.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 
 // ---------------------------------------------------------------- text
-$('eyebrow').textContent = `매장 ${D.store} · ${D.category} ${D.products.length}개 · ${D.asOf}주까지 보고 결정 · ${D.weeks[0]}–${D.weeks[1]}주 시뮬레이션`;
-$('h1').textContent = `${D.asOf}주 배치 → 제안 배치, ${D.products.filter(p => p.moved).length}개 이동`;
-$('b-now').textContent = `${D.asOf}주 배치`;
-$('kpi-h').textContent = `같은 손님 · 같은 운, ${D.weeks[0]}–${D.weeks[1]}주`;
+$('eyebrow').textContent = `Store ${D.store} · ${D.products.length} ${D.category} products · decided on data through week ${D.asOf} · simulated weeks ${D.weeks[0]}–${D.weeks[1]}`;
+$('h1').textContent = `Week-${D.asOf} layout → proposed layout, ${D.products.filter(p => p.moved).length} moves`;
+$('b-now').textContent = `Week-${D.asOf} layout`;
+$('kpi-h').textContent = `Same shoppers · same luck, weeks ${D.weeks[0]}–${D.weeks[1]}`;
 $('kpi').innerHTML = [
-  [`${fmt(cur.expected_units)} → ${fmt(nxt.expected_units)}`, '기대 판매 방문'],
-  [`×${nxt.lift.toFixed(2)}`, `${D.asOf}주 배치 고정 대비`],
-  [`+$${fmt(nxt.extra_revenue, 2)}`, '기대 매출 차이'],
-  [`${(nxt.share_of_draws_above_baseline * 100).toFixed(1)}%`, '추첨 중 기준선보다 많음'],
+  [`${fmt(cur.expected_units)} → ${fmt(nxt.expected_units)}`, 'Expected sale visits'],
+  [`×${nxt.lift.toFixed(2)}`, `vs. week-${D.asOf} layout held fixed`],
+  [`+$${fmt(nxt.extra_revenue, 2)}`, 'Expected revenue difference'],
+  [`${(nxt.share_of_draws_above_baseline * 100).toFixed(1)}%`, 'Draws above the baseline'],
 ].map(([v, l]) => `<div><span class="v">${v}</span><span class="l">${l}</span></div>`).join('');
 const V = D.validation;
-$('kpi-note').innerHTML = `90% 범위(손님 운) ${fmt(cur.mc_p05, 0)}–${fmt(cur.mc_p95, 0)} → ${fmt(nxt.mc_p05, 0)}–${fmt(nxt.mc_p95, 0)}. 제안 배치의 효과는 시뮬레이션 값입니다.` +
-  (V ? ` 이 매장 실제 진열 그대로 돌렸을 때 <strong>실제 ${V.actual} vs 기대 ${fmt(V.expected)}</strong> (90% ${fmt(V.mc_p05, 0)}–${fmt(V.mc_p95, 0)}, 범위 ${V.in_band ? '안' : '밖'}).` : '');
+$('kpi-note').innerHTML = `90% range (shopper luck) ${fmt(cur.mc_p05, 0)}–${fmt(cur.mc_p95, 0)} → ${fmt(nxt.mc_p05, 0)}–${fmt(nxt.mc_p95, 0)}. The effect of the proposed layout is a simulated value.` +
+  (V ? ` Run with this store's actual displays as they were: <strong>actual ${V.actual} vs. expected ${fmt(V.expected)}</strong> (90% ${fmt(V.mc_p05, 0)}–${fmt(V.mc_p95, 0)}, ${V.in_band ? 'within' : 'outside'} the range).` : '');
 const moved = D.products.filter(p => p.moved).sort((a, b) => b.gain - a.gain);
-$('mv-h').textContent = `바뀌는 상품 ${moved.length}개 · 자리 앞쪽 엔드캡 ${D.capacity.A_front_endcap}, 기타 진열 ${D.capacity.C_other_display}`;
+$('mv-h').textContent = `${moved.length} products move · slots: front endcap ${D.capacity.A_front_endcap}, secondary display ${D.capacity.C_other_display}`;
 $('moves').innerHTML = moved.map(p => `<li><button type="button" data-id="${p.id}">
   <span class="num" style="background:var(${COND_VAR[p.next]});${p.next === 'none' ? 'color:var(--ink)' : ''}">${p.n}</span>
   <span class="mv-name">${p.name} ${p.size}<span class="mv-path">${D.labels[p.now]} → ${D.labels[p.next]}</span></span>
-  <span class="gain">${p.gain ? (p.gain > 0 ? '+' : '') + '$' + p.gain.toFixed(2) : '자리 양보'}</span></button></li>`).join('');
+  <span class="gain">${p.gain ? (p.gain > 0 ? '+' : '') + '$' + p.gain.toFixed(2) : 'gives up its slot'}</span></button></li>`).join('');
 
 // ---------------------------------------------------------------- scene
 const canvas = $('gl'), stage = $('stage');
@@ -170,7 +170,7 @@ const grid = new THREE.GridHelper(W, 22); grid.position.y = .01; grid.material.t
 const wallM = mat('--fixture-edge');
 box(W, .6, .3, wallM, 0, 0, -Dp / 2); box(.3, .6, Dp, wallM, -W / 2, 0, 0); box(.3, .6, Dp, wallM, W / 2, 0, 0);
 box(W - 8, 1.2, .8, mat('--fixture'), 0, 0, -Dp / 2 + 1.2);
-label('매장 뒤 벽면', { size: 34, color: '--muted', weight: 500 }).position.set(-15, 1.8, -Dp / 2 + 1.2);
+label('Back wall of the store', { size: 34, color: '--muted', weight: 500 }).position.set(-15, 1.8, -Dp / 2 + 1.2);
 
 // aisles
 const N = D.aisles.length, x0 = -18.5, step = 37 / (N - 1);
@@ -183,18 +183,18 @@ D.aisles.forEach((a, i) => {
   box(AW, 1.1, .8, fixtureM, ax(i), 0, AZ0 - .7);                                  // rear end cap
   box(AW, 1.1, .9, mat('--fixture'), ax(i), 0, AZ1 + .75);                           // front end cap
   const l = label(a.name.slice(0, 12), { size: 40 }); l.position.set(ax(i), AH + 1.1, AZ0 + 1.2);
-  const s = label(`${Math.round(a.share * 100)}% 매출`, { size: 30, color: '--muted', weight: 500 }); s.position.set(ax(i), AH + .6, AZ0 + 1.2);
+  const s = label(`${Math.round(a.share * 100)}% of sales`, { size: 30, color: '--muted', weight: 500 }); s.position.set(ax(i), AH + .6, AZ0 + 1.2);
 });
 const home = D.aisles.findIndex(a => a.home);
 
 // front band: displays table, entrance, checkout
 const TX0 = -17, TX1 = -3, TZ = 8;
 box(TX1 - TX0, .75, 2.2, mat('--fixture'), (TX0 + TX1) / 2, 0, TZ);
-label('매장 앞·보조 진열', { size: 34, color: '--muted', weight: 500 }).position.set((TX0 + TX1) / 2, .3, TZ + 1.7);
+label('Store front · secondary displays', { size: 34, color: '--muted', weight: 500 }).position.set((TX0 + TX1) / 2, .3, TZ + 1.7);
 box(4.5, .08, 2.4, mat('--ink'), -18, 0, Dp / 2 - 1.4);
-label('입구', { size: 40 }).position.set(-18, .9, Dp / 2 - 1.4);
+label('Entrance', { size: 40 }).position.set(-18, .9, Dp / 2 - 1.4);
 for (const x of [6, 10, 14]) box(2.6, 1.0, 1.0, mat('--fixture-edge'), x, 0, 11);
-label('계산대', { size: 40 }).position.set(10, 1.9, 11);
+label('Checkout', { size: 40 }).position.set(10, 1.9, 11);
 
 // ---------------------------------------------------------------- products
 const PW = .62, PH = .9, PD = .22;
@@ -267,9 +267,9 @@ const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = $('tip');
 let sel = null;
 function showTip(p, x, y) {
   const on = state === 'next' ? p.next : p.now;
-  tip.innerHTML = `<b>${p.n}. ${p.name} ${p.size}</b><br>${D.asOf}주 ${D.labels[p.now]} → 제안 ${D.labels[p.next]}${p.mailer ? ' · 전단' : ''}
+  tip.innerHTML = `<b>${p.n}. ${p.name} ${p.size}</b><br>Week ${D.asOf}: ${D.labels[p.now]} → proposed: ${D.labels[p.next]}${p.mailer ? ' · flyer' : ''}
     <table>${['none', 'A_front_endcap', 'C_other_display'].map(o => `<tr class="${o === on ? 'on' : ''}"><td>${D.labels[o]}</td><td>${p.units[o].toFixed(2)}</td></tr>`).join('')}</table>
-    <span style="color:var(--muted)">기대 판매 방문, ${D.weeks[0]}–${D.weeks[1]}주</span>`;
+    <span style="color:var(--muted)">Expected sale visits, weeks ${D.weeks[0]}–${D.weeks[1]}</span>`;
   tip.hidden = false;
   const r = stage.getBoundingClientRect();
   tip.style.left = Math.min(x + 14, r.width - tip.offsetWidth - 8) + 'px'; tip.style.top = Math.min(y + 14, r.height - tip.offsetHeight - 8) + 'px';

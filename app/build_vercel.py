@@ -28,10 +28,10 @@ LIB = ['world.py', 'chat.py', 'decide_chat.py', 'decision_models.py', 'simoff_mo
 
 
 KO_EN = {'앞쪽 엔드캡': 'Front endcap', '기타 진열': 'Secondary display', '전단': 'Flyer', '평소대로': 'As usual', '보정 모델': 'Calibrated model',
-         '평소대로 예측': 'As-usual prediction', '평균 효과': 'Average effect', '이 상품을 산 적 있는 가구': 'Households that bought it before',
+         '평소대로 예측': 'As-usual prediction', '평균 효과': 'Average lift', '이 상품을 산 적 있는 가구': 'Households that bought it before',
          '이 상품을 산 적 없는 가구': 'Households that never bought it', '산 적 없는 가구': 'Households that never bought it',
          '시리얼 자주 사는 가구 (상위 1/3)': 'Frequent cereal buyers (top third)', '시리얼 자주 삼 (상위 1/3)': 'Frequent cereal buyers (top third)',
-         '시리얼 드물게 사는 가구 (하위 1/3)': 'Rare cereal buyers (bottom third)', '시리얼 드물게 삼 (하위 1/3)': 'Rare cereal buyers (bottom third)',
+         '시리얼 드물게 사는 가구 (하위 1/3)': 'Infrequent cereal buyers (bottom third)', '시리얼 드물게 삼 (하위 1/3)': 'Infrequent cereal buyers (bottom third)',
          '할인 민감 가구 (상위 1/3)': 'Discount-sensitive (top third)', '할인 민감 (상위 1/3)': 'Discount-sensitive (top third)',
          '할인 덜 민감 (하위 1/3)': 'Less discount-sensitive (bottom third)', '제안 배치': 'Proposed layout', '53주 배치 고정': 'Week-53 layout kept'}
 

@@ -13,7 +13,7 @@
  "per_1000_with": 3.4457670342287767,
  "segments": [
   {
-   "segment": "이 상품을 산 적 있는 가구",
+   "segment": "Households that bought it before",
    "rows": 660,
    "p_without_pct": 1.0867,
    "p_with_pct": 2.4395,
@@ -22,7 +22,7 @@
    "share_of_extra": 0.183
   },
   {
-   "segment": "산 적 없는 가구",
+   "segment": "Households that never bought it",
    "rows": 18823,
    "p_without_pct": 0.0593,
    "p_with_pct": 0.2711,
@@ -31,7 +31,7 @@
    "share_of_extra": 0.817
   },
   {
-   "segment": "시리얼 자주 사는 가구 (상위 1/3)",
+   "segment": "Frequent cereal buyers (top third)",
    "rows": 6498,
    "p_without_pct": 0.1961,
    "p_with_pct": 0.602,
@@ -40,7 +40,7 @@
    "share_of_extra": null
   },
   {
-   "segment": "시리얼 드물게 사는 가구 (하위 1/3)",
+   "segment": "Rare cereal buyers (bottom third)",
    "rows": 6528,
    "p_without_pct": 0.0344,
    "p_with_pct": 0.1069,
@@ -49,7 +49,7 @@
    "share_of_extra": null
   },
   {
-   "segment": "할인 민감 가구 (상위 1/3)",
+   "segment": "Discount-sensitive (top third)",
    "rows": 6508,
    "p_without_pct": 0.0837,
    "p_with_pct": 0.4414,
@@ -58,7 +58,7 @@
    "share_of_extra": null
   },
   {
-   "segment": "할인 덜 민감 (하위 1/3)",
+   "segment": "Less discount-sensitive (bottom third)",
    "rows": 6498,
    "p_without_pct": 0.0879,
    "p_with_pct": 0.2245,

@@ -13,7 +13,7 @@ placements.csv     product_id, store_id, week, display_location  [, mailer_locat
                    dunnhumby codes below (0 = not on display); mailer_location '0' = not in the flyer.
 
 Only placements decide the store conditions the model learns, so a store without them can still be
-mapped and simulated, but the simulator will only see the "평소대로" condition.
+mapped and simulated, but the simulator will only see the "as usual" condition.
 """
 from pathlib import Path
 
@@ -24,12 +24,12 @@ BUILTIN = {'dunnhumby': HERE / 'datasets' / 'dunnhumby'}
 
 # Official meaning of the codes, from the completejourney R package documentation (promotions).
 DISPLAY_CODES = {
-    '0': '진열 없음', '1': '매장 앞', '2': '매장 뒤', '3': '앞쪽 엔드캡', '4': '통로 중간 엔드캡',
-    '5': '뒤쪽 엔드캡', '6': '옆 통로 엔드캡', '7': '통로 안 진열', '9': '보조 진열대', 'A': '선반 안 강조',
+    '0': 'Not on display', '1': 'Store front', '2': 'Store rear', '3': 'Front endcap', '4': 'Mid-aisle endcap',
+    '5': 'Rear endcap', '6': 'Side-aisle endcap', '7': 'In-aisle display', '9': 'Secondary location display', 'A': 'In-shelf highlight',
 }
 MAILER_CODES = {
-    '0': '전단 없음', 'A': '안쪽 면 특집', 'C': '안쪽 면 한 줄', 'D': '앞면 특집', 'F': '뒷면 특집', 'H': '겉표지 앞 특집',
-    'J': '겉표지 안 쿠폰', 'L': '겉표지 뒤 특집', 'P': '안쪽 면 쿠폰', 'X': '안쪽 면 무료', 'Z': '앞·뒷면 무료',
+    '0': 'Not in flyer', 'A': 'Interior page feature', 'C': 'Interior page line item', 'D': 'Front page feature', 'F': 'Back page feature', 'H': 'Wrap front feature',
+    'J': 'Wrap interior coupon', 'L': 'Wrap back feature', 'P': 'Interior page coupon', 'X': 'Free on interior page', 'Z': 'Free on front or back page',
 }
 FRONT_MAILER = ['D', 'F', 'H', 'L', 'Z']
 
@@ -47,7 +47,7 @@ def load_dataset(name_or_path):
         t = pd.read_parquet(d / 'transactions.parquet')
         p = pd.read_parquet(d / 'products.parquet')
         pl = pd.read_parquet(d / 'promotions.parquet')
-        info = {'name': name_or_path, 'source': 'dunnhumby Complete Journey (84.51°), completejourney R 패키지', 'builtin': True}
+        info = {'name': name_or_path, 'source': 'dunnhumby Complete Journey (84.51°), completejourney R package', 'builtin': True}
     else:
         d = Path(name_or_path)
         if not d.is_dir():

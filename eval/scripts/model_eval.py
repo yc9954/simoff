@@ -2,7 +2,7 @@
 
 Engines compared on the same test rows:
   calibrated  : gradient boosting on household state + product + store condition, isotonic-calibrated on weeks 45-47
-  no_promo    : same model without condition features (the "평소대로" forecast; predicts no promotion effect)
+  no_promo    : same model without condition features (the "as usual" forecast; predicts no promotion effect)
   avg_lift    : product base rate x population-average lift per condition (no household heterogeneity)
 """
 import json

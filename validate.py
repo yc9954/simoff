@@ -106,36 +106,36 @@ out.mkdir(exist_ok=True)
 
 # ---- report
 c = res['engines']['calibrated']
-lines = ['# 시뮬레이터 검증 · 본 적 없는 6주 (48–53주)', '',
-         f"실제 방문 {res['visits']:,}회 · 가구 {res['households']:,}곳 · 매장 {res['stores']}곳 · 방문×상품 결정 {res['decisions']:,}건 · 실제 판매 방문 {res['actual_units']}건. "
-         f"매장 조건은 실제 그대로 두고, 손님 운은 {DRAWS}번 추첨으로 흔들었다. 90% 범위는 손님 운만 담고 모델 오차는 담지 않는다.", '',
-         '## 1. 총량 · 주별', '', '| 엔진 | 실제 | 시뮬레이션 기대 | 90% 범위 | 실제가 범위 안 | 범위 안 주 (6주 중) | 매장 순위 상관 | AUC |', '|---|---|---|---|---|---|---|---|']
+lines = ['# Simulator validation · six unseen weeks (weeks 48–53)', '',
+         f"{res['visits']:,} real visits · {res['households']:,} households · {res['stores']} stores · {res['decisions']:,} visit×product decisions · {res['actual_units']} real visits with a sale. "
+         f"Store conditions are kept exactly as they really were; shopper luck is varied with {DRAWS} draws. The 90% range captures shopper luck only, not model error.", '',
+         '## 1. Totals · by week', '', '| Engine | Actual | Simulated expectation | 90% range | Actual within range | Weeks within range (of 6) | Store rank correlation | AUC |', '|---|---|---|---|---|---|---|---|']
 for n, e in res['engines'].items():
     t = e['total']
     lines.append(f"| {e['label']} | {t['actual']} | {t['expected']:.1f} | {t['mc_p05']:.0f}–{t['mc_p95']:.0f} | {'✓' if t['actual_in_band'] else '✗'} | {e['weeks_in_band']} | {e['stores']['spearman']:.2f} | {e['per_decision']['auc']:.3f} |")
-lines += ['', '보정 모델의 주별:', '', '| 주 | 방문 | 실제 | 기대 | 90% 범위 |', '|---|---|---|---|---|']
+lines += ['', 'Calibrated model, by week:', '', '| Week | Visits | Actual | Expected | 90% range |', '|---|---|---|---|---|']
 for w in c['weekly']:
     lines.append(f"| {w['week']} | {w['visits']:,} | {w['actual_units']} | {w['expected_units']:.1f} | {w['mc_p05']:.0f}–{w['mc_p95']:.0f} {'✓' if w['actual_in_band'] else '✗'} |")
-lines += ['', '## 2. 조건별 (보정 모델)', '', '| 조건 | 결정 | 실제 | 기대 |', '|---|---|---|---|']
+lines += ['', '## 2. By condition (calibrated model)', '', '| Condition | Decisions | Actual | Expected |', '|---|---|---|---|']
 for r in c['by_condition']:
     lines.append(f"| {r['label']} | {r['decisions']:,} | {r['actual_units']} | {r['expected_units']:.1f} |")
-lines += ['', '## 3. 가구층별 (보정 모델)', '', '| 가구층 | 결정 | 실제 | 기대 |', '|---|---|---|---|']
+lines += ['', '## 3. By household segment (calibrated model)', '', '| Household segment | Decisions | Actual | Expected |', '|---|---|---|---|']
 for s in c['by_segment']:
     lines.append(f"| {s['segment']} | {s['decisions']:,} | {s['actual_units']} | {s['expected_units']:.1f} |")
 r = res['report_reproduction']
-lines += ['', '## 4. 리포트 숫자 재현', '',
-          f"실제로 엔드캡이었던 {r['rows']:,}건에서 엔드캡을 뺀 경우와 둔 경우를 같은 손님·같은 운으로 시뮬레이션: "
-          f"1,000결정당 **{r['simulator']['per_1000_without']:.2f} → {r['simulator']['per_1000_with']:.2f}** (리포트 {r['report']['per_1000_without']:.2f} → {r['report']['per_1000_with']:.2f}), ×{r['simulator']['lift']:.2f}.", '',
-          '## 5. 효과 크기 · 시뮬레이터 vs 실제 (같은 상품·같은 주, 48–53주만)', '',
-          '| 조건 | 실제 효과 | 95% 범위 | 보정 모델 | 평소대로 예측 | 평균 효과 |', '|---|---|---|---|---|---|']
+lines += ['', '## 4. Reproducing the report number', '',
+          f"On the {r['rows']:,} decisions that really were on a front endcap, simulating with the endcap removed vs. kept, with the same shoppers and the same luck: "
+          f"per 1,000 decisions **{r['simulator']['per_1000_without']:.2f} → {r['simulator']['per_1000_with']:.2f}** (report: {r['report']['per_1000_without']:.2f} → {r['report']['per_1000_with']:.2f}), ×{r['simulator']['lift']:.2f}.", '',
+          '## 5. Effect size · simulator vs. actual (same product, same week, weeks 48–53 only)', '',
+          '| Condition | Actual effect | 95% range | Calibrated model | As-usual prediction | Average lift |', '|---|---|---|---|---|---|']
 for cname, e in res['effects'].items():
     a = e['actual']
-    rng_txt = f"{a['lo']:.2f}–{a['hi']:.2f}" if a else '판정 불가'
+    rng_txt = f"{a['lo']:.2f}–{a['hi']:.2f}" if a else 'Cannot be determined'
     cells = ' | '.join(f"{v:.2f} {'✓' if e['in_range'][n] else '✗'}" for n, v in e['simulated'].items())
     lines.append(f"| {e['label']} | {a['lift']:.2f} | {rng_txt} | {cells} |" if a else f"| {e['label']} | — | {rng_txt} | {cells} |")
-lines += ['', '## 읽을 때 주의', '',
-          '- 실제 효과의 범위는 한 기간(48–53주)만으로 잰 것이라 3개 기간을 합친 리포트 값(3.99배, 2.48–8.56)보다 넓거나 다를 수 있다.',
-          '- 전단은 체인 전체에 같은 주에 나가 같은 주 대조 매장이 거의 없다. 범위가 나와도 표본이 작다.',
-          '- 판매 수는 "그 상품을 산 방문 수"다. 수량이 아니다.', '- 90% 범위는 같은 확률에서의 손님 운만 반영한다. 모델이 틀릴 가능성은 위 실제 비교로만 확인한다.']
+lines += ['', '## Caveats when reading', '',
+          "- The actual-effect range is measured on a single period (weeks 48–53) only, so it can be wider than, or differ from, the report's value pooled over three periods (3.99×, 2.48–8.56).",
+          '- Flyers run chain-wide in the same week, so there are almost no same-week control stores. Even when a range comes out, the sample is small.',
+          '- The sales count is "the number of visits that bought that product". It is not quantity.', '- The 90% range reflects only shopper luck at the same probabilities. The possibility that the model is wrong is checked only by the comparison with actuals above.']
 (HERE / 'VALIDATION.md').write_text('\n'.join(lines) + '\n')
 print('\n'.join(lines))

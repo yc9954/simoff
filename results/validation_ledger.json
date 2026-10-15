@@ -2,8 +2,8 @@
  "schema": "offline-sim-ledger/1",
  "engine": {
   "name": "calibrated",
-  "label": "보정 모델",
-  "note": "가구 상태 + 상품 + 매장 조건으로 학습(27–44주), 45–47주 실제 구매로 등위 보정"
+  "label": "Calibrated model",
+  "note": "Trained on household state, product and store condition (weeks 27–44), isotonic-calibrated on real purchases in weeks 45–47"
  },
  "run": {
   "weeks": [
@@ -19,17 +19,17 @@
   "schedule": "test"
  },
  "definitions": {
-  "units": "이 상품을 산 방문 수 (방문 1회에 몇 개를 샀는지는 세지 않음)",
-  "expected_units": "모든 결정의 확률 합",
-  "simulated_units": "0번 추첨으로 실제로 굴린 하루하루의 기록. 대표 방문과 3D 재생이 이 기록을 읽는다",
-  "mc_p05_p95": "200번 추첨의 5–95% 범위. 손님 운에 의한 흔들림만 담고, 모델 자체의 오차는 담지 않는다",
-  "revenue": "판매 방문 수 × 상품별 할인 전 가격 중간값 (USD)",
-  "same_luck": "모든 안이 같은 방문과 같은 (방문, 상품, 추첨)별 난수를 쓴다"
+  "units": "Visits that bought this product (how many items per visit is not counted)",
+  "expected_units": "Sum of the probabilities over every decision",
+  "simulated_units": "The day-by-day record actually rolled with draw 0. The sample visits and the 3D replay read this record",
+  "mc_p05_p95": "5–95% range over 200 draws. It captures only the luck of which customers buy, not the error of the model itself",
+  "revenue": "Visits with a sale × the median pre-discount price of each product (USD)",
+  "same_luck": "Every plan uses the same visits and the same random number per (visit, product, draw)"
  },
  "plans": [
   {
    "id": "actual",
-   "label": "실제 진열 그대로",
+   "label": "Actual displays",
    "condition": "actual",
    "products": "all",
    "scope": "all",
@@ -5035,37 +5035,37 @@
    ],
    "by_segment": [
     {
-     "segment": "이 상품을 산 적 있는 가구",
+     "segment": "Households that have bought this product before",
      "decisions": 20579,
      "expected_units": 213.09343913615135,
      "per_1000_decisions": 10.354897669281858
     },
     {
-     "segment": "이 상품을 산 적 없는 가구",
+     "segment": "Households that have never bought this product",
      "decisions": 417746,
      "expected_units": 403.57881002936756,
      "per_1000_decisions": 0.9660865933590449
     },
     {
-     "segment": "시리얼 자주 삼 (상위 1/3)",
+     "segment": "Frequent cereal buyers (top third)",
      "decisions": 146275,
      "expected_units": 395.4845684395116,
      "per_1000_decisions": 2.703705817395396
     },
     {
-     "segment": "시리얼 드물게 삼 (하위 1/3)",
+     "segment": "Infrequent cereal buyers (bottom third)",
      "decisions": 146550,
      "expected_units": 74.22763652932841,
      "per_1000_decisions": 0.5065004198521215
     },
     {
-     "segment": "할인 민감 (상위 1/3)",
+     "segment": "Discount-sensitive (top third)",
      "decisions": 146525,
      "expected_units": 212.58604215380655,
      "per_1000_decisions": 1.4508516782378882
     },
     {
-     "segment": "할인 덜 민감 (하위 1/3)",
+     "segment": "Less discount-sensitive (bottom third)",
      "decisions": 146200,
      "expected_units": 177.71231036885487,
      "per_1000_decisions": 1.2155424785831386

@@ -2,8 +2,8 @@
  "schema": "offline-sim-ledger/1",
  "engine": {
   "name": "calibrated",
-  "label": "보정 모델",
-  "note": "가구 상태 + 상품 + 매장 조건으로 학습(27–44주), 45–47주 실제 구매로 등위 보정"
+  "label": "Calibrated model",
+  "note": "Trained on household state, product and store condition (weeks 27–44), isotonic-calibrated on real purchases in weeks 45–47"
  },
  "run": {
   "weeks": [
@@ -19,17 +19,17 @@
   "schedule": "test"
  },
  "definitions": {
-  "units": "이 상품을 산 방문 수 (방문 1회에 몇 개를 샀는지는 세지 않음)",
-  "expected_units": "모든 결정의 확률 합",
-  "simulated_units": "0번 추첨으로 실제로 굴린 하루하루의 기록. 대표 방문과 3D 재생이 이 기록을 읽는다",
-  "mc_p05_p95": "100번 추첨의 5–95% 범위. 손님 운에 의한 흔들림만 담고, 모델 자체의 오차는 담지 않는다",
-  "revenue": "판매 방문 수 × 상품별 할인 전 가격 중간값 (USD)",
-  "same_luck": "모든 안이 같은 방문과 같은 (방문, 상품, 추첨)별 난수를 쓴다"
+  "units": "Visits that bought this product (how many items per visit is not counted)",
+  "expected_units": "Sum of the probabilities over every decision",
+  "simulated_units": "The day-by-day record actually rolled with draw 0. The sample visits and the 3D replay read this record",
+  "mc_p05_p95": "5–95% range over 200 draws. It captures only the luck of which customers buy, not the error of the model itself",
+  "revenue": "Visits with a sale × the median pre-discount price of each product (USD)",
+  "same_luck": "Every plan uses the same visits and the same random number per (visit, product, draw)"
  },
  "plans": [
   {
    "id": "none",
-   "label": "평소대로",
+   "label": "As usual",
    "condition": "none",
    "products": [
     "1060408"
@@ -4785,37 +4785,37 @@
    ],
    "by_segment": [
     {
-     "segment": "이 상품을 산 적 있는 가구",
+     "segment": "Households that have bought this product before",
      "decisions": 482,
      "expected_units": 8.774614351654206,
      "per_1000_decisions": 18.20459409056889
     },
     {
-     "segment": "이 상품을 산 적 없는 가구",
+     "segment": "Households that have never bought this product",
      "decisions": 17051,
      "expected_units": 11.566036210972847,
      "per_1000_decisions": 0.6783201109009939
     },
     {
-     "segment": "시리얼 자주 삼 (상위 1/3)",
+     "segment": "Frequent cereal buyers (top third)",
      "decisions": 5851,
      "expected_units": 14.4072357490519,
      "per_1000_decisions": 2.462354426431704
     },
     {
-     "segment": "시리얼 드물게 삼 (하위 1/3)",
+     "segment": "Infrequent cereal buyers (bottom third)",
      "decisions": 5862,
      "expected_units": 2.4755377140421797,
      "per_1000_decisions": 0.4223025783081166
     },
     {
-     "segment": "할인 민감 (상위 1/3)",
+     "segment": "Discount-sensitive (top third)",
      "decisions": 5861,
      "expected_units": 5.028056501480286,
      "per_1000_decisions": 0.8578837231667439
     },
     {
-     "segment": "할인 덜 민감 (하위 1/3)",
+     "segment": "Less discount-sensitive (bottom third)",
      "decisions": 5848,
      "expected_units": 6.832438727045978,
      "per_1000_decisions": 1.1683376756234574
@@ -18441,7 +18441,7 @@
   },
   {
    "id": "A_front_endcap",
-   "label": "앞쪽 엔드캡",
+   "label": "Front endcap",
    "condition": "A_front_endcap",
    "products": [
     "1060408"
@@ -23197,37 +23197,37 @@
    ],
    "by_segment": [
     {
-     "segment": "이 상품을 산 적 있는 가구",
+     "segment": "Households that have bought this product before",
      "decisions": 482,
      "expected_units": 21.634449974957178,
      "per_1000_decisions": 44.88475098538834
     },
     {
-     "segment": "이 상품을 산 적 없는 가구",
+     "segment": "Households that have never bought this product",
      "decisions": 17051,
      "expected_units": 53.91961544657742,
      "per_1000_decisions": 3.162255319135383
     },
     {
-     "segment": "시리얼 자주 삼 (상위 1/3)",
+     "segment": "Frequent cereal buyers (top third)",
      "decisions": 5851,
      "expected_units": 44.98725173899248,
      "per_1000_decisions": 7.6888141751824435
     },
     {
-     "segment": "시리얼 드물게 삼 (하위 1/3)",
+     "segment": "Infrequent cereal buyers (bottom third)",
      "decisions": 5862,
      "expected_units": 8.122667674645752,
      "per_1000_decisions": 1.3856478462377604
     },
     {
-     "segment": "할인 민감 (상위 1/3)",
+     "segment": "Discount-sensitive (top third)",
      "decisions": 5861,
      "expected_units": 28.676473837640323,
      "per_1000_decisions": 4.892761275830118
     },
     {
-     "segment": "할인 덜 민감 (하위 1/3)",
+     "segment": "Less discount-sensitive (bottom third)",
      "decisions": 5848,
      "expected_units": 18.828119761501366,
      "per_1000_decisions": 3.219582722554953
@@ -36853,7 +36853,7 @@
   },
   {
    "id": "B_mailer_only",
-   "label": "전단",
+   "label": "Flyer",
    "condition": "B_mailer_only",
    "products": [
     "1060408"
@@ -41609,37 +41609,37 @@
    ],
    "by_segment": [
     {
-     "segment": "이 상품을 산 적 있는 가구",
+     "segment": "Households that have bought this product before",
      "decisions": 482,
      "expected_units": 11.972528570029517,
      "per_1000_decisions": 24.83927089217742
     },
     {
-     "segment": "이 상품을 산 적 없는 가구",
+     "segment": "Households that have never bought this product",
      "decisions": 17051,
      "expected_units": 20.398136541758817,
      "per_1000_decisions": 1.1963014803682375
     },
     {
-     "segment": "시리얼 자주 삼 (상위 1/3)",
+     "segment": "Frequent cereal buyers (top third)",
      "decisions": 5851,
      "expected_units": 21.233228216530584,
      "per_1000_decisions": 3.628991320548724
     },
     {
-     "segment": "시리얼 드물게 삼 (하위 1/3)",
+     "segment": "Infrequent cereal buyers (bottom third)",
      "decisions": 5862,
      "expected_units": 3.968376006665651,
      "per_1000_decisions": 0.6769662242691318
     },
     {
-     "segment": "할인 민감 (상위 1/3)",
+     "segment": "Discount-sensitive (top third)",
      "decisions": 5861,
      "expected_units": 10.366196531351125,
      "per_1000_decisions": 1.7686736958456108
     },
     {
-     "segment": "할인 덜 민감 (하위 1/3)",
+     "segment": "Less discount-sensitive (bottom third)",
      "decisions": 5848,
      "expected_units": 8.693658845924404,
      "per_1000_decisions": 1.4866037698229144
@@ -55265,7 +55265,7 @@
   },
   {
    "id": "C_other_display",
-   "label": "기타 진열",
+   "label": "Secondary display",
    "condition": "C_other_display",
    "products": [
     "1060408"
@@ -60021,37 +60021,37 @@
    ],
    "by_segment": [
     {
-     "segment": "이 상품을 산 적 있는 가구",
+     "segment": "Households that have bought this product before",
      "decisions": 482,
      "expected_units": 12.981606146177585,
      "per_1000_decisions": 26.93279283439333
     },
     {
-     "segment": "이 상품을 산 적 없는 가구",
+     "segment": "Households that have never bought this product",
      "decisions": 17051,
      "expected_units": 38.439420307906474,
      "per_1000_decisions": 2.254379233353262
     },
     {
-     "segment": "시리얼 자주 삼 (상위 1/3)",
+     "segment": "Frequent cereal buyers (top third)",
      "decisions": 5851,
      "expected_units": 33.122257106698626,
      "per_1000_decisions": 5.660956606853294
     },
     {
-     "segment": "시리얼 드물게 삼 (하위 1/3)",
+     "segment": "Infrequent cereal buyers (bottom third)",
      "decisions": 5862,
      "expected_units": 8.024013930955384,
      "per_1000_decisions": 1.368818480203921
     },
     {
-     "segment": "할인 민감 (상위 1/3)",
+     "segment": "Discount-sensitive (top third)",
      "decisions": 5861,
      "expected_units": 15.503646262547129,
      "per_1000_decisions": 2.6452220205676724
     },
     {
-     "segment": "할인 덜 민감 (하위 1/3)",
+     "segment": "Less discount-sensitive (bottom third)",
      "decisions": 5848,
      "expected_units": 16.406147794534125,
      "per_1000_decisions": 2.8054288294346996

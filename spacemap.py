@@ -33,7 +33,7 @@ def build_map(t, p, pl, store_id, category, top_products, as_of_week, window=13,
         raise SystemExit(f'store {store_id} has no receipts in weeks {lo}-{as_of_week}')
     ps = pl[(pl.store_id == store_id) & pl.week.between(lo, as_of_week)]
 
-    dept = ts.groupby(ts.department.replace('', '기타').fillna('기타')).sales_value.sum().sort_values(ascending=False)
+    dept = ts.groupby(ts.department.replace('', 'Other').fillna('Other')).sales_value.sum().sort_values(ascending=False)
     share = dept / dept.sum()
     cat_dept = ts[ts.product_category == category].department.mode()
     cat_dept = cat_dept.iloc[0] if len(cat_dept) else share.index[0]
@@ -113,10 +113,10 @@ def render_svg(m, title, changes=None, layout=None):
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" font-family="Pretendard, Instrument Sans, system-ui, sans-serif">',
            '<rect width="100%" height="100%" fill="#ffffff"/>',
            f'<text x="40" y="44" font-size="22" font-weight="600" fill="#000">{_esc(title)}</text>',
-           f'<text x="40" y="70" font-size="12" fill="#4d5353">Store {_esc(m["store_id"])} · {m["window_weeks"][0]}–{m["window_weeks"][1]}주 데이터 · 주당 방문 {m["store"]["visits_per_week"]} · 구역 배치도(좌표는 템플릿, 구역·자리 수·위치는 데이터)</text>',
+           f'<text x="40" y="70" font-size="12" fill="#4d5353">Store {_esc(m["store_id"])} · data from weeks {m["window_weeks"][0]}–{m["window_weeks"][1]} · {m["store"]["visits_per_week"]} visits per week · zone diagram (coordinates are a template; zones, slot counts and positions are data)</text>',
            f'<rect x="{x0}" y="{y0}" width="{w}" height="{h}" rx="6" fill="#f2f5f6" stroke="#d8dddf"/>']
     # rear wall band (code 2) and rear end caps (5)
-    out.append(f'<rect x="{x0 + 10}" y="{y0 + 10}" width="{w - 20}" height="26" rx="3" fill="#edf0f2"/><text x="{x0 + 18}" y="{y0 + 28}" font-size="11" fill="#4d5353">매장 뒤 벽면</text>')
+    out.append(f'<rect x="{x0 + 10}" y="{y0 + 10}" width="{w - 20}" height="26" rx="3" fill="#edf0f2"/><text x="{x0 + 18}" y="{y0 + 28}" font-size="11" fill="#4d5353">Back wall of the store</text>')
     aisle_w = (w - 60) / n
     aisle_top, aisle_bot = y0 + 80, y0 + h - 170
     slots = {}
@@ -131,13 +131,13 @@ def render_svg(m, title, changes=None, layout=None):
         slots[('A', i)] = (ax + 10, aisle_bot + 14)
         if a['category_home']:
             slots['home'] = (ax + 10, aisle_top + 58, aisle_w - 20)
-    out.append(f'<text x="{x0 + 18}" y="{aisle_bot + 52}" font-size="10" fill="#3B73FF">앞쪽 엔드캡 줄</text>')
+    out.append(f'<text x="{x0 + 18}" y="{aisle_bot + 52}" font-size="10" fill="#3B73FF">Front endcap row</text>')
     # front band: front-of-store display, secondary displays, entrance, checkout
     fy = y0 + h - 100
-    out.append(f'<rect x="{x0 + 30}" y="{fy}" width="{w * .42}" height="34" rx="3" fill="#ffffff" stroke="#88ACFA"/><text x="{x0 + 38}" y="{fy + 21}" font-size="11" fill="#4d5353">매장 앞·보조 진열</text>')
+    out.append(f'<rect x="{x0 + 30}" y="{fy}" width="{w * .42}" height="34" rx="3" fill="#ffffff" stroke="#88ACFA"/><text x="{x0 + 38}" y="{fy + 21}" font-size="11" fill="#4d5353">Store front · secondary displays</text>')
     slots['C'] = (x0 + 150, fy + 6)
-    out.append(f'<rect x="{x0 + 30}" y="{y0 + h - 50}" width="120" height="36" rx="3" fill="#000"/><text x="{x0 + 90}" y="{y0 + h - 27}" font-size="12" text-anchor="middle" fill="#fff">입구</text>')
-    out.append(f'<rect x="{x0 + w - 230}" y="{y0 + h - 60}" width="200" height="46" rx="3" fill="#ffffff" stroke="#000"/><text x="{x0 + w - 130}" y="{y0 + h - 32}" font-size="12" text-anchor="middle">계산대</text>')
+    out.append(f'<rect x="{x0 + 30}" y="{y0 + h - 50}" width="120" height="36" rx="3" fill="#000"/><text x="{x0 + 90}" y="{y0 + h - 27}" font-size="12" text-anchor="middle" fill="#fff">Entrance</text>')
+    out.append(f'<rect x="{x0 + w - 230}" y="{y0 + h - 60}" width="200" height="46" rx="3" fill="#ffffff" stroke="#000"/><text x="{x0 + w - 130}" y="{y0 + h - 32}" font-size="12" text-anchor="middle">Checkout</text>')
 
     # product chips
     home_i = next(i for i, a in enumerate(m['aisles']) if a['category_home'])
@@ -167,13 +167,13 @@ def render_svg(m, title, changes=None, layout=None):
         out.append(chip(x + j * 27, y, pr, 'C_other_display'))
     hx, hy, hw = slots['home']
     per_row = max(1, int(hw // 27))
-    out.append(f'<text x="{hx}" y="{hy - 4}" font-size="10" fill="#3B73FF">{_esc(m["category"])} 선반</text>')
+    out.append(f'<text x="{hx}" y="{hy - 4}" font-size="10" fill="#3B73FF">{_esc(m["category"])} shelf</text>')
     for j, pr in enumerate(groups['none']):
         out.append(chip(hx + (j % per_row) * 27, hy + 4 + (j // per_row) * 24, pr, 'none'))
 
     # legend
     lx = x0 + w + 30
-    out.append(f'<text x="{lx}" y="{y0 + 6}" font-size="13" font-weight="600">상품 {len(m["products"])}개</text>')
+    out.append(f'<text x="{lx}" y="{y0 + 6}" font-size="13" font-weight="600">{len(m["products"])} products</text>')
     for k, pr in enumerate(m['products']):
         y = y0 + 26 + k * 21
         cond = cond_of[pr['product_id']]
@@ -181,9 +181,9 @@ def render_svg(m, title, changes=None, layout=None):
         out.append(f'<rect x="{lx}" y="{y - 12}" width="18" height="15" rx="3" fill="{COLORS[cond]}"/><text x="{lx + 9}" y="{y - 1}" font-size="9" text-anchor="middle" fill="{"#fff" if cond == "A_front_endcap" else "#000"}">{pr["n"]}</text>')
         out.append(f'<text x="{lx + 26}" y="{y}" font-size="11" fill="#000">{_esc((pr["brand"] + " " + pr["type"].title())[:30])} {_esc(pr["size"])}{mark}</text>')
     ky = H - 40
-    for k, (c, lab) in enumerate([('A_front_endcap', '앞쪽 엔드캡'), ('C_other_display', '기타 진열'), ('none', '일반 선반'), ('B_mailer_only', '전단(점)')]):
+    for k, (c, lab) in enumerate([('A_front_endcap', 'Front endcap'), ('C_other_display', 'Secondary display'), ('none', 'Regular shelf'), ('B_mailer_only', 'Flyer (dot)')]):
         out.append(f'<rect x="{40 + k * 150}" y="{ky}" width="14" height="14" rx="3" fill="{COLORS[c]}"/><text x="{60 + k * 150}" y="{ky + 12}" font-size="12">{lab}</text>')
     if changes:
-        out.append(f'<rect x="{640}" y="{ky}" width="14" height="14" rx="3" fill="none" stroke="#0F766E" stroke-width="3"/><text x="{660}" y="{ky + 12}" font-size="12">바뀌는 상품</text>')
+        out.append(f'<rect x="{640}" y="{ky}" width="14" height="14" rx="3" fill="none" stroke="#0F766E" stroke-width="3"/><text x="{660}" y="{ky + 12}" font-size="12">Product that moves</text>')
     out.append('</svg>')
     return '\n'.join(out)

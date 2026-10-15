@@ -68,7 +68,7 @@
  "displays": [
   {
    "code": "1",
-   "label": "매장 앞",
+   "label": "Store front",
    "condition": "C_other_display",
    "slots_all_median": 50.0,
    "slots_all_p90": 123.40000000000002,
@@ -78,7 +78,7 @@
   },
   {
    "code": "2",
-   "label": "매장 뒤",
+   "label": "Store rear",
    "condition": "C_other_display",
    "slots_all_median": 117.0,
    "slots_all_p90": 212.80000000000004,
@@ -88,7 +88,7 @@
   },
   {
    "code": "3",
-   "label": "앞쪽 엔드캡",
+   "label": "Front endcap",
    "condition": "A_front_endcap",
    "slots_all_median": 82.0,
    "slots_all_p90": 178.00000000000006,
@@ -98,7 +98,7 @@
   },
   {
    "code": "4",
-   "label": "통로 중간 엔드캡",
+   "label": "Mid-aisle endcap",
    "condition": "C_other_display",
    "slots_all_median": 387.0,
    "slots_all_p90": 700.4000000000001,
@@ -108,7 +108,7 @@
   },
   {
    "code": "5",
-   "label": "뒤쪽 엔드캡",
+   "label": "Rear endcap",
    "condition": "C_other_display",
    "slots_all_median": 117.0,
    "slots_all_p90": 162.60000000000002,
@@ -118,7 +118,7 @@
   },
   {
    "code": "6",
-   "label": "옆 통로 엔드캡",
+   "label": "Side-aisle endcap",
    "condition": "C_other_display",
    "slots_all_median": 152.0,
    "slots_all_p90": 443.40000000000003,
@@ -128,7 +128,7 @@
   },
   {
    "code": "7",
-   "label": "통로 안 진열",
+   "label": "In-aisle display",
    "condition": "C_other_display",
    "slots_all_median": 225.0,
    "slots_all_p90": 467.00000000000006,
@@ -138,7 +138,7 @@
   },
   {
    "code": "9",
-   "label": "보조 진열대",
+   "label": "Secondary location display",
    "condition": "C_other_display",
    "slots_all_median": 221.0,
    "slots_all_p90": 297.40000000000003,
@@ -148,7 +148,7 @@
   },
   {
    "code": "A",
-   "label": "선반 안 강조",
+   "label": "In-shelf highlight",
    "condition": "C_other_display",
    "slots_all_median": 151.0,
    "slots_all_p90": 249.4,
@@ -165,13 +165,13 @@
    "type": "ALL FAMILY CEREAL",
    "size": "12.25 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 2,
    "proposed": "A_front_endcap",
-   "proposed_label": "앞쪽 엔드캡",
+   "proposed_label": "Secondary display",
    "moved": true
   },
   {
@@ -181,13 +181,13 @@
    "type": "KIDS CEREAL",
    "size": "13 OZ",
    "display_code": "5",
-   "display_label": "뒤쪽 엔드캡",
+   "display_label": "Rear endcap",
    "condition": "C_other_display",
    "mailer": "A",
-   "mailer_label": "안쪽 면 특집",
+   "mailer_label": "Interior page feature",
    "visits_with_purchase_window": 3,
    "proposed": "C_other_display",
-   "proposed_label": "기타 진열",
+   "proposed_label": "Secondary display",
    "moved": false
   },
   {
@@ -197,13 +197,13 @@
    "type": "ADULT CEREAL",
    "size": "14.5 OZ",
    "display_code": "5",
-   "display_label": "뒤쪽 엔드캡",
+   "display_label": "Rear endcap",
    "condition": "C_other_display",
    "mailer": "A",
-   "mailer_label": "안쪽 면 특집",
+   "mailer_label": "Interior page feature",
    "visits_with_purchase_window": 5,
    "proposed": "none",
-   "proposed_label": "평소대로",
+   "proposed_label": "As usual",
    "moved": true
   },
   {
@@ -213,13 +213,13 @@
    "type": "KIDS CEREAL",
    "size": "13 OZ",
    "display_code": "5",
-   "display_label": "뒤쪽 엔드캡",
+   "display_label": "Rear endcap",
    "condition": "C_other_display",
    "mailer": "A",
-   "mailer_label": "안쪽 면 특집",
+   "mailer_label": "Interior page feature",
    "visits_with_purchase_window": 1,
    "proposed": "none",
-   "proposed_label": "평소대로",
+   "proposed_label": "As usual",
    "moved": true
   },
   {
@@ -229,13 +229,13 @@
    "type": "ADULT CEREAL",
    "size": "16 OZ",
    "display_code": "5",
-   "display_label": "뒤쪽 엔드캡",
+   "display_label": "Rear endcap",
    "condition": "C_other_display",
    "mailer": "A",
-   "mailer_label": "안쪽 면 특집",
+   "mailer_label": "Interior page feature",
    "visits_with_purchase_window": 1,
    "proposed": "none",
-   "proposed_label": "평소대로",
+   "proposed_label": "As usual",
    "moved": true
   },
   {
@@ -245,13 +245,13 @@
    "type": "ALL FAMILY CEREAL",
    "size": "14 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 7,
    "proposed": "C_other_display",
-   "proposed_label": "기타 진열",
+   "proposed_label": "Secondary display",
    "moved": true
   },
   {
@@ -261,13 +261,13 @@
    "type": "KIDS CEREAL",
    "size": "12.2 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 0,
    "proposed": "none",
-   "proposed_label": "평소대로",
+   "proposed_label": "Secondary display",
    "moved": false
   },
   {
@@ -277,13 +277,13 @@
    "type": "KIDS CEREAL",
    "size": "32 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 0,
    "proposed": "none",
-   "proposed_label": "평소대로",
+   "proposed_label": "As usual",
    "moved": false
   },
   {
@@ -293,13 +293,13 @@
    "type": "KIDS CEREAL",
    "size": "17 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 1,
    "proposed": "none",
-   "proposed_label": "평소대로",
+   "proposed_label": "Secondary display",
    "moved": false
   },
   {
@@ -309,13 +309,13 @@
    "type": "ALL FAMILY CEREAL",
    "size": "18 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 1,
    "proposed": "C_other_display",
-   "proposed_label": "기타 진열",
+   "proposed_label": "Front endcap",
    "moved": true
   },
   {
@@ -325,13 +325,13 @@
    "type": "KIDS CEREAL",
    "size": "12.2 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 5,
    "proposed": "none",
-   "proposed_label": "평소대로",
+   "proposed_label": "As usual",
    "moved": false
   },
   {
@@ -341,13 +341,13 @@
    "type": "ALL FAMILY CEREAL",
    "size": "8.9 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 0,
    "proposed": "none",
-   "proposed_label": "평소대로",
+   "proposed_label": "As usual",
    "moved": false
   },
   {
@@ -357,13 +357,13 @@
    "type": "ALL FAMILY CEREAL",
    "size": "18 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 2,
    "proposed": "none",
-   "proposed_label": "평소대로",
+   "proposed_label": "As usual",
    "moved": false
   },
   {
@@ -373,13 +373,13 @@
    "type": "KIDS CEREAL",
    "size": "15 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 1,
    "proposed": "C_other_display",
-   "proposed_label": "기타 진열",
+   "proposed_label": "Secondary display",
    "moved": true
   },
   {
@@ -389,13 +389,13 @@
    "type": "KIDS CEREAL",
    "size": "32 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 0,
    "proposed": "none",
-   "proposed_label": "평소대로",
+   "proposed_label": "As usual",
    "moved": false
   },
   {
@@ -405,13 +405,13 @@
    "type": "ALL FAMILY CEREAL",
    "size": "23 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 0,
    "proposed": "C_other_display",
-   "proposed_label": "기타 진열",
+   "proposed_label": "Secondary display",
    "moved": true
   },
   {
@@ -421,13 +421,13 @@
    "type": "KIDS CEREAL",
    "size": "11.25 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 0,
    "proposed": "none",
-   "proposed_label": "평소대로",
+   "proposed_label": "As usual",
    "moved": false
   },
   {
@@ -437,13 +437,13 @@
    "type": "KIDS CEREAL",
    "size": "17 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Interior page feature",
    "visits_with_purchase_window": 0,
    "proposed": "C_other_display",
-   "proposed_label": "기타 진열",
+   "proposed_label": "As usual",
    "moved": true
   },
   {
@@ -453,13 +453,13 @@
    "type": "KIDS CEREAL",
    "size": "17 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "A",
-   "mailer_label": "안쪽 면 특집",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 1,
    "proposed": "none",
-   "proposed_label": "평소대로",
+   "proposed_label": "Secondary display",
    "moved": false
   },
   {
@@ -469,13 +469,13 @@
    "type": "ALL FAMILY CEREAL",
    "size": "17 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 0,
    "proposed": "none",
-   "proposed_label": "평소대로",
+   "proposed_label": "As usual",
    "moved": false
   },
   {
@@ -485,13 +485,13 @@
    "type": "KIDS CEREAL",
    "size": "14 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 0,
    "proposed": "none",
-   "proposed_label": "평소대로",
+   "proposed_label": "As usual",
    "moved": false
   },
   {
@@ -501,13 +501,13 @@
    "type": "KIDS CEREAL",
    "size": "16 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 0,
    "proposed": "C_other_display",
-   "proposed_label": "기타 진열",
+   "proposed_label": "Secondary display",
    "moved": true
   },
   {
@@ -517,13 +517,13 @@
    "type": "ALL FAMILY CEREAL",
    "size": "21 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 0,
    "proposed": "C_other_display",
-   "proposed_label": "기타 진열",
+   "proposed_label": "As usual",
    "moved": true
   },
   {
@@ -533,13 +533,13 @@
    "type": "ALL FAMILY CEREAL",
    "size": "21 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 2,
    "proposed": "C_other_display",
-   "proposed_label": "기타 진열",
+   "proposed_label": "As usual",
    "moved": true
   },
   {
@@ -549,13 +549,13 @@
    "type": "KIDS CEREAL",
    "size": "22 OZ",
    "display_code": "0",
-   "display_label": "진열 없음",
+   "display_label": "Not on display",
    "condition": "none",
    "mailer": "0",
-   "mailer_label": "전단 없음",
+   "mailer_label": "Not in flyer",
    "visits_with_purchase_window": 1,
    "proposed": "none",
-   "proposed_label": "평소대로",
+   "proposed_label": "As usual",
    "moved": false
   }
  ],
@@ -601,85 +601,85 @@
    "product_id": "1071342",
    "from": "none",
    "to": "A_front_endcap",
-   "from_label": "평소대로",
-   "to_label": "앞쪽 엔드캡"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "1027068",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Front endcap"
   },
   {
    "product_id": "960732",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "1135222",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "1006878",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "1133254",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "1121384",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "905636",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "1060408",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "1122568",
    "from": "C_other_display",
    "to": "none",
-   "from_label": "기타 진열",
-   "to_label": "평소대로"
+   "from_label": "Secondary display",
+   "to_label": "As usual"
   },
   {
    "product_id": "923673",
    "from": "C_other_display",
    "to": "none",
-   "from_label": "기타 진열",
-   "to_label": "평소대로"
+   "from_label": "Secondary display",
+   "to_label": "As usual"
   },
   {
    "product_id": "849003",
    "from": "C_other_display",
    "to": "none",
-   "from_label": "기타 진열",
-   "to_label": "평소대로"
+   "from_label": "Secondary display",
+   "to_label": "As usual"
   }
  ],
  "options": [

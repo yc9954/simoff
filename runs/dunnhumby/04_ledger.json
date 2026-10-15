@@ -7,7 +7,7 @@
  "baseline": "current",
  "plans": {
   "actual": {
-   "label": "실제 진열 그대로",
+   "label": "Actual displays as they were",
    "expected_units": 11.863357550767596,
    "mc_p05": 7.0,
    "mc_p95": 18.0,
@@ -19,7 +19,7 @@
    "share_of_draws_above_baseline": 0.115
   },
   "current": {
-   "label": "47주 배치 고정",
+   "label": "Week-47 layout held fixed",
    "expected_units": 13.382761639546437,
    "mc_p05": 8.0,
    "mc_p95": 20.0,
@@ -31,7 +31,7 @@
    "share_of_draws_above_baseline": 0.0
   },
   "proposed": {
-   "label": "제안 배치",
+   "label": "Proposed layout",
    "expected_units": 19.5449573005715,
    "mc_p05": 12.950000000000001,
    "mc_p95": 27.0,
@@ -48,93 +48,93 @@
    "product_id": "1071342",
    "from": "none",
    "to": "A_front_endcap",
-   "from_label": "평소대로",
-   "to_label": "앞쪽 엔드캡"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "1027068",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Front endcap"
   },
   {
    "product_id": "960732",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "1135222",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "1006878",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "1133254",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "1121384",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "905636",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "1060408",
    "from": "none",
    "to": "C_other_display",
-   "from_label": "평소대로",
-   "to_label": "기타 진열"
+   "from_label": "As usual",
+   "to_label": "Secondary display"
   },
   {
    "product_id": "1122568",
    "from": "C_other_display",
    "to": "none",
-   "from_label": "기타 진열",
-   "to_label": "평소대로"
+   "from_label": "Secondary display",
+   "to_label": "As usual"
   },
   {
    "product_id": "923673",
    "from": "C_other_display",
    "to": "none",
-   "from_label": "기타 진열",
-   "to_label": "평소대로"
+   "from_label": "Secondary display",
+   "to_label": "As usual"
   },
   {
    "product_id": "849003",
    "from": "C_other_display",
    "to": "none",
-   "from_label": "기타 진열",
-   "to_label": "평소대로"
+   "from_label": "Secondary display",
+   "to_label": "As usual"
   }
  ],
  "definitions": {
-  "units": "이 상품을 산 방문 수 (방문 1회에 몇 개를 샀는지는 세지 않음)",
-  "expected_units": "모든 결정의 확률 합",
-  "simulated_units": "0번 추첨으로 실제로 굴린 하루하루의 기록. 대표 방문과 3D 재생이 이 기록을 읽는다",
-  "mc_p05_p95": "200번 추첨의 5–95% 범위. 손님 운에 의한 흔들림만 담고, 모델 자체의 오차는 담지 않는다",
-  "revenue": "판매 방문 수 × 상품별 할인 전 가격 중간값 (USD)",
-  "same_luck": "모든 안이 같은 방문과 같은 (방문, 상품, 추첨)별 난수를 쓴다"
+  "units": "Visits that bought this product (how many items per visit is not counted)",
+  "expected_units": "Sum of the probabilities over every decision",
+  "simulated_units": "The day-by-day record actually rolled with draw 0. The sample visits and the 3D replay read this record",
+  "mc_p05_p95": "5–95% range over 200 draws. It captures only the luck of which customers buy, not the error of the model itself",
+  "revenue": "Visits with a sale × the median pre-discount price of each product (USD)",
+  "same_luck": "Every plan uses the same visits and the same random number per (visit, product, draw)"
  }
 }
