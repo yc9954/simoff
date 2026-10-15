@@ -127,12 +127,7 @@ python3 cycle.py --dataset dunnhumby    # one cycle: data → space map → simu
 python3 cycle.py --data my_store/ --weeks 4   # your own three CSVs (format at the top of datasets.py)
 ```
 
-One full cycle on Store 367 ([`runs/dunnhumby/REPORT.md`](runs/dunnhumby/REPORT.md)) — the space map from the data, the simulation, the store-level check, and the layout chosen within the store's display slots:
-
-<p align="center">
-  <img src="runs/dunnhumby/04_final_map.png" alt="Proposed layout for Store 367: 12 moves" width="49%">
-  <img src="runs/dunnhumby/04_final_3d.png" alt="The proposed layout on a 3D store" width="49%">
-</p>
+`cycle.py` writes its maps, ledger and report to `runs/<name>/`; the committed run on Store 367 is in [`runs/dunnhumby/REPORT.md`](runs/dunnhumby/REPORT.md).
 
 The evaluation scripts are in `eval/scripts/` (order and requirements at the end of `eval/REPORT.md`; the persona and Jev runs need their own API access, Von needs Modal).
 
